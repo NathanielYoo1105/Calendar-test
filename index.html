@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar Project</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Calendar -->
+    <div class="calendar-container">
+      <div class="calendar-header">
+        <button id="prevMonth">Previous</button>
+        <h2 id="monthYear"></h2>
+        <button id="nextMonth">Next</button>
+      </div>
+
+      <!-- View Toggle -->
+      <div class="view-toggle">
+        <button id="weekViewBtn">Week View</button>
+        <button id="dayViewBtn">Day View</button>
+      </div>
+
+      <table class="calendar-grid">
+        <thead>
+          <tr id="calendarHeaderRow">
+            <!-- Headers will change dynamically -->
+          </tr>
+        </thead>
+        <tbody id="calendarBody">
+          <!-- Days dynamically added -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Right side -->
+    <div class="right-panel">
+      <h1>Wow Cool Calendar Project</h1>
+      <button id="myButton">Log In</button>
+    </div>
+  </div>
+
+  <!-- Log In Modal -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content">
+      <span id="closeModal" class="close">&times;</span>
+      <p>There is no log in function yet.</p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
