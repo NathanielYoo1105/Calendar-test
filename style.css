@@ -9,7 +9,7 @@ body {
   height: 100vh;
 }
 
-/* Calendar */
+/* Calendar on left half */
 .calendar-container {
   flex: 1;
   border-right: 1px solid #ddd;
@@ -33,22 +33,6 @@ body {
   font-size: 14px;
 }
 
-.view-toggle {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  padding: 8px;
-  background: #fafafa;
-}
-
-.view-toggle button {
-  padding: 5px 12px;
-  background: #e0e0e0;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-}
-
 .calendar-grid {
   width: 100%;
   border-collapse: collapse;
@@ -58,9 +42,10 @@ body {
 .calendar-grid th,
 .calendar-grid td {
   border: 1px solid #ddd;
+  width: 14.28%;
+  height: 80px;
   text-align: center;
   vertical-align: top;
-  height: 80px;
 }
 
 /* Right panel */
