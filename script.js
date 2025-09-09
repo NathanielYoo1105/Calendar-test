@@ -143,4 +143,67 @@ document.addEventListener("DOMContentLoaded", () => {
     dayCol.appendChild(slots);
     eventGrid.appendChild(dayCol);
   });
+
+  // ===== TOGGLE WEEK / MONTH VIEW =====
+  const viewToggle = document.getElementById("viewToggle");
+  const weekView = document.getElementById("weekView");
+  const monthView = document.getElementById("monthView");
+  const bigCalendarBody = document.getElementById("bigCalendarBody");
+
+  let showingWeek = true;
+
+  function renderBigCalendar(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+
+    bigCalendarBody.innerHTML = "";
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    let row = document.createElement("tr");
+
+    for (let i = 0; i < firstDay; i++) {
+      row.appendChild(document.createElement("td"));
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cell = document.createElement("td");
+      cell.textContent = day;
+
+      const today = new Date();
+      if (
+        day === today.getDate() &&
+        month === today.getMonth() &&
+        year === today.getFullYear()
+      ) {
+        cell.classList.add("today");
+      }
+
+      row.appendChild(cell);
+
+      if ((firstDay + day) % 7 === 0) {
+        bigCalendarBody.appendChild(row);
+        row = document.createElement("tr");
+      }
+    }
+
+    if (row.children.length > 0) {
+      bigCalendarBody.appendChild(row);
+    }
+  }
+
+  viewToggle.addEventListener("click", () => {
+    showingWeek = !showingWeek;
+    if (showingWeek) {
+      weekView.classList.remove("hidden");
+      monthView.classList.add("hidden");
+      viewToggle.textContent = "Week View";
+    } else {
+      weekView.classList.add("hidden");
+      monthView.classList.remove("hidden");
+      renderBigCalendar(currentDate);
+      viewToggle.textContent = "Month View";
+    }
+  });
 });
