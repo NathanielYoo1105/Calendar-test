@@ -121,8 +121,9 @@ button:hover {
   height: 60px;
   border-bottom: 1px solid #f1f3f4;
   display: flex;
-  align-items: flex-start; /* shift label down */
-  padding-top: 10px;       /* adjust alignment */
+  align-items: center;   /* center vertically */
+  justify-content: flex-end; /* align to the right */
+  padding-right: 5px;
 }
 
 .day-columns {
