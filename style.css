@@ -97,24 +97,19 @@ body {
 .big-calendar {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed; /* Prevent columns from stretching due to long content */
+  table-layout: fixed;
 }
 
 .big-calendar th,
 .big-calendar td {
   border: 1px solid #ddd;
   text-align: center;
-  height: 120px; /* more room, but events won't stretch it */
+  height: 120px;
   vertical-align: top;
   padding: 6px;
   overflow: hidden;
   box-sizing: border-box;
   word-break: break-word;
-}
-
-/* Make columns equal width */
-.big-calendar th,
-.big-calendar td {
   width: calc(100% / 7);
 }
 
@@ -123,16 +118,15 @@ body {
   margin-bottom: 6px;
 }
 
-/* Wrapper for events inside month cells so overflow can be controlled */
 .events-wrapper {
-  max-height: calc(100% - 22px); /* leave space for date number */
+  max-height: calc(100% - 22px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-/* Week View Grid */
+/* Week view */
 .event-grid {
   flex: 1;
   display: grid;
@@ -183,7 +177,6 @@ body {
   z-index: 5;
 }
 
-/* slots container and slots */
 .day-slots {
   display: flex;
   flex-direction: column;
@@ -199,25 +192,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  overflow: hidden; /* prevent many events from stretching the slot */
-}
-
-/* Events inside week or month view */
-.event {
-  background-color: #4caf50;
-  color: white;
-  padding: 4px 6px;
-  border-radius: 4px;
-  font-size: 12px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap; /* keep single line and ellipsis */
-  display: inline-block;
-  max-width: 100%;
-  box-sizing: border-box;
 }
 
-/* If many events in one hour, show a small scroll inside the hour-slot */
 .hour-slot .events-stack {
   display: flex;
   flex-direction: column;
@@ -226,7 +203,21 @@ body {
   max-height: 100%;
 }
 
-/* Hide section */
+.event {
+  background-color: #4caf50;
+  color: white;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Hidden section */
 .hidden {
   display: none;
 }
@@ -261,31 +252,16 @@ body {
   cursor: pointer;
 }
 
-/* Login Box */
-.login-box {
-  width: 300px;
-}
-
-/* Event Modal */
-.event-box {
-  width: 400px;
-  max-width: 90%;
-}
-
-.event-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.event-form input,
-.event-form textarea {
+/* Login & Event Box */
+.login-box { width: 300px; }
+.event-box { width: 400px; max-width: 90%; }
+.event-form { display: flex; flex-direction: column; gap: 10px; }
+.event-form input, .event-form textarea {
   padding: 8px;
   font-size: 14px;
   border: 1px solid #ccc;
   border-radius: 6px;
 }
-
 .event-form button {
   align-self: flex-end;
   background: #4caf50;
@@ -295,7 +271,4 @@ body {
   border-radius: 6px;
   cursor: pointer;
 }
-
-.event-form button:hover {
-  background: #45a049;
-}
+.event-form button:hover { background: #45a049; }
