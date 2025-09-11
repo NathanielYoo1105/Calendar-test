@@ -3,60 +3,35 @@ document.addEventListener("DOMContentLoaded", () => {
   let events = JSON.parse(localStorage.getItem("events") || "[]");
   let currentDate = new Date();
 
-  // ===== LOGIN MODAL =====
+  // ===== MODALS =====
   const logInButton = document.getElementById("logInButton");
   const loginModal = document.getElementById("loginModal");
   const loginClose = loginModal.querySelector(".close-btn");
-
   logInButton.addEventListener("click", () => loginModal.classList.add("show"));
   loginClose.addEventListener("click", () => loginModal.classList.remove("show"));
-  window.addEventListener("click", e => { if(e.target === loginModal) loginModal.classList.remove("show"); });
+  window.addEventListener("click", e => { if(e.target===loginModal) loginModal.classList.remove("show"); });
   window.addEventListener("keydown", e => { if(e.key==="Escape") loginModal.classList.remove("show"); });
 
-  // ===== EVENT MODAL =====
-  const eventModal = document.getElementById("eventModal");
-  const addEventBtn = document.getElementById("addEventBtn");
-  const eventForm = document.getElementById("eventForm");
-  const eventName = document.getElementById("eventName");
-  const eventDate = document.getElementById("eventDate");
-  const eventTime = document.getElementById("eventTime");
-  const eventDetails = document.getElementById("eventDetails");
-
-  addEventBtn.addEventListener("click", () => {
-    eventForm.reset();
-    eventModal.classList.add("show");
-  });
-
-  eventForm.addEventListener("submit", e => {
-    e.preventDefault();
-    const newEvent = {
-      name: eventName.value,
-      date: eventDate.value,
-      time: eventTime.value,
-      details: eventDetails.value
-    };
-    events.push(newEvent);
-    localStorage.setItem("events", JSON.stringify(events));
-    eventModal.classList.remove("show");
-    renderBigCalendar(currentDate);
-    renderWeekEvents();
-  });
-
-  document.querySelectorAll(".modal .close-btn").forEach(btn => {
-    btn.addEventListener("click", () => btn.closest(".modal").classList.remove("show"));
-  });
-
-  // ===== MINI CALENDAR =====
+  // ===== ELEMENTS =====
   const monthYear = document.getElementById("monthYear");
   const calendarBody = document.getElementById("calendarBody");
   const prevMonthBtn = document.getElementById("prevMonth");
   const nextMonthBtn = document.getElementById("nextMonth");
+  const weekView = document.getElementById("weekView");
+  const monthView = document.getElementById("monthView");
+  const viewToggle = document.getElementById("viewToggle");
+  const bigCalendarBody = document.getElementById("bigCalendarBody");
+  const timeColumn = document.querySelector(".time-column");
+  const eventGrid = document.querySelector(".event-grid");
 
-  function renderMiniCalendar(date) {
+  let showingWeek = true;
+
+  // ===== MINI CALENDAR =====
+  function renderMiniCalendar(date){
     const year = date.getFullYear();
     const month = date.getMonth();
     monthYear.textContent = `${date.toLocaleString("default",{month:"long"})} ${year}`;
-    const firstDay = new Date(year, month, 1).getDay();
+    const firstDay = new Date(year, month,1).getDay();
     const daysInMonth = new Date(year, month+1,0).getDate();
 
     calendarBody.innerHTML="";
@@ -69,6 +44,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       const cell=document.createElement("td");
       cell.textContent=day;
+      const today = new Date();
+      if(day===today.getDate() && month===today.getMonth() && year===today.getFullYear()){
+        cell.classList.add("today");
+      }
       row.appendChild(cell);
     }
     calendarBody.appendChild(row);
@@ -80,8 +59,6 @@ document.addEventListener("DOMContentLoaded", () => {
   renderMiniCalendar(currentDate);
 
   // ===== BIG CALENDAR =====
-  const bigCalendarBody = document.getElementById("bigCalendarBody");
-
   function renderBigCalendar(date){
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -102,9 +79,13 @@ document.addEventListener("DOMContentLoaded", () => {
       events.filter(ev=>ev.date===dateStr).forEach(ev=>{
         const evEl=document.createElement("div");
         evEl.className="event";
-        evEl.textContent=`${ev.time} ${ev.name}`;
+        evEl.textContent = `${ev.time} ${ev.name}`;
         cell.appendChild(evEl);
       });
+      const today = new Date();
+      if(day===today.getDate() && month===today.getMonth() && year===today.getFullYear()){
+        cell.classList.add("today");
+      }
       row.appendChild(cell);
     }
     bigCalendarBody.appendChild(row);
@@ -113,10 +94,9 @@ document.addEventListener("DOMContentLoaded", () => {
   renderBigCalendar(currentDate);
 
   // ===== WEEK VIEW =====
-  const timeColumn = document.querySelector(".time-column");
-  const eventGrid = document.querySelector(".event-grid");
   const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
+  // time labels
   for(let hour=0;hour<24;hour++){
     const div=document.createElement("div");
     const label = hour===0?"12 AM":hour<12?`${hour} AM`:hour===12?"12 PM":`${hour-12} PM`;
@@ -124,6 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
     timeColumn.appendChild(div);
   }
 
+  // day columns
   days.forEach(day=>{
     const dayCol=document.createElement("div");
     dayCol.classList.add("day-column");
@@ -143,24 +124,32 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function renderWeekEvents(){
-    if(weekView.classList.contains("hidden")) return;
-
     const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate()-currentDate.getDay());
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+    const today = new Date();
 
     const dayColumns = eventGrid.querySelectorAll(".day-column");
     dayColumns.forEach((col, idx)=>{
       const slots = col.querySelector(".day-slots");
       slots.querySelectorAll(".event").forEach(e=>e.remove());
+
       const dateObj = new Date(startOfWeek);
-      dateObj.setDate(startOfWeek.getDate()+idx);
+      dateObj.setDate(startOfWeek.getDate() + idx);
       const dateStr = dateObj.toISOString().split("T")[0];
+
+      // highlight current day
+      if(dateObj.toDateString() === today.toDateString()){
+        col.classList.add("today");
+      } else {
+        col.classList.remove("today");
+      }
+
       events.filter(ev=>ev.date===dateStr).forEach(ev=>{
         const hour = parseInt(ev.time.split(":")[0],10);
         const slot = slots.children[hour];
-        const evEl=document.createElement("div");
+        const evEl = document.createElement("div");
         evEl.className="event";
-        evEl.textContent=ev.name;
+        evEl.textContent = ev.name;
         slot.appendChild(evEl);
       });
     });
@@ -169,20 +158,16 @@ document.addEventListener("DOMContentLoaded", () => {
   renderWeekEvents();
 
   // ===== TOGGLE VIEW =====
-  const viewToggle = document.getElementById("viewToggle");
-  const weekView = document.getElementById("weekView");
-  const monthView = document.getElementById("monthView");
-  let showingWeek = true;
-
-  viewToggle.addEventListener("click",()=>{
+  viewToggle.addEventListener("click", () => {
     showingWeek = !showingWeek;
     if(showingWeek){
       weekView.classList.remove("hidden");
       monthView.classList.add("hidden");
       viewToggle.textContent="Week View";
-    }else{
+    } else {
       weekView.classList.add("hidden");
       monthView.classList.remove("hidden");
+      renderBigCalendar(currentDate);
       viewToggle.textContent="Month View";
     }
   });
