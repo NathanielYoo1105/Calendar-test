@@ -35,6 +35,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const eventGrid = document.querySelector(".event-grid");
   let showingWeek = true;
 
+  const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
   // ===== MINI CALENDAR =====
   function renderMiniCalendar(date) {
     const year = date.getFullYear();
@@ -79,7 +81,21 @@ document.addEventListener("DOMContentLoaded", () => {
       cell.innerHTML=`<div class="date-num">${day}</div><div class="events-wrapper"></div>`;
       const wrapper=cell.querySelector(".events-wrapper");
       events.filter(ev=>ev.date===dateStr).forEach(ev=>{
-        const evEl=document.createElement("div"); evEl.className="event"; evEl.textContent=`${ev.time?ev.time+" ":""}${ev.name}`;
+        const evEl=document.createElement("div");
+        evEl.className="event";
+        evEl.textContent=`${ev.time?ev.time+" ":""}${ev.name}`;
+        // Delete button
+        const delBtn=document.createElement("span");
+        delBtn.textContent="×";
+        delBtn.className="delete-event";
+        delBtn.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          events = events.filter(event => event !== ev);
+          localStorage.setItem("events", JSON.stringify(events));
+          renderWeekEvents();
+          renderBigCalendar(currentDate);
+        });
+        evEl.appendChild(delBtn);
         wrapper.appendChild(evEl);
       });
       const today=new Date();
@@ -92,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderBigCalendar(currentDate);
 
   // ===== WEEK VIEW =====
-  const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  // time labels
   for(let hour=0;hour<24;hour++){
     const div=document.createElement("div");
     const label=hour===0?"12 AM":hour<12?hour+" AM":hour===12?"12 PM":hour-12+" PM";
@@ -134,6 +150,20 @@ document.addEventListener("DOMContentLoaded", () => {
       dayEvents.forEach(ev=>{
         let hour=parseInt(ev.time?.split(":")[0]||0);
         const evEl=document.createElement("div"); evEl.className="event"; evEl.textContent=ev.name;
+
+        // Delete button
+        const delBtn=document.createElement("span");
+        delBtn.textContent="×";
+        delBtn.className="delete-event";
+        delBtn.addEventListener("click",(e)=>{
+          e.stopPropagation();
+          events = events.filter(event => event !== ev);
+          localStorage.setItem("events",JSON.stringify(events));
+          renderWeekEvents();
+          renderBigCalendar(currentDate);
+        });
+        evEl.appendChild(delBtn);
+
         if(stackCols[hour]) stackCols[hour].appendChild(evEl);
       });
     });
