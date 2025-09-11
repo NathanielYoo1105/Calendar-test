@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="app-layout">
-    
+
     <!-- Sidebar / Mini Calendar -->
     <aside class="sidebar">
       <h1 class="logo">My Calendar</h1>
@@ -55,7 +55,7 @@
       <!-- Week View -->
       <section id="weekView" class="event-grid">
         <div class="time-column"></div>
-        <!-- JS generates 7 day columns -->
+        <!-- JS will generate 7 day columns -->
       </section>
     </main>
   </div>
@@ -70,24 +70,28 @@
   </div>
 
   <!-- ===== Event Modal ===== -->
-  <div id="eventModal" class="modal" role="dialog" aria-labelledby="eventTitle">
+  <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
     <div class="modal-content event-box">
       <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="eventTitle">Add Event</h2>
       <form id="eventForm" class="event-form">
-        <label for="eventName">Event Name:</label>
-        <input type="text" id="eventName" required />
-
-        <label for="eventDate">Date:</label>
-        <input type="date" id="eventDate" required />
-
-        <label for="eventTime">Time:</label>
-        <input type="time" id="eventTime" />
-
-        <label for="eventDetails">Details:</label>
-        <textarea id="eventDetails" rows="3"></textarea>
-
-        <button type="submit">Add Event</button>
+        <label>
+          Event Name
+          <input type="text" id="eventName" required />
+        </label>
+        <label>
+          Date
+          <input type="date" id="eventDate" required />
+        </label>
+        <label>
+          Time
+          <input type="time" id="eventTime" />
+        </label>
+        <label>
+          Details
+          <textarea id="eventDetails"></textarea>
+        </label>
+        <button type="submit">Save Event</button>
       </form>
     </div>
   </div>
