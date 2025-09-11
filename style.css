@@ -51,17 +51,14 @@ body {
   height: 40px;
 }
 
-.add-event-btn {
-  padding: 0.5rem;
-  background: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+.today {
+  background-color: #e0f7fa;
 }
 
-.add-event-btn:hover {
-  background: #45a049;
+.selected {
+  background-color: #c8e6c9;
+  font-weight: bold;
+  border-radius: 50%;
 }
 
 /* Main content */
@@ -76,6 +73,18 @@ body {
   justify-content: space-between;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid #ddd;
+}
+
+.view-toggle {
+  cursor: pointer;
+  font-weight: bold;
+  border: none;
+  background: none;
+  font-size: 1rem;
+}
+
+.view-toggle:hover {
+  text-decoration: underline;
 }
 
 /* Month view */
@@ -139,6 +148,11 @@ body {
   min-height: 0;
 }
 
+.day-column.today .day-header {
+  background-color: #e0f7fa;
+  color: #00796b;
+}
+
 .day-header {
   background: #f7f7f7;
   text-align: center;
@@ -158,12 +172,11 @@ body {
 .hour-slot {
   height: 60px;
   border-bottom: 1px solid #f1f3f4;
-  position: relative; /* events stay inside slot */
+  position: relative;
   padding: 2px;
   box-sizing: border-box;
 }
 
-/* Events inside week or month view */
 .event {
   background-color: #4caf50;
   color: white;
