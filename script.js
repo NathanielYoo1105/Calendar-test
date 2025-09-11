@@ -137,7 +137,6 @@ document.addEventListener("DOMContentLoaded", () => {
       dateObj.setDate(startOfWeek.getDate() + idx);
       const dateStr = dateObj.toISOString().split("T")[0];
 
-      // highlight current day
       if(dateObj.toDateString() === today.toDateString()){
         col.classList.add("today");
       } else {
@@ -170,5 +169,72 @@ document.addEventListener("DOMContentLoaded", () => {
       renderBigCalendar(currentDate);
       viewToggle.textContent="Month View";
     }
+  });
+
+  // ===== EVENT MODAL =====
+  const eventModal = document.getElementById("eventModal");
+  const eventForm = document.getElementById("eventForm");
+  const eventName = document.getElementById("eventName");
+  const eventDate = document.getElementById("eventDate");
+  const eventTime = document.getElementById("eventTime");
+  const eventDetails = document.getElementById("eventDetails");
+
+  // Month view click
+  bigCalendarBody.addEventListener("click", e => {
+    const cell = e.target.closest("td");
+    if(!cell) return;
+    const dayDiv = cell.querySelector(".date-num");
+    if(!dayDiv) return;
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const day = parseInt(dayDiv.textContent);
+    const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+
+    eventForm.reset();
+    eventDate.value = dateStr;
+    eventTime.value = "";
+    eventModal.classList.add("show");
+  });
+
+  // Week view click
+  eventGrid.querySelectorAll(".hour-slot").forEach(slot => {
+    slot.addEventListener("click", e => {
+      const dayCol = e.target.closest(".day-column");
+      const dayIndex = Array.from(eventGrid.querySelectorAll(".day-column")).indexOf(dayCol);
+      const startOfWeek = new Date(currentDate);
+      startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+      const dateObj = new Date(startOfWeek);
+      dateObj.setDate(startOfWeek.getDate() + dayIndex);
+      const dateStr = dateObj.toISOString().split("T")[0];
+
+      const hour = Array.from(dayCol.querySelectorAll(".hour-slot")).indexOf(e.target.closest(".hour-slot"));
+      const timeStr = `${String(hour).padStart(2,"0")}:00`;
+
+      eventForm.reset();
+      eventDate.value = dateStr;
+      eventTime.value = timeStr;
+      eventModal.classList.add("show");
+    });
+  });
+
+  // Close modal
+  eventModal.querySelector(".close-btn").addEventListener("click", () => eventModal.classList.remove("show"));
+  window.addEventListener("click", e => { if(e.target===eventModal) eventModal.classList.remove("show"); });
+  window.addEventListener("keydown", e => { if(e.key==="Escape") eventModal.classList.remove("show"); });
+
+  // Submit event
+  eventForm.addEventListener("submit", e => {
+    e.preventDefault();
+    events.push({
+      name: eventName.value,
+      date: eventDate.value,
+      time: eventTime.value,
+      details: eventDetails.value
+    });
+    localStorage.setItem("events", JSON.stringify(events));
+    eventModal.classList.remove("show");
+    renderBigCalendar(currentDate);
+    renderWeekEvents();
   });
 });
