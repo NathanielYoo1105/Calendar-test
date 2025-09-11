@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="app-layout">
-
+    
     <!-- Sidebar / Mini Calendar -->
     <aside class="sidebar">
       <h1 class="logo">My Calendar</h1>
@@ -33,7 +33,10 @@
     <!-- Main Content -->
     <main class="main-view">
       <header class="topbar">
-        <button id="viewToggle" class="view-toggle">Week View</button>
+        <div class="view-controls">
+          <button id="viewToggle" class="view-toggle">Week View</button>
+          <button id="createEventBtn" class="view-toggle">Create Event</button>
+        </div>
         <div class="auth-buttons">
           <button id="logInButton">Log In</button>
         </div>
@@ -55,7 +58,7 @@
       <!-- Week View -->
       <section id="weekView" class="event-grid">
         <div class="time-column"></div>
-        <!-- JS will generate 7 day columns -->
+        <!-- JS generates 7 day columns -->
       </section>
     </main>
   </div>
@@ -69,30 +72,29 @@
     </div>
   </div>
 
-  <!-- ===== Event Modal ===== -->
+  <!-- ===== Add Event Modal ===== -->
   <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
-    <div class="modal-content event-box">
+    <div class="modal-content">
       <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="eventTitle">Add Event</h2>
-      <form id="eventForm" class="event-form">
-        <label>
-          Event Name
-          <input type="text" id="eventName" required />
-        </label>
-        <label>
-          Date
-          <input type="date" id="eventDate" required />
-        </label>
-        <label>
-          Time
-          <input type="time" id="eventTime" />
-        </label>
-        <label>
-          Details
-          <textarea id="eventDetails"></textarea>
-        </label>
+      <form id="eventForm">
+        <label>Event Name:<input type="text" id="eventName" required></label><br>
+        <label>Date:<input type="date" id="eventDate" required></label><br>
+        <label>Time:<input type="time" id="eventTime"></label><br>
+        <label>Details:<textarea id="eventDetails"></textarea></label><br>
         <button type="submit">Save Event</button>
       </form>
+    </div>
+  </div>
+
+  <!-- ===== Event Details Modal ===== -->
+  <div id="detailsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="detailsTitle">
+    <div class="modal-content">
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2 id="detailsTitle">Event Details</h2>
+      <p id="detailsDate"></p>
+      <p id="detailsTime"></p>
+      <p id="detailsText"></p>
     </div>
   </div>
 
