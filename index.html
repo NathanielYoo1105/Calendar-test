@@ -28,6 +28,7 @@
           <tbody id="calendarBody"></tbody>
         </table>
       </div>
+      <button id="addEventBtn" class="add-event-btn">+ Add Event</button>
     </aside>
 
     <!-- Main Content -->
@@ -66,6 +67,21 @@
       <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="loginTitle">Log In</h2>
       <p>There is no log in function yet.</p>
+    </div>
+  </div>
+
+  <!-- ===== Event Modal ===== -->
+  <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
+    <div class="modal-content event-box">
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2 id="eventTitle">Add Event</h2>
+      <form id="eventForm" class="event-form">
+        <input type="text" id="eventName" placeholder="Event Title" required />
+        <input type="date" id="eventDate" required />
+        <input type="time" id="eventTime" required />
+        <textarea id="eventDetails" placeholder="Details (optional)"></textarea>
+        <button type="submit">Save Event</button>
+      </form>
     </div>
   </div>
 
