@@ -97,20 +97,39 @@ body {
 .big-calendar {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed; /* Prevent columns from stretching due to long content */
 }
 
 .big-calendar th,
 .big-calendar td {
   border: 1px solid #ddd;
   text-align: center;
-  height: 80px;
+  height: 120px; /* more room, but events won't stretch it */
   vertical-align: top;
-  padding: 4px;
+  padding: 6px;
+  overflow: hidden;
+  box-sizing: border-box;
+  word-break: break-word;
+}
+
+/* Make columns equal width */
+.big-calendar th,
+.big-calendar td {
+  width: calc(100% / 7);
 }
 
 .date-num {
   font-weight: bold;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+/* Wrapper for events inside month cells so overflow can be controlled */
+.events-wrapper {
+  max-height: calc(100% - 22px); /* leave space for date number */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Week View Grid */
@@ -164,29 +183,47 @@ body {
   z-index: 5;
 }
 
+/* slots container and slots */
 .day-slots {
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .hour-slot {
   height: 60px;
   border-bottom: 1px solid #f1f3f4;
   position: relative;
-  padding: 2px;
+  padding: 4px;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden; /* prevent many events from stretching the slot */
 }
 
+/* Events inside week or month view */
 .event {
   background-color: #4caf50;
   color: white;
-  padding: 2px 4px;
-  margin: 1px 0;
+  padding: 4px 6px;
   border-radius: 4px;
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: nowrap; /* keep single line and ellipsis */
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* If many events in one hour, show a small scroll inside the hour-slot */
+.hour-slot .events-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 /* Hide section */
@@ -213,6 +250,7 @@ body {
   padding: 1rem;
   border-radius: 10px;
   position: relative;
+  max-width: 96%;
 }
 
 .close-btn {
