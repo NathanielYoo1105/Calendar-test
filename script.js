@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   // ===== STATE =====
   let events = JSON.parse(localStorage.getItem("events") || "[]");
-
   let currentDate = new Date();
 
   // ===== LOGIN MODAL =====
@@ -28,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     eventModal.classList.add("show");
   });
 
-  eventForm.addEventListener("submit", (e) => {
+  eventForm.addEventListener("submit", e => {
     e.preventDefault();
     const newEvent = {
       name: eventName.value,
@@ -56,22 +55,20 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderMiniCalendar(date) {
     const year = date.getFullYear();
     const month = date.getMonth();
-    monthYear.textContent = `${date.toLocaleString("default", { month: "long" })} ${year}`;
-
+    monthYear.textContent = `${date.toLocaleString("default",{month:"long"})} ${year}`;
     const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInMonth = new Date(year, month+1,0).getDate();
 
-    calendarBody.innerHTML = "";
-    let row = document.createElement("tr");
-
+    calendarBody.innerHTML="";
+    let row=document.createElement("tr");
     for(let i=0;i<firstDay;i++) row.appendChild(document.createElement("td"));
     for(let day=1;day<=daysInMonth;day++){
       if((row.children.length)%7===0 && row.children.length!==0){
         calendarBody.appendChild(row);
-        row = document.createElement("tr");
+        row=document.createElement("tr");
       }
-      const cell = document.createElement("td");
-      cell.textContent = day;
+      const cell=document.createElement("td");
+      cell.textContent=day;
       row.appendChild(cell);
     }
     calendarBody.appendChild(row);
@@ -89,11 +86,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const daysInMonth = new Date(year, month+1,0).getDate();
 
     bigCalendarBody.innerHTML="";
     let row=document.createElement("tr");
-
     for(let i=0;i<firstDay;i++) row.appendChild(document.createElement("td"));
     for(let day=1;day<=daysInMonth;day++){
       if((row.children.length)%7===0 && row.children.length!==0){
@@ -121,7 +117,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const eventGrid = document.querySelector(".event-grid");
   const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-  // time labels
   for(let hour=0;hour<24;hour++){
     const div=document.createElement("div");
     const label = hour===0?"12 AM":hour<12?`${hour} AM`:hour===12?"12 PM":`${hour-12} PM`;
@@ -129,7 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
     timeColumn.appendChild(div);
   }
 
-  // day columns
   days.forEach(day=>{
     const dayCol=document.createElement("div");
     dayCol.classList.add("day-column");
@@ -149,28 +143,25 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function renderWeekEvents(){
+    if(weekView.classList.contains("hidden")) return;
+
     const startOfWeek = new Date(currentDate);
     startOfWeek.setDate(currentDate.getDate()-currentDate.getDay());
-    const weekStartStr = startOfWeek.toISOString().split("T")[0];
 
     const dayColumns = eventGrid.querySelectorAll(".day-column");
     dayColumns.forEach((col, idx)=>{
       const slots = col.querySelector(".day-slots");
       slots.querySelectorAll(".event").forEach(e=>e.remove());
-
       const dateObj = new Date(startOfWeek);
       dateObj.setDate(startOfWeek.getDate()+idx);
       const dateStr = dateObj.toISOString().split("T")[0];
       events.filter(ev=>ev.date===dateStr).forEach(ev=>{
+        const hour = parseInt(ev.time.split(":")[0],10);
+        const slot = slots.children[hour];
         const evEl=document.createElement("div");
         evEl.className="event";
         evEl.textContent=ev.name;
-        const hour = parseInt(ev.time.split(":")[0]);
-        evEl.style.position="absolute";
-        evEl.style.top=`${hour*40}px`;
-        evEl.style.left="2px";
-        evEl.style.right="2px";
-        slots.appendChild(evEl);
+        slot.appendChild(evEl);
       });
     });
   }
