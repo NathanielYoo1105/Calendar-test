@@ -28,7 +28,6 @@
           <tbody id="calendarBody"></tbody>
         </table>
       </div>
-      <button id="addEventBtn" class="add-event-btn">+ Add Event</button>
     </aside>
 
     <!-- Main Content -->
@@ -56,7 +55,7 @@
       <!-- Week View -->
       <section id="weekView" class="event-grid">
         <div class="time-column"></div>
-        <!-- JS will generate the 7 day columns -->
+        <!-- JS generates 7 day columns -->
       </section>
     </main>
   </div>
@@ -71,16 +70,24 @@
   </div>
 
   <!-- ===== Event Modal ===== -->
-  <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
+  <div id="eventModal" class="modal" role="dialog" aria-labelledby="eventTitle">
     <div class="modal-content event-box">
       <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="eventTitle">Add Event</h2>
       <form id="eventForm" class="event-form">
-        <input type="text" id="eventName" placeholder="Event Title" required />
+        <label for="eventName">Event Name:</label>
+        <input type="text" id="eventName" required />
+
+        <label for="eventDate">Date:</label>
         <input type="date" id="eventDate" required />
-        <input type="time" id="eventTime" required />
-        <textarea id="eventDetails" placeholder="Details (optional)"></textarea>
-        <button type="submit">Save Event</button>
+
+        <label for="eventTime">Time:</label>
+        <input type="time" id="eventTime" />
+
+        <label for="eventDetails">Details:</label>
+        <textarea id="eventDetails" rows="3"></textarea>
+
+        <button type="submit">Add Event</button>
       </form>
     </div>
   </div>
