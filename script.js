@@ -1,193 +1,254 @@
 document.addEventListener("DOMContentLoaded", () => {
   let events = JSON.parse(localStorage.getItem("events") || "[]");
-  let currentDate = new Date();
 
-  // ===== MODALS =====
-  const logInButton = document.getElementById("logInButton");
   const loginModal = document.getElementById("loginModal");
-  const loginClose = loginModal.querySelector(".close-btn");
-  logInButton.addEventListener("click", () => loginModal.classList.add("show"));
-  loginClose.addEventListener("click", () => loginModal.classList.remove("show"));
-  window.addEventListener("click", e => { if (e.target === loginModal) loginModal.classList.remove("show"); });
-  window.addEventListener("keydown", e => { if (e.key === "Escape") loginModal.classList.remove("show"); });
-
   const eventModal = document.getElementById("eventModal");
+  const detailsModal = document.getElementById("detailsModal");
+
+  const viewToggle = document.getElementById("viewToggle");
+  const createEventBtn = document.getElementById("createEventBtn");
+  const weekView = document.getElementById("weekView");
+  const monthView = document.getElementById("monthView");
+
   const eventForm = document.getElementById("eventForm");
   const eventName = document.getElementById("eventName");
   const eventDate = document.getElementById("eventDate");
   const eventTime = document.getElementById("eventTime");
   const eventDetails = document.getElementById("eventDetails");
 
-  eventModal.querySelector(".close-btn").addEventListener("click", () => eventModal.classList.remove("show"));
-  window.addEventListener("click", e => { if (e.target === eventModal) eventModal.classList.remove("show"); });
-  window.addEventListener("keydown", e => { if (e.key === "Escape") eventModal.classList.remove("show"); });
+  const detailsTitle = document.getElementById("detailsTitle");
+  const detailsDate = document.getElementById("detailsDate");
+  const detailsTime = document.getElementById("detailsTime");
+  const detailsText = document.getElementById("detailsText");
 
-  // ===== ELEMENTS =====
   const monthYear = document.getElementById("monthYear");
   const calendarBody = document.getElementById("calendarBody");
+  const bigCalendarBody = document.getElementById("bigCalendarBody");
   const prevMonthBtn = document.getElementById("prevMonth");
   const nextMonthBtn = document.getElementById("nextMonth");
-  const weekView = document.getElementById("weekView");
-  const monthView = document.getElementById("monthView");
-  const viewToggle = document.getElementById("viewToggle");
-  const bigCalendarBody = document.getElementById("bigCalendarBody");
-  const timeColumn = document.querySelector(".time-column");
-  const eventGrid = document.querySelector(".event-grid");
+
+  let currentDate = new Date();
   let showingWeek = true;
 
-  const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  // ----- Modal helpers -----
+  function openModal(modal) { modal.classList.add("show"); }
+  function closeModal(modal) { modal.classList.remove("show"); }
+  document.querySelectorAll(".close-btn").forEach(btn =>
+    btn.addEventListener("click", e => closeModal(e.target.closest(".modal")))
+  );
+  window.addEventListener("click", e => {
+    document.querySelectorAll(".modal").forEach(m => {
+      if (e.target === m) closeModal(m);
+    });
+  });
 
-  // ===== MINI CALENDAR =====
-  function renderMiniCalendar(date) {
+  // ----- Mini calendar -----
+  function renderCalendar(date) {
     const year = date.getFullYear();
     const month = date.getMonth();
-    monthYear.textContent = `${date.toLocaleString("default",{month:"long"})} ${year}`;
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month+1,0).getDate();
+    monthYear.textContent = date.toLocaleString("default", { month: "long" }) + " " + year;
     calendarBody.innerHTML = "";
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
     let row = document.createElement("tr");
+    for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
 
-    for(let i=0;i<firstDay;i++) row.appendChild(document.createElement("td"));
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cell = document.createElement("td");
+      cell.textContent = d;
+      const today = new Date();
+      if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear())
+        cell.classList.add("today");
 
-    for(let day=1;day<=daysInMonth;day++){
-      const cell=document.createElement("td");
-      cell.textContent=day;
-      const today=new Date();
-      if(day===today.getDate() && month===today.getMonth() && year===today.getFullYear()) cell.classList.add("today");
-      cell.addEventListener("click", () => openEventModal(`${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`));
-      row.appendChild(cell);
-      if(row.children.length % 7 === 0){ calendarBody.appendChild(row); row=document.createElement("tr"); }
-    }
-    if(row.children.length > 0) calendarBody.appendChild(row);
-  }
-  prevMonthBtn.addEventListener("click", ()=>{currentDate.setMonth(currentDate.getMonth()-1); renderMiniCalendar(currentDate); renderBigCalendar(currentDate);});
-  nextMonthBtn.addEventListener("click", ()=>{currentDate.setMonth(currentDate.getMonth()+1); renderMiniCalendar(currentDate); renderBigCalendar(currentDate);});
-  renderMiniCalendar(currentDate);
-
-  // ===== BIG CALENDAR =====
-  function renderBigCalendar(date){
-    const year=date.getFullYear();
-    const month=date.getMonth();
-    const firstDay=new Date(year,month,1).getDay();
-    const daysInMonth=new Date(year,month+1,0).getDate();
-    bigCalendarBody.innerHTML="";
-    let row=document.createElement("tr");
-
-    for(let i=0;i<firstDay;i++) row.appendChild(document.createElement("td"));
-
-    for(let day=1;day<=daysInMonth;day++){
-      const cell=document.createElement("td");
-      const dateStr=`${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-      cell.innerHTML=`<div class="date-num">${day}</div><div class="events-wrapper"></div>`;
-      const wrapper=cell.querySelector(".events-wrapper");
-      events.filter(ev=>ev.date===dateStr).forEach(ev=>{
-        const evEl=document.createElement("div");
-        evEl.className="event";
-        evEl.textContent=`${ev.time?ev.time+" ":""}${ev.name}`;
-        // Delete button
-        const delBtn=document.createElement("span");
-        delBtn.textContent="×";
-        delBtn.className="delete-event";
-        delBtn.addEventListener("click", (e)=>{
-          e.stopPropagation();
-          events = events.filter(event => event !== ev);
-          localStorage.setItem("events", JSON.stringify(events));
-          renderWeekEvents();
-          renderBigCalendar(currentDate);
-        });
-        evEl.appendChild(delBtn);
-        wrapper.appendChild(evEl);
+      cell.addEventListener("click", () => {
+        eventDate.value = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        eventTime.value = "";
+        eventName.value = "";
+        eventDetails.value = "";
+        openModal(eventModal);
       });
-      const today=new Date();
-      if(day===today.getDate() && month===today.getMonth() && year===today.getFullYear()) cell.classList.add("today");
-      row.appendChild(cell);
-      if(row.children.length % 7 === 0){ bigCalendarBody.appendChild(row); row=document.createElement("tr"); }
-    }
-    if(row.children.length > 0) bigCalendarBody.appendChild(row);
-  }
-  renderBigCalendar(currentDate);
 
-  // ===== WEEK VIEW =====
-  // time labels
-  for(let hour=0;hour<24;hour++){
-    const div=document.createElement("div");
-    const label=hour===0?"12 AM":hour<12?hour+" AM":hour===12?"12 PM":hour-12+" PM";
-    div.textContent=label;
+      row.appendChild(cell);
+      if ((firstDay + d) % 7 === 0) {
+        calendarBody.appendChild(row);
+        row = document.createElement("tr");
+      }
+    }
+    if (row.children.length) calendarBody.appendChild(row);
+  }
+  prevMonthBtn.addEventListener("click", () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(currentDate); renderMonthEvents(); });
+  nextMonthBtn.addEventListener("click", () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(currentDate); renderMonthEvents(); });
+  renderCalendar(currentDate);
+
+  // ----- Week view -----
+  const timeColumn = document.querySelector(".time-column");
+  const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+  days.forEach(day => {
+    const dayCol = document.createElement("div");
+    dayCol.classList.add("day-column");
+    const header = document.createElement("div");
+    header.classList.add("day-header");
+    header.textContent = day;
+    dayCol.appendChild(header);
+
+    const slots = document.createElement("div");
+    for (let h = 0; h < 24; h++) {
+      const slot = document.createElement("div");
+      slot.classList.add("hour-slot");
+      const stack = document.createElement("div");
+      stack.classList.add("events-stack");
+      slot.appendChild(stack);
+
+      slot.addEventListener("click", () => {
+        const date = new Date();
+        date.setDate(date.getDate() - date.getDay() + days.indexOf(day));
+        eventDate.value = date.toISOString().slice(0, 10);
+        eventTime.value = String(h).padStart(2, "0") + ":00";
+        openModal(eventModal);
+      });
+
+      slots.appendChild(slot);
+    }
+    dayCol.appendChild(slots);
+    weekView.appendChild(dayCol);
+  });
+
+  for (let h = 0; h < 24; h++) {
+    const div = document.createElement("div");
+    div.textContent = h === 0 ? "12 AM" : h < 12 ? h+" AM" : h === 12 ? "12 PM" : (h-12)+" PM";
     timeColumn.appendChild(div);
   }
 
-  days.forEach(day=>{
-    const dayCol=document.createElement("div");
-    dayCol.classList.add("day-column");
-    const header=document.createElement("div"); header.classList.add("day-header"); header.textContent=day;
-    const slots=document.createElement("div"); slots.classList.add("day-slots");
-    for(let i=0;i<24;i++){
-      const slot=document.createElement("div"); slot.classList.add("hour-slot");
-      const stack=document.createElement("div"); stack.classList.add("events-stack");
-      slot.appendChild(stack);
-      slot.addEventListener("click", ()=>{
-        const today=new Date();
-        const dayOffset=days.indexOf(day)-today.getDay();
-        const eventDay=new Date(today); eventDay.setDate(today.getDate()+dayOffset);
-        const dateStr=`${eventDay.getFullYear()}-${String(eventDay.getMonth()+1).padStart(2,"0")}-${String(eventDay.getDate()).padStart(2,"0")}`;
-        const timeStr=`${String(i).padStart(2,"0")}:00`;
-        openEventModal(dateStr,timeStr);
+  // ----- Save & render -----
+  function saveEvents() { localStorage.setItem("events", JSON.stringify(events)); }
+  function renderWeekEvents() {
+    document.querySelectorAll(".events-stack").forEach(s => s.innerHTML = "");
+    events.forEach(ev => {
+      const d = new Date(ev.date);
+      const col = weekView.children[d.getDay() + 1]; // +1 because col0 is time
+      if (!col) return;
+      const hour = d.getHours();
+      const slot = col.querySelectorAll(".events-stack")[hour];
+
+      const el = document.createElement("div");
+      el.classList.add("event");
+      el.textContent = ev.name;
+      const del = document.createElement("span");
+      del.textContent = "×";
+      del.classList.add("delete-event");
+      del.addEventListener("click", e => {
+        e.stopPropagation();
+        events = events.filter(x => x.id !== ev.id);
+        saveEvents();
+        renderWeekEvents();
+        renderMonthEvents();
       });
-      slots.appendChild(slot);
-    }
-    dayCol.appendChild(header); dayCol.appendChild(slots); eventGrid.appendChild(dayCol);
-  });
+      el.appendChild(del);
 
-  function renderWeekEvents(){
-    const today=new Date();
-    const startDate=new Date(today); startDate.setDate(today.getDate()-today.getDay());
-    document.querySelectorAll(".day-column").forEach((col,i)=>{
-      const stackCols=col.querySelectorAll(".hour-slot .events-stack");
-      stackCols.forEach(stack=>stack.innerHTML="");
-      const colDate=new Date(startDate); colDate.setDate(startDate.getDate()+i);
-      const dateStr=`${colDate.getFullYear()}-${String(colDate.getMonth()+1).padStart(2,"0")}-${String(colDate.getDate()).padStart(2,"0")}`;
-      const dayEvents=events.filter(ev=>ev.date===dateStr);
-      dayEvents.forEach(ev=>{
-        let hour=parseInt(ev.time?.split(":")[0]||0);
-        const evEl=document.createElement("div"); evEl.className="event"; evEl.textContent=ev.name;
-
-        // Delete button
-        const delBtn=document.createElement("span");
-        delBtn.textContent="×";
-        delBtn.className="delete-event";
-        delBtn.addEventListener("click",(e)=>{
-          e.stopPropagation();
-          events = events.filter(event => event !== ev);
-          localStorage.setItem("events",JSON.stringify(events));
-          renderWeekEvents();
-          renderBigCalendar(currentDate);
-        });
-        evEl.appendChild(delBtn);
-
-        if(stackCols[hour]) stackCols[hour].appendChild(evEl);
+      el.addEventListener("click", () => {
+        detailsTitle.textContent = ev.name;
+        detailsDate.textContent = "Date: " + ev.date;
+        detailsTime.textContent = "Time: " + (ev.time || "All Day");
+        detailsText.textContent = "Details: " + (ev.details || "None");
+        openModal(detailsModal);
       });
+
+      slot.appendChild(el);
     });
   }
-  renderWeekEvents();
 
-  // ===== EVENT MODAL =====
-  function openEventModal(dateStr="", timeStr=""){
-    eventModal.classList.add("show");
-    eventDate.value=dateStr; eventTime.value=timeStr;
+  function renderMonthEvents() {
+    bigCalendarBody.innerHTML = "";
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    let row = document.createElement("tr");
+    for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cell = document.createElement("td");
+      cell.textContent = d;
+      const wrapper = document.createElement("div");
+      wrapper.classList.add("events-wrapper");
+
+      const cellDate = new Date(year, month, d);
+      events.filter(ev => new Date(ev.date).toDateString() === cellDate.toDateString())
+        .forEach(ev => {
+          const el = document.createElement("div");
+          el.classList.add("event");
+          el.textContent = ev.name;
+          const del = document.createElement("span");
+          del.textContent = "×";
+          del.classList.add("delete-event");
+          del.addEventListener("click", e => {
+            e.stopPropagation();
+            events = events.filter(x => x.id !== ev.id);
+            saveEvents();
+            renderMonthEvents();
+            renderWeekEvents();
+          });
+          el.appendChild(del);
+          el.addEventListener("click", () => {
+            detailsTitle.textContent = ev.name;
+            detailsDate.textContent = "Date: " + ev.date;
+            detailsTime.textContent = "Time: " + (ev.time || "All Day");
+            detailsText.textContent = "Details: " + (ev.details || "None");
+            openModal(detailsModal);
+          });
+          wrapper.appendChild(el);
+        });
+
+      cell.appendChild(wrapper);
+      row.appendChild(cell);
+
+      if ((firstDay + d) % 7 === 0) {
+        bigCalendarBody.appendChild(row);
+        row = document.createElement("tr");
+      }
+    }
+    if (row.children.length) bigCalendarBody.appendChild(row);
   }
 
-  eventForm.addEventListener("submit", e=>{
-    e.preventDefault();
-    const newEvent={name:eventName.value,date:eventDate.value,time:eventTime.value,details:eventDetails.value};
-    events.push(newEvent); localStorage.setItem("events",JSON.stringify(events));
-    eventModal.classList.remove("show"); eventForm.reset();
-    renderBigCalendar(currentDate); renderWeekEvents();
+  // ----- Toggle views -----
+  viewToggle.addEventListener("click", () => {
+    showingWeek = !showingWeek;
+    weekView.classList.toggle("hidden", !showingWeek);
+    monthView.classList.toggle("hidden", showingWeek);
+    viewToggle.textContent = showingWeek ? "Month View" : "Week View";
   });
 
-  // ===== TOGGLE WEEK / MONTH VIEW =====
-  viewToggle.addEventListener("click", ()=>{
-    showingWeek=!showingWeek;
-    if(showingWeek){ weekView.classList.remove("hidden"); monthView.classList.add("hidden"); viewToggle.textContent="Week View"; }
-    else{ weekView.classList.add("hidden"); monthView.classList.remove("hidden"); renderBigCalendar(currentDate); viewToggle.textContent="Month View"; }
+  // ----- Create Event button -----
+  createEventBtn.addEventListener("click", () => {
+    eventName.value = "";
+    eventDate.value = "";
+    eventTime.value = "";
+    eventDetails.value = "";
+    openModal(eventModal);
   });
+
+  // ----- Save event -----
+  eventForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const newEvent = {
+      id: Date.now(),
+      name: eventName.value,
+      date: eventDate.value,
+      time: eventTime.value,
+      details: eventDetails.value
+    };
+    events.push(newEvent);
+    saveEvents();
+    renderWeekEvents();
+    renderMonthEvents();
+    closeModal(eventModal);
+  });
+
+  // Initial render
+  renderWeekEvents();
+  renderMonthEvents();
 });
