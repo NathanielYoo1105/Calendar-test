@@ -84,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ----- Week view -----
   const timeColumn = document.querySelector(".time-column");
-  const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const days = ["Funday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
   days.forEach(day => {
     const dayCol = document.createElement("div");

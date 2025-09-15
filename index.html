@@ -63,13 +63,26 @@
   </div>
 
   <!-- ===== Login Modal ===== -->
-  <div id="loginModal" class="modal">
-    <div class="modal-content login-box">
-      <span class="close-btn">&times;</span>
-      <h2>Log In</h2>
-      <p>There is no log in function yet.</p>
-    </div>
+<div id="loginModal" class="modal hidden">
+  <div class="modal-content login-box">
+    <!-- Close button -->
+    <span id="closeModal" class="close">&times;</span>
+    
+    <h2>Log In</h2>
+    
+    <form id="loginForm">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required />
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required />
+
+      <button type="submit">Log In</button>
+    </form>
+
+    <p class="info-text">There is no log in function yet.</p>
   </div>
+</div>
 
   <!-- ===== Add Event Modal ===== -->
   <div id="eventModal" class="modal">
