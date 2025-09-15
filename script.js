@@ -1,254 +1,306 @@
-document.addEventListener("DOMContentLoaded", () => {
-  let events = JSON.parse(localStorage.getItem("events") || "[]");
+// script.js (full regenerated version)
 
-  const loginModal = document.getElementById("loginModal");
-  const eventModal = document.getElementById("eventModal");
-  const detailsModal = document.getElementById("detailsModal");
+// ===== Global State =====
+let events = JSON.parse(localStorage.getItem("calendarEvents")) || [];
+let currentDate = new Date();
+let selectedDate = new Date();
 
-  const viewToggle = document.getElementById("viewToggle");
-  const createEventBtn = document.getElementById("createEventBtn");
-  const weekView = document.getElementById("weekView");
-  const monthView = document.getElementById("monthView");
+// ===== DOM Elements =====
+const monthYear = document.getElementById("monthYear");
+const calendarBody = document.getElementById("calendarBody");
+const bigCalendarBody = document.getElementById("bigCalendarBody");
 
-  const eventForm = document.getElementById("eventForm");
-  const eventName = document.getElementById("eventName");
-  const eventDate = document.getElementById("eventDate");
-  const eventTime = document.getElementById("eventTime");
-  const eventDetails = document.getElementById("eventDetails");
+const monthView = document.getElementById("monthView");
+const weekView = document.getElementById("weekView");
+const viewToggle = document.getElementById("viewToggle");
 
-  const detailsTitle = document.getElementById("detailsTitle");
-  const detailsDate = document.getElementById("detailsDate");
-  const detailsTime = document.getElementById("detailsTime");
-  const detailsText = document.getElementById("detailsText");
+const createEventBtn = document.getElementById("createEventButton");
 
-  const monthYear = document.getElementById("monthYear");
-  const calendarBody = document.getElementById("calendarBody");
-  const bigCalendarBody = document.getElementById("bigCalendarBody");
-  const prevMonthBtn = document.getElementById("prevMonth");
-  const nextMonthBtn = document.getElementById("nextMonth");
+// Modals
+const eventModal = document.getElementById("eventModal");
+const closeEventModal = eventModal.querySelector(".close-btn");
+const eventForm = document.getElementById("eventForm");
+const eventTitleInput = document.getElementById("eventTitle");
+const eventDateInput = document.getElementById("eventDate");
+const eventTimeInput = document.getElementById("eventTime");
+const eventDetailsInput = document.getElementById("eventDetails");
 
-  let currentDate = new Date();
-  let showingWeek = true;
+const detailsModal = document.getElementById("detailsModal");
+const closeDetailsModal = detailsModal.querySelector(".close-btn");
+const detailsContent = document.getElementById("detailsContent");
+const deleteEventBtn = document.getElementById("deleteEventButton");
 
-  // ----- Modal helpers -----
-  function openModal(modal) { modal.classList.add("show"); }
-  function closeModal(modal) { modal.classList.remove("show"); }
-  document.querySelectorAll(".close-btn").forEach(btn =>
-    btn.addEventListener("click", e => closeModal(e.target.closest(".modal")))
-  );
-  window.addEventListener("click", e => {
-    document.querySelectorAll(".modal").forEach(m => {
-      if (e.target === m) closeModal(m);
-    });
+let activeEventId = null;
+
+// ===== Mini Calendar =====
+function renderMiniCalendar(date = new Date()) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDay = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+
+  monthYear.textContent = date.toLocaleDateString("default", {
+    month: "long",
+    year: "numeric",
   });
 
-  // ----- Mini calendar -----
-  function renderCalendar(date) {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    monthYear.textContent = date.toLocaleString("default", { month: "long" }) + " " + year;
-    calendarBody.innerHTML = "";
+  calendarBody.innerHTML = "";
+  let row = document.createElement("tr");
 
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    let row = document.createElement("tr");
-    for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const cell = document.createElement("td");
-      cell.textContent = d;
-      const today = new Date();
-      if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear())
-        cell.classList.add("today");
-
-      cell.addEventListener("click", () => {
-        eventDate.value = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-        eventTime.value = "";
-        eventName.value = "";
-        eventDetails.value = "";
-        openModal(eventModal);
-      });
-
-      row.appendChild(cell);
-      if ((firstDay + d) % 7 === 0) {
-        calendarBody.appendChild(row);
-        row = document.createElement("tr");
-      }
-    }
-    if (row.children.length) calendarBody.appendChild(row);
+  // Empty cells
+  for (let i = 0; i < startDay; i++) {
+    row.appendChild(document.createElement("td"));
   }
-  prevMonthBtn.addEventListener("click", () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(currentDate); renderMonthEvents(); });
-  nextMonthBtn.addEventListener("click", () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(currentDate); renderMonthEvents(); });
-  renderCalendar(currentDate);
 
-  // ----- Week view -----
-  const timeColumn = document.querySelector(".time-column");
-  const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  // Days
+  for (let day = 1; day <= totalDays; day++) {
+    const cell = document.createElement("td");
+    cell.textContent = day;
 
-  days.forEach(day => {
-    const dayCol = document.createElement("div");
-    dayCol.classList.add("day-column");
+    const cellDate = new Date(year, month, day);
+
+    if (
+      cellDate.toDateString() === new Date().toDateString()
+    ) {
+      cell.classList.add("today");
+    }
+    if (cellDate.toDateString() === selectedDate.toDateString()) {
+      cell.classList.add("selected");
+    }
+
+    cell.addEventListener("click", () => {
+      selectedDate = cellDate;
+      renderMiniCalendar(currentDate);
+      renderMonthView();
+      renderWeekView();
+    });
+
+    row.appendChild(cell);
+
+    if ((startDay + day) % 7 === 0 || day === totalDays) {
+      calendarBody.appendChild(row);
+      row = document.createElement("tr");
+    }
+  }
+}
+
+// Navigation
+document.getElementById("prevMonth").addEventListener("click", () => {
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderMiniCalendar(currentDate);
+});
+document.getElementById("nextMonth").addEventListener("click", () => {
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderMiniCalendar(currentDate);
+});
+
+// ===== Month View =====
+function renderMonthView() {
+  const year = selectedDate.getFullYear();
+  const month = selectedDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  bigCalendarBody.innerHTML = "";
+  let row = document.createElement("tr");
+
+  for (let i = 0; i < firstDay; i++) {
+    row.appendChild(document.createElement("td"));
+  }
+
+  for (let day = 1; day <= totalDays; day++) {
+    const cell = document.createElement("td");
+    const cellDate = new Date(year, month, day);
+    cell.textContent = day;
+
+    cell.addEventListener("click", () => {
+      selectedDate = cellDate;
+      openEventModal(cellDate);
+    });
+
+    // Render events
+    const dayEvents = events.filter(
+      (e) => new Date(e.date).toDateString() === cellDate.toDateString()
+    );
+
+    dayEvents.forEach((event) => {
+      const div = document.createElement("div");
+      div.classList.add("month-event");
+      div.textContent = event.title;
+      div.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openDetailsModal(event);
+      });
+      cell.appendChild(div);
+    });
+
+    row.appendChild(cell);
+
+    if ((firstDay + day) % 7 === 0 || day === totalDays) {
+      bigCalendarBody.appendChild(row);
+      row = document.createElement("tr");
+    }
+  }
+}
+
+// ===== Week View =====
+function renderWeekView() {
+  weekView.innerHTML = "";
+
+  const timeCol = document.createElement("div");
+  timeCol.classList.add("time-column");
+  for (let h = 0; h < 24; h++) {
+    const div = document.createElement("div");
+    div.textContent = `${h}:00`;
+    timeCol.appendChild(div);
+  }
+  weekView.appendChild(timeCol);
+
+  const weekStart = new Date(selectedDate);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+  for (let d = 0; d < 7; d++) {
+    const col = document.createElement("div");
+    col.classList.add("day-column");
+
     const header = document.createElement("div");
     header.classList.add("day-header");
-    header.textContent = day;
-    dayCol.appendChild(header);
+    const dayDate = new Date(weekStart);
+    dayDate.setDate(weekStart.getDate() + d);
+
+    header.textContent = dayDate.toLocaleDateString("default", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+    col.appendChild(header);
 
     const slots = document.createElement("div");
+    slots.classList.add("day-slots");
+
     for (let h = 0; h < 24; h++) {
       const slot = document.createElement("div");
       slot.classList.add("hour-slot");
-      const stack = document.createElement("div");
-      stack.classList.add("events-stack");
-      slot.appendChild(stack);
-
       slot.addEventListener("click", () => {
-        const date = new Date();
-        date.setDate(date.getDate() - date.getDay() + days.indexOf(day));
-        eventDate.value = date.toISOString().slice(0, 10);
-        eventTime.value = String(h).padStart(2, "0") + ":00";
-        openModal(eventModal);
+        selectedDate = new Date(
+          dayDate.getFullYear(),
+          dayDate.getMonth(),
+          dayDate.getDate(),
+          h
+        );
+        openEventModal(selectedDate);
       });
-
       slots.appendChild(slot);
     }
-    dayCol.appendChild(slots);
-    weekView.appendChild(dayCol);
-  });
+    col.appendChild(slots);
 
-  for (let h = 0; h < 24; h++) {
-    const div = document.createElement("div");
-    div.textContent = h === 0 ? "12 AM" : h < 12 ? h+" AM" : h === 12 ? "12 PM" : (h-12)+" PM";
-    timeColumn.appendChild(div);
-  }
+    // Render events
+    const dayEvents = events.filter(
+      (e) => new Date(e.date).toDateString() === dayDate.toDateString()
+    );
 
-  // ----- Save & render -----
-  function saveEvents() { localStorage.setItem("events", JSON.stringify(events)); }
-  function renderWeekEvents() {
-    document.querySelectorAll(".events-stack").forEach(s => s.innerHTML = "");
-    events.forEach(ev => {
-      const d = new Date(ev.date);
-      const col = weekView.children[d.getDay() + 1]; // +1 because col0 is time
-      if (!col) return;
-      const hour = d.getHours();
-      const slot = col.querySelectorAll(".events-stack")[hour];
+    dayEvents.forEach((event) => {
+      const evBox = document.createElement("div");
+      evBox.classList.add("event-box");
+      evBox.textContent = event.title;
 
-      const el = document.createElement("div");
-      el.classList.add("event");
-      el.textContent = ev.name;
-      const del = document.createElement("span");
-      del.textContent = "×";
-      del.classList.add("delete-event");
-      del.addEventListener("click", e => {
+      const startTime = parseInt(event.time.split(":")[0], 10);
+      evBox.style.top = `${startTime * 60}px`;
+      evBox.style.height = "58px";
+
+      evBox.addEventListener("click", (e) => {
         e.stopPropagation();
-        events = events.filter(x => x.id !== ev.id);
-        saveEvents();
-        renderWeekEvents();
-        renderMonthEvents();
-      });
-      el.appendChild(del);
-
-      el.addEventListener("click", () => {
-        detailsTitle.textContent = ev.name;
-        detailsDate.textContent = "Date: " + ev.date;
-        detailsTime.textContent = "Time: " + (ev.time || "All Day");
-        detailsText.textContent = "Details: " + (ev.details || "None");
-        openModal(detailsModal);
+        openDetailsModal(event);
       });
 
-      slot.appendChild(el);
+      col.appendChild(evBox);
     });
+
+    weekView.appendChild(col);
   }
+}
 
-  function renderMonthEvents() {
-    bigCalendarBody.innerHTML = "";
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+// ===== Modals =====
+function openEventModal(date) {
+  eventForm.reset();
+  eventDateInput.value = date.toISOString().slice(0, 10);
+  eventModal.classList.add("open");
+}
 
-    let row = document.createElement("tr");
-    for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
+function closeModal(modal) {
+  modal.classList.remove("open");
+}
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      const cell = document.createElement("td");
-      cell.textContent = d;
-      const wrapper = document.createElement("div");
-      wrapper.classList.add("events-wrapper");
+closeEventModal.addEventListener("click", () => closeModal(eventModal));
+closeDetailsModal.addEventListener("click", () => closeModal(detailsModal));
 
-      const cellDate = new Date(year, month, d);
-      events.filter(ev => new Date(ev.date).toDateString() === cellDate.toDateString())
-        .forEach(ev => {
-          const el = document.createElement("div");
-          el.classList.add("event");
-          el.textContent = ev.name;
-          const del = document.createElement("span");
-          del.textContent = "×";
-          del.classList.add("delete-event");
-          del.addEventListener("click", e => {
-            e.stopPropagation();
-            events = events.filter(x => x.id !== ev.id);
-            saveEvents();
-            renderMonthEvents();
-            renderWeekEvents();
-          });
-          el.appendChild(del);
-          el.addEventListener("click", () => {
-            detailsTitle.textContent = ev.name;
-            detailsDate.textContent = "Date: " + ev.date;
-            detailsTime.textContent = "Time: " + (ev.time || "All Day");
-            detailsText.textContent = "Details: " + (ev.details || "None");
-            openModal(detailsModal);
-          });
-          wrapper.appendChild(el);
-        });
+// ===== Event Handling =====
+eventForm.addEventListener("submit", (e) => {
+  e.preventDefault();
 
-      cell.appendChild(wrapper);
-      row.appendChild(cell);
+  const newEvent = {
+    id: Date.now(),
+    title: eventTitleInput.value,
+    date: eventDateInput.value,
+    time: eventTimeInput.value || "00:00",
+    details: eventDetailsInput.value,
+  };
 
-      if ((firstDay + d) % 7 === 0) {
-        bigCalendarBody.appendChild(row);
-        row = document.createElement("tr");
-      }
-    }
-    if (row.children.length) bigCalendarBody.appendChild(row);
-  }
-
-  // ----- Toggle views -----
-  viewToggle.addEventListener("click", () => {
-    showingWeek = !showingWeek;
-    weekView.classList.toggle("hidden", !showingWeek);
-    monthView.classList.toggle("hidden", showingWeek);
-    viewToggle.textContent = showingWeek ? "Month View" : "Week View";
-  });
-
-  // ----- Create Event button -----
-  createEventBtn.addEventListener("click", () => {
-    eventName.value = "";
-    eventDate.value = "";
-    eventTime.value = "";
-    eventDetails.value = "";
-    openModal(eventModal);
-  });
-
-  // ----- Save event -----
-  eventForm.addEventListener("submit", e => {
-    e.preventDefault();
-    const newEvent = {
-      id: Date.now(),
-      name: eventName.value,
-      date: eventDate.value,
-      time: eventTime.value,
-      details: eventDetails.value
-    };
-    events.push(newEvent);
-    saveEvents();
-    renderWeekEvents();
-    renderMonthEvents();
-    closeModal(eventModal);
-  });
-
-  // Initial render
-  renderWeekEvents();
-  renderMonthEvents();
+  events.push(newEvent);
+  saveEvents();
+  renderMonthView();
+  renderWeekView();
+  closeModal(eventModal);
 });
+
+function openDetailsModal(event) {
+  activeEventId = event.id;
+  detailsContent.innerHTML = `
+    <h3>${event.title}</h3>
+    <p><strong>Date:</strong> ${event.date}</p>
+    <p><strong>Time:</strong> ${event.time}</p>
+    <p>${event.details || ""}</p>
+  `;
+  detailsModal.classList.add("open");
+}
+
+deleteEventBtn.addEventListener("click", () => {
+  if (activeEventId) {
+    events = events.filter((e) => e.id !== activeEventId);
+    saveEvents();
+    renderMonthView();
+    renderWeekView();
+    closeModal(detailsModal);
+  }
+});
+
+// ===== View Toggle =====
+viewToggle.addEventListener("click", () => {
+  if (monthView.classList.contains("hidden")) {
+    monthView.classList.remove("hidden");
+    weekView.classList.add("hidden");
+    viewToggle.textContent = "Week View";
+  } else {
+    monthView.classList.add("hidden");
+    weekView.classList.remove("hidden");
+    viewToggle.textContent = "Month View";
+  }
+});
+
+// ===== Create Event Button =====
+createEventBtn.addEventListener("click", () => {
+  openEventModal(selectedDate);
+});
+
+// ===== Local Storage =====
+function saveEvents() {
+  localStorage.setItem("calendarEvents", JSON.stringify(events));
+}
+
+// ===== Init =====
+renderMiniCalendar(currentDate);
+renderMonthView();
+renderWeekView();
