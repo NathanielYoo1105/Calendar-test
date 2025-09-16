@@ -60,6 +60,12 @@
       <section id="weekView" class="event-grid hidden">
         <!-- Time column + 7 day columns generated in JS -->
       </section>
+
+      <!-- Year View -->
+      <section id="yearView" class="year-view hidden">
+        <h2 id="yearTitle"></h2>
+        <div id="yearGrid"></div>
+      </section>
     </main>
   </div>
 
@@ -90,8 +96,8 @@
             <option value="PM">PM</option>
           </select>
         </label>
-        <button type="submit">Save Event</button>
         <label>Details: <textarea id="eventDetails"></textarea></label>
+        <button type="submit">Save Event</button>
       </form>
     </div>
   </div>
@@ -103,6 +109,7 @@
       <h2>Event Details</h2>
       <div id="detailsContent"></div>
       <button id="deleteEventButton">Delete Event</button>
+      <button id="editEventButton">Edit Event</button>
     </div>
   </div>
 

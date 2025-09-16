@@ -261,6 +261,64 @@ button:hover {
   max-height: 58px; /* keep within one slot */
 }
 
+/* ===== Year View ===== */
+.year-view {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 10px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#yearTitle {
+  text-align: center;
+  margin: 0 0 10px 0;
+}
+
+#yearGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.year-month {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.year-month h3 {
+  margin: 0 0 10px 0;
+  text-align: center;
+}
+
+.year-month table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.year-month th,
+.year-month td {
+  border: 1px solid #ddd;
+  text-align: center;
+  padding: 2px;
+  font-size: 0.8rem;
+}
+
+.year-month td {
+  cursor: pointer;
+}
+
+.year-month td:hover {
+  background-color: #f0f0f0;
+}
+
+.year-month .has-events {
+  background-color: #e3f2fd;
+}
+
 /* ===== Modals ===== */
 .modal {
   opacity: 0;
@@ -323,7 +381,21 @@ button:hover {
   align-self: flex-start;
 }
 
+.modal-content .modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+
 /* ===== Hide Section Utility ===== */
 .hidden {
   display: none;
+}
+
+/* ===== Responsive Adjustments ===== */
+@media (max-width: 768px) {
+  #yearGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

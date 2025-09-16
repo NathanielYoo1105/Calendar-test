@@ -1,18 +1,22 @@
-// script.js (full version with AM/PM ↔ 24-hour toggle and dynamic hour labels)
+// script.js (updated with year view, AM/PM ↔ 24-hour toggle, and dynamic hour labels)
 
 // ===== Global State =====
 let events = JSON.parse(localStorage.getItem("calendarEvents")) || [];
 let currentDate = new Date();
 let selectedDate = new Date();
 let use24Hour = false; // false = AM/PM, true = 24-hour
+let currentView = "month"; // Track current view: "month", "week", or "year"
 
 // ===== DOM Elements =====
 const monthYear = document.getElementById("monthYear");
 const calendarBody = document.getElementById("calendarBody");
 const bigCalendarBody = document.getElementById("bigCalendarBody");
+const yearTitle = document.getElementById("yearTitle");
+const yearGrid = document.getElementById("yearGrid");
 
 const monthView = document.getElementById("monthView");
 const weekView = document.getElementById("weekView");
+const yearView = document.getElementById("yearView");
 const viewToggle = document.getElementById("viewToggle");
 const createEventBtn = document.getElementById("createEventButton");
 const timeFormatToggle = document.getElementById("timeFormatToggle");
@@ -32,8 +36,14 @@ const detailsModal = document.getElementById("detailsModal");
 const closeDetailsModal = detailsModal.querySelector(".close-btn");
 const detailsContent = document.getElementById("detailsContent");
 const deleteEventBtn = document.getElementById("deleteEventButton");
+const editEventBtn = document.getElementById("editEventButton");
+
+const loginModal = document.getElementById("loginModal");
+const closeLoginModal = loginModal.querySelector(".close-btn");
+const logInButton = document.getElementById("logInButton");
 
 let activeEventId = null;
+let editingEvent = null;
 
 // ===== Utility Functions =====
 function parseDateOnly(dateStr) {
@@ -51,6 +61,15 @@ function formatTimeForDisplay(time24) {
 
 function updateTimeInputs() {
   eventAMPMSelect.style.display = use24Hour ? "none" : "inline-block";
+  if (use24Hour) {
+    eventHourInput.min = 0;
+    eventHourInput.max = 23;
+    eventHourInput.placeholder = "HH (0-23)";
+  } else {
+    eventHourInput.min = 1;
+    eventHourInput.max = 12;
+    eventHourInput.placeholder = "HH (1-12)";
+  }
 }
 
 // ===== Mini Calendar =====
@@ -80,9 +99,9 @@ function renderMiniCalendar(date = new Date()) {
 
     cell.addEventListener("click", () => {
       selectedDate = cellDate;
+      currentView = "month"; // Switch to month view on click
+      updateView();
       renderMiniCalendar(currentDate);
-      renderMonthView();
-      renderWeekView();
     });
 
     row.appendChild(cell);
@@ -109,6 +128,7 @@ function renderMonthView() {
     const cell = document.createElement("td");
     const cellDate = new Date(year, month, day);
     cell.textContent = day;
+    if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
 
     cell.addEventListener("click", () => {
       selectedDate = cellDate;
@@ -209,10 +229,110 @@ function renderWeekView() {
   }
 }
 
+// ===== Year View =====
+function renderYearView() {
+  const year = selectedDate.getFullYear();
+  yearTitle.textContent = year;
+  yearGrid.innerHTML = "";
+
+  for (let month = 0; month < 12; month++) {
+    const monthDiv = document.createElement("div");
+    monthDiv.classList.add("year-month");
+
+    const monthHeader = document.createElement("h3");
+    monthHeader.textContent = new Date(year, month).toLocaleDateString("default", { month: "long" });
+    monthDiv.appendChild(monthHeader);
+
+    const table = document.createElement("table");
+    table.classList.add("calendar-grid");
+    const thead = document.createElement("thead");
+    const tr = document.createElement("tr");
+    ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].forEach(day => {
+      const th = document.createElement("th");
+      th.textContent = day;
+      tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    let row = document.createElement("tr");
+
+    for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
+
+    for (let day = 1; day <= totalDays; day++) {
+      const cell = document.createElement("td");
+      cell.textContent = day;
+      const cellDate = new Date(year, month, day);
+
+      if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
+      if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
+
+      const dayEvents = events.filter(e => parseDateOnly(e.date).toDateString() === cellDate.toDateString());
+      if (dayEvents.length > 0) cell.classList.add("has-events");
+
+      cell.addEventListener("click", () => {
+        selectedDate = cellDate;
+        currentView = "month"; // Switch to month view on click
+        updateView();
+        renderMiniCalendar(currentDate);
+      });
+
+      row.appendChild(cell);
+      if ((firstDay + day) % 7 === 0 || day === totalDays) {
+        tbody.appendChild(row);
+        row = document.createElement("tr");
+      }
+    }
+    table.appendChild(tbody);
+    monthDiv.appendChild(table);
+    yearGrid.appendChild(monthDiv);
+  }
+}
+
+// ===== View Management =====
+function updateView() {
+  monthView.classList.add("hidden");
+  weekView.classList.add("hidden");
+  yearView.classList.add("hidden");
+
+  if (currentView === "month") {
+    monthView.classList.remove("hidden");
+    viewToggle.textContent = "Week View";
+    renderMonthView();
+  } else if (currentView === "week") {
+    weekView.classList.remove("hidden");
+    viewToggle.textContent = "Year View";
+    renderWeekView();
+  } else if (currentView === "year") {
+    yearView.classList.remove("hidden");
+    viewToggle.textContent = "Month View";
+    renderYearView();
+  }
+}
+
 // ===== Modals =====
-function openEventModal(date) {
+function openEventModal(date, event = null) {
   eventForm.reset();
   eventDateInput.value = date.toISOString().slice(0,10);
+  if (event) {
+    editingEvent = event;
+    eventTitleInput.value = event.title;
+    eventDateInput.value = event.date;
+    let [hour, minute] = event.time.split(":").map(Number);
+    eventMinuteInput.value = minute;
+    if (!use24Hour) {
+      const ampm = hour >= 12 ? "PM" : "AM";
+      hour = hour % 12 || 12;
+      eventAMPMSelect.value = ampm;
+    }
+    eventHourInput.value = hour;
+    eventDetailsInput.value = event.details || "";
+  } else {
+    editingEvent = null;
+  }
   updateTimeInputs();
   eventModal.classList.add("open");
 }
@@ -223,6 +343,7 @@ function closeModal(modal) {
 
 closeEventModal.addEventListener("click", () => closeModal(eventModal));
 closeDetailsModal.addEventListener("click", () => closeModal(detailsModal));
+closeLoginModal.addEventListener("click", () => closeModal(loginModal));
 
 // ===== Event Handling =====
 eventForm.addEventListener("submit", e => {
@@ -230,6 +351,10 @@ eventForm.addEventListener("submit", e => {
 
   let hour = parseInt(eventHourInput.value, 10);
   const minute = parseInt(eventMinuteInput.value, 10);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    alert("Invalid time");
+    return;
+  }
   if (!use24Hour) {
     const ampm = eventAMPMSelect.value;
     if (ampm === "PM" && hour < 12) hour += 12;
@@ -237,21 +362,35 @@ eventForm.addEventListener("submit", e => {
   }
   const timeStr = `${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}`;
 
-  const newEvent = {
-    id: Date.now(),
-    title: eventTitleInput.value,
-    date: eventDateInput.value,
-    time: timeStr,
-    details: eventDetailsInput.value,
-  };
+  if (editingEvent) {
+    const index = events.findIndex(ev => ev.id === editingEvent.id);
+    if (index !== -1) {
+      events[index] = {
+        ...events[index],
+        title: eventTitleInput.value,
+        date: eventDateInput.value,
+        time: timeStr,
+        details: eventDetailsInput.value,
+      };
+    }
+  } else {
+    const newEvent = {
+      id: Date.now(),
+      title: eventTitleInput.value,
+      date: eventDateInput.value,
+      time: timeStr,
+      details: eventDetailsInput.value,
+    };
+    events.push(newEvent);
+  }
 
-  events.push(newEvent);
   saveEvents();
-  renderMonthView();
-  renderWeekView();
+  updateView();
+  renderMiniCalendar(currentDate);
   closeModal(eventModal);
 });
 
+// ===== Details Modal =====
 function openDetailsModal(event) {
   activeEventId = event.id;
   detailsContent.innerHTML = `
@@ -268,23 +407,32 @@ deleteEventBtn.addEventListener("click", () => {
   if (activeEventId) {
     events = events.filter(e => e.id !== activeEventId);
     saveEvents();
-    renderMonthView();
-    renderWeekView();
+    updateView();
+    renderMiniCalendar(currentDate);
     closeModal(detailsModal);
+  }
+});
+
+// ===== Edit Event =====
+editEventBtn.addEventListener("click", () => {
+  const event = events.find(e => e.id === activeEventId);
+  if (event) {
+    closeModal(detailsModal);
+    const date = parseDateOnly(event.date);
+    openEventModal(date, event);
   }
 });
 
 // ===== View Toggle =====
 viewToggle.addEventListener("click", () => {
-  if (monthView.classList.contains("hidden")) {
-    monthView.classList.remove("hidden");
-    weekView.classList.add("hidden");
-    viewToggle.textContent = "Week View";
+  if (currentView === "month") {
+    currentView = "week";
+  } else if (currentView === "week") {
+    currentView = "year";
   } else {
-    monthView.classList.add("hidden");
-    weekView.classList.remove("hidden");
-    viewToggle.textContent = "Month View";
+    currentView = "month";
   }
+  updateView();
 });
 
 // ===== Create Event Button =====
@@ -295,8 +443,7 @@ timeFormatToggle.addEventListener("click", () => {
   use24Hour = !use24Hour;
   timeFormatToggle.textContent = use24Hour ? "Switch to AM/PM" : "Switch to 24-Hour";
   updateTimeInputs();
-  renderMonthView();
-  renderWeekView();
+  updateView();
 });
 
 // ===== Local Storage =====
@@ -304,9 +451,27 @@ function saveEvents() {
   localStorage.setItem("calendarEvents", JSON.stringify(events));
 }
 
+// ===== Month Navigation =====
+document.getElementById("prevMonth").addEventListener("click", () => {
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  selectedDate.setMonth(selectedDate.getMonth() - 1);
+  renderMiniCalendar(currentDate);
+  updateView();
+});
+
+document.getElementById("nextMonth").addEventListener("click", () => {
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  selectedDate.setMonth(selectedDate.getMonth() + 1);
+  renderMiniCalendar(currentDate);
+  updateView();
+});
+
+// ===== Log In Button =====
+logInButton.addEventListener("click", () => {
+  loginModal.classList.add("open");
+});
+
 // ===== Init =====
 renderMiniCalendar(currentDate);
-renderMonthView();
-renderWeekView();
+updateView();
 updateTimeInputs();
-
