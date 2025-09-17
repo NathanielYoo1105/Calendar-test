@@ -133,6 +133,19 @@ button:hover {
   min-height: 0;
 }
 
+.month-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.month-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
 .big-calendar {
   width: 100%;
   border-collapse: collapse;
@@ -258,7 +271,7 @@ button:hover {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  max-height: 58px; /* keep within one slot */
+  min-height: 20px; /* Ensure short events are visible */
 }
 
 /* ===== Year View ===== */
@@ -370,7 +383,8 @@ button:hover {
 }
 
 .modal-content input,
-.modal-content textarea {
+.modal-content textarea,
+.modal-content select {
   padding: 8px;
   border-radius: 4px;
   border: 1px solid #ccc;
@@ -386,6 +400,24 @@ button:hover {
   gap: 10px;
   justify-content: flex-start;
   margin-top: 10px;
+}
+
+/* ===== All Day / Until Styling ===== */
+#allDayCheckbox,
+#untilCheckbox {
+  margin-right: 5px;
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#endTimeLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 /* ===== Hide Section Utility ===== */

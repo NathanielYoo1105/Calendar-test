@@ -1,11 +1,11 @@
-// script.js (updated with year view, AM/PM ↔ 24-hour toggle, and dynamic hour labels)
+// script.js (updated with fixed and improved All Day & Until features, dynamic durations, and week->month->year cycle)
 
 // ===== Global State =====
 let events = JSON.parse(localStorage.getItem("calendarEvents")) || [];
 let currentDate = new Date();
 let selectedDate = new Date();
 let use24Hour = false; // false = AM/PM, true = 24-hour
-let currentView = "month"; // Track current view: "month", "week", or "year"
+let currentView = "week"; // Track current view: "month", "week", or "year"
 
 // ===== DOM Elements =====
 const monthYear = document.getElementById("monthYear");
@@ -31,6 +31,11 @@ const eventHourInput = document.getElementById("eventHour");
 const eventMinuteInput = document.getElementById("eventMinute");
 const eventAMPMSelect = document.getElementById("eventAMPM");
 const eventDetailsInput = document.getElementById("eventDetails");
+const allDayCheckbox = document.getElementById("allDayCheckbox");
+const untilCheckbox = document.getElementById("untilCheckbox");
+const eventEndHourInput = document.getElementById("eventEndHour");
+const eventEndMinuteInput = document.getElementById("eventEndMinute");
+const eventEndAMPMSelect = document.getElementById("eventEndAMPM");
 
 const detailsModal = document.getElementById("detailsModal");
 const closeDetailsModal = detailsModal.querySelector(".close-btn");
@@ -51,24 +56,59 @@ function parseDateOnly(dateStr) {
   return new Date(year, month - 1, day);
 }
 
-function formatTimeForDisplay(time24) {
-  if (use24Hour) return time24;
-  let [hour, minute] = time24.split(":").map(Number);
+function formatTimeForDisplay(event) {
+  if (event.isAllDay) return "All Day";
+  let timeStr = event.time;
+  let endStr = event.endTime ? ` - ${event.endTime}` : "";
+  if (use24Hour) return timeStr + endStr;
+  let [hour, minute] = timeStr.split(":").map(Number);
   const ampm = hour >= 12 ? "PM" : "AM";
   hour = hour % 12 || 12;
-  return `${hour}:${String(minute).padStart(2, "0")} ${ampm}`;
+  timeStr = `${hour}:${String(minute).padStart(2, "0")} ${ampm}`;
+  if (event.endTime) {
+    [hour, minute] = event.endTime.split(":").map(Number);
+    const endAmpm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
+    endStr = ` - ${hour}:${String(minute).padStart(2, "0")} ${endAmpm}`;
+  }
+  return timeStr + endStr;
+}
+
+function getTimeInMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const [hour, min] = timeStr.split(":").map(Number);
+  return hour * 60 + min;
 }
 
 function updateTimeInputs() {
+  const allDayDisabled = allDayCheckbox.checked;
+  const untilDisabled = !untilCheckbox.checked || allDayDisabled;
+
+  eventHourInput.disabled = allDayDisabled;
+  eventMinuteInput.disabled = allDayDisabled;
+  eventAMPMSelect.disabled = allDayDisabled;
+  untilCheckbox.disabled = allDayDisabled;
+  eventEndHourInput.disabled = untilDisabled;
+  eventEndMinuteInput.disabled = untilDisabled;
+  eventEndAMPMSelect.disabled = untilDisabled;
+
   eventAMPMSelect.style.display = use24Hour ? "none" : "inline-block";
+  eventEndAMPMSelect.style.display = use24Hour ? "none" : "inline-block";
+
   if (use24Hour) {
     eventHourInput.min = 0;
     eventHourInput.max = 23;
     eventHourInput.placeholder = "HH (0-23)";
+    eventEndHourInput.min = 0;
+    eventEndHourInput.max = 23;
+    eventEndHourInput.placeholder = "HH (0-23)";
   } else {
     eventHourInput.min = 1;
     eventHourInput.max = 12;
     eventHourInput.placeholder = "HH (1-12)";
+    eventEndHourInput.min = 1;
+    eventEndHourInput.max = 12;
+    eventEndHourInput.placeholder = "HH (1-12)";
   }
 }
 
@@ -114,6 +154,12 @@ function renderMiniCalendar(date = new Date()) {
 
 // ===== Month View =====
 function renderMonthView() {
+  const monthTitle = document.getElementById("monthTitle");
+  monthTitle.textContent = selectedDate.toLocaleDateString("default", {
+    month: "long",
+    year: "numeric",
+  });
+
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
@@ -137,12 +183,12 @@ function renderMonthView() {
 
     const dayEvents = events
       .filter(e => parseDateOnly(e.date).toDateString() === cellDate.toDateString())
-      .sort((a,b) => a.time.localeCompare(b.time));
+      .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
 
     dayEvents.forEach(event => {
       const div = document.createElement("div");
       div.classList.add("month-event");
-      div.textContent = `${event.title} (${formatTimeForDisplay(event.time)})`;
+      div.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
       div.addEventListener("click", ev => {
         ev.stopPropagation();
         openDetailsModal(event);
@@ -206,16 +252,26 @@ function renderWeekView() {
 
     const dayEvents = events
       .filter(e => parseDateOnly(e.date).toDateString() === dayDate.toDateString())
-      .sort((a,b) => a.time.localeCompare(b.time));
+      .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
 
     dayEvents.forEach(event => {
       const evBox = document.createElement("div");
       evBox.classList.add("event-box");
-      evBox.textContent = `${event.title} (${formatTimeForDisplay(event.time)})`;
+      evBox.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
 
-      const startTime = parseInt(event.time.split(":")[0], 10);
-      evBox.style.top = `${startTime * 60}px`;
-      evBox.style.height = "58px";
+      const startMin = getTimeInMinutes(event.time || "00:00");
+      evBox.style.top = `${startMin}px`;
+
+      let height;
+      if (event.isAllDay) {
+        height = 24 * 60;
+      } else if (event.endTime) {
+        const endMin = getTimeInMinutes(event.endTime);
+        height = endMin - startMin;
+      } else {
+        height = 60; // Default 1 hour
+      }
+      evBox.style.height = `${height}px`;
 
       evBox.addEventListener("click", e => {
         e.stopPropagation();
@@ -275,6 +331,7 @@ function renderYearView() {
 
       cell.addEventListener("click", () => {
         selectedDate = cellDate;
+        currentDate = new Date(cellDate); // Sync currentDate with selectedDate
         currentView = "month"; // Switch to month view on click
         updateView();
         renderMiniCalendar(currentDate);
@@ -300,15 +357,15 @@ function updateView() {
 
   if (currentView === "month") {
     monthView.classList.remove("hidden");
-    viewToggle.textContent = "Week View";
+    viewToggle.textContent = "Year View"; // Next is year
     renderMonthView();
   } else if (currentView === "week") {
     weekView.classList.remove("hidden");
-    viewToggle.textContent = "Year View";
+    viewToggle.textContent = "Month View"; // Next is month
     renderWeekView();
   } else if (currentView === "year") {
     yearView.classList.remove("hidden");
-    viewToggle.textContent = "Month View";
+    viewToggle.textContent = "Week View"; // Next is week
     renderYearView();
   }
 }
@@ -317,11 +374,17 @@ function updateView() {
 function openEventModal(date, event = null) {
   eventForm.reset();
   eventDateInput.value = date.toISOString().slice(0,10);
+  allDayCheckbox.checked = false;
+  untilCheckbox.checked = false;
+
   if (event) {
     editingEvent = event;
     eventTitleInput.value = event.title;
     eventDateInput.value = event.date;
-    let [hour, minute] = event.time.split(":").map(Number);
+    eventDetailsInput.value = event.details || "";
+    allDayCheckbox.checked = event.isAllDay || false;
+
+    let [hour, minute] = (event.time || "00:00").split(":").map(Number);
     eventMinuteInput.value = minute;
     if (!use24Hour) {
       const ampm = hour >= 12 ? "PM" : "AM";
@@ -329,7 +392,18 @@ function openEventModal(date, event = null) {
       eventAMPMSelect.value = ampm;
     }
     eventHourInput.value = hour;
-    eventDetailsInput.value = event.details || "";
+
+    if (event.endTime) {
+      untilCheckbox.checked = true;
+      let [endHour, endMinute] = event.endTime.split(":").map(Number);
+      eventEndMinuteInput.value = endMinute;
+      if (!use24Hour) {
+        const endAmpm = endHour >= 12 ? "PM" : "AM";
+        endHour = endHour % 12 || 12;
+        eventEndAMPMSelect.value = endAmpm;
+      }
+      eventEndHourInput.value = endHour;
+    }
   } else {
     editingEvent = null;
   }
@@ -349,39 +423,66 @@ closeLoginModal.addEventListener("click", () => closeModal(loginModal));
 eventForm.addEventListener("submit", e => {
   e.preventDefault();
 
-  let hour = parseInt(eventHourInput.value, 10);
-  const minute = parseInt(eventMinuteInput.value, 10);
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-    alert("Invalid time");
-    return;
+  let isAllDay = allDayCheckbox.checked;
+  let timeStr = null;
+  let endTimeStr = null;
+
+  if (isAllDay) {
+    timeStr = "00:00";
+    endTimeStr = "23:59";
+  } else {
+    let startHour = parseInt(eventHourInput.value, 10);
+    let startMinute = parseInt(eventMinuteInput.value, 10);
+    if (isNaN(startHour) || isNaN(startMinute) || startHour < 0 || startHour > 23 || startMinute < 0 || startMinute > 59) {
+      alert("Invalid start time");
+      return;
+    }
+    if (!use24Hour) {
+      const ampm = eventAMPMSelect.value;
+      if (ampm === "PM" && startHour < 12) startHour += 12;
+      if (ampm === "AM" && startHour === 12) startHour = 0;
+    }
+    timeStr = `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}`;
+
+    if (untilCheckbox.checked) {
+      let endHour = parseInt(eventEndHourInput.value, 10);
+      let endMinute = parseInt(eventEndMinuteInput.value, 10);
+      if (isNaN(endHour) || isNaN(endMinute) || endHour < 0 || endHour > 23 || endMinute < 0 || endMinute > 59) {
+        alert("Invalid end time");
+        return;
+      }
+      if (!use24Hour) {
+        const endAmpm = eventEndAMPMSelect.value;
+        if (endAmpm === "PM" && endHour < 12) endHour += 12;
+        if (endAmpm === "AM" && endHour === 12) endHour = 0;
+      }
+      endTimeStr = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
+
+      const startMin = getTimeInMinutes(timeStr);
+      const endMin = getTimeInMinutes(endTimeStr);
+      if (endMin <= startMin) {
+        alert("End time must be after start time");
+        return;
+      }
+    }
   }
-  if (!use24Hour) {
-    const ampm = eventAMPMSelect.value;
-    if (ampm === "PM" && hour < 12) hour += 12;
-    if (ampm === "AM" && hour === 12) hour = 0;
-  }
-  const timeStr = `${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}`;
+
+  const eventData = {
+    title: eventTitleInput.value,
+    date: eventDateInput.value,
+    time: timeStr,
+    endTime: endTimeStr,
+    isAllDay: isAllDay,
+    details: eventDetailsInput.value,
+  };
 
   if (editingEvent) {
     const index = events.findIndex(ev => ev.id === editingEvent.id);
     if (index !== -1) {
-      events[index] = {
-        ...events[index],
-        title: eventTitleInput.value,
-        date: eventDateInput.value,
-        time: timeStr,
-        details: eventDetailsInput.value,
-      };
+      events[index] = { ...events[index], ...eventData };
     }
   } else {
-    const newEvent = {
-      id: Date.now(),
-      title: eventTitleInput.value,
-      date: eventDateInput.value,
-      time: timeStr,
-      details: eventDetailsInput.value,
-    };
-    events.push(newEvent);
+    events.push({ id: Date.now(), ...eventData });
   }
 
   saveEvents();
@@ -396,8 +497,8 @@ function openDetailsModal(event) {
   detailsContent.innerHTML = `
     <h3>${event.title}</h3>
     <p><strong>Date:</strong> ${event.date}</p>
-    <p><strong>Time:</strong> ${formatTimeForDisplay(event.time)}</p>
-    <p>${event.details || ""}</p>
+    <p><strong>Time:</strong> ${formatTimeForDisplay(event)}</p>
+    <p>${event.details || "No details provided"}</p>
   `;
   detailsModal.classList.add("open");
 }
@@ -425,12 +526,12 @@ editEventBtn.addEventListener("click", () => {
 
 // ===== View Toggle =====
 viewToggle.addEventListener("click", () => {
-  if (currentView === "month") {
-    currentView = "week";
-  } else if (currentView === "week") {
+  if (currentView === "week") {
+    currentView = "month";
+  } else if (currentView === "month") {
     currentView = "year";
   } else {
-    currentView = "month";
+    currentView = "week";
   }
   updateView();
 });
@@ -445,6 +546,10 @@ timeFormatToggle.addEventListener("click", () => {
   updateTimeInputs();
   updateView();
 });
+
+// ===== Checkbox Events =====
+allDayCheckbox.addEventListener("change", updateTimeInputs);
+untilCheckbox.addEventListener("change", updateTimeInputs);
 
 // ===== Local Storage =====
 function saveEvents() {

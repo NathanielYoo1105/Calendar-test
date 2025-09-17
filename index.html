@@ -45,6 +45,9 @@
 
       <!-- Month View -->
       <section id="monthView" class="month-view">
+        <div class="month-header">
+          <h2 id="monthTitle"></h2>
+        </div>
         <table class="calendar-grid big-calendar">
           <thead>
             <tr>
@@ -86,6 +89,11 @@
       <form id="eventForm">
         <label>Title: <input type="text" id="eventTitle" required></label>
         <label>Date: <input type="date" id="eventDate" required></label>
+
+        <!-- All Day Checkbox -->
+        <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
+
+        <!-- Time Inputs -->
         <label>
           Time: 
           <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 50px;">
@@ -96,6 +104,22 @@
             <option value="PM">PM</option>
           </select>
         </label>
+
+        <!-- Until Checkbox + End Time -->
+        <label>
+          <input type="checkbox" id="untilCheckbox"> Until
+        </label>
+        <label id="endTimeLabel">
+          End Time: 
+          <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
+          :
+          <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 50px;" disabled>
+          <select id="eventEndAMPM" disabled>
+            <option value="AM">AM</option>
+            <option value="PM">PM</option>
+          </select>
+        </label>
+
         <label>Details: <textarea id="eventDetails"></textarea></label>
         <button type="submit">Save Event</button>
       </form>
