@@ -1,4 +1,5 @@
 /* ===== Global Styles ===== */
+/* These styles set the overall font, layout, and full-height structure for the app */
 body {
   font-family: sans-serif;
   margin: 0;
@@ -12,6 +13,7 @@ body {
 }
 
 /* ===== Sidebar / Mini Calendar ===== */
+/* Styles for the left sidebar containing the logo and compact monthly calendar for quick navigation */
 .sidebar {
   width: 300px;
   border-right: 1px solid #ddd;
@@ -71,6 +73,7 @@ body {
 }
 
 /* ===== Main View Layout ===== */
+/* Layout for the main content area, including topbar and scrollable view sections */
 .main-view {
   flex: 1;
   display: flex;
@@ -96,6 +99,7 @@ body {
 }
 
 /* ===== Buttons ===== */
+/* General button styling, including hover effects and responsive font sizing */
 button {
   padding: 10px 20px;
   background-color: green;
@@ -126,6 +130,7 @@ button:hover {
 }
 
 /* ===== Month View ===== */
+/* Styles for the large monthly calendar grid, including event display and hover effects */
 .month-view {
   flex: 1;
   overflow-y: auto;
@@ -158,7 +163,9 @@ button:hover {
   height: 80px;
   vertical-align: top;
   padding: 4px;
-  position: relative;
+  position: relative; /* For positioning event elements */
+  overflow: hidden; /* Prevent overflow from many events */
+  max-height: 80px; /* Cap height to fit multiple events */
 }
 
 .big-calendar td {
@@ -185,14 +192,35 @@ button:hover {
   max-width: 100%;
 }
 
+/* All-day events in month view */
+.month-event.all-day {
+  background: #ff9800; /* Distinct color for all-day events */
+  font-weight: bold;
+}
+
+.more-events {
+  font-size: 0.7rem;
+  color: #2196f3;
+  cursor: pointer;
+}
+
 /* ===== Week View ===== */
+/* Flex-based layout for weekly schedule to allow nav at top, with inner grid for time slots and day columns */
 .event-grid {
   flex: 1;
-  display: grid;
-  grid-template-columns: 60px repeat(7, 1fr); /* time column + 7 days */
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   margin-top: 10px;
   min-height: 0;
+}
+
+/* Inner grid container for time column and day columns */
+.week-grid-container {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr); /* time column + 7 days */
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* Time column (left) */
@@ -239,6 +267,35 @@ button:hover {
   z-index: 5;
 }
 
+/* Week view navigation (Centered) */
+.week-nav {
+  display: flex;
+  justify-content: center; /* Center the navigation */
+  align-items: center;
+  gap: 10px; /* Space between buttons and title */
+  margin-bottom: 10px;
+}
+
+.week-nav button {
+  padding: 4px 8px;
+  background-color: #ccc;
+  color: #333;
+  font-weight: bold;
+  border-radius: 4px;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+}
+
+.week-nav button:hover {
+  background-color: #bbb;
+}
+
+.week-nav h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
 /* Hour slots */
 .day-slots {
   flex: 1;
@@ -257,6 +314,28 @@ button:hover {
   background-color: #f0f0f0;
 }
 
+/* All-day events in week view */
+.all-day-container {
+  background: #f7f7f7;
+  border-bottom: 1px solid #ddd;
+  padding: 4px;
+  position: sticky;
+  top: 30px; /* Below day-header */
+  z-index: 4;
+  min-height: 30px;
+}
+
+.all-day-event {
+  background: #ff9800;
+  color: white;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 2px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: inline-block;
+}
+
 /* Events in week view */
 .event-box {
   position: absolute;
@@ -272,9 +351,11 @@ button:hover {
   white-space: nowrap;
   text-overflow: ellipsis;
   min-height: 20px; /* Ensure short events are visible */
+  box-sizing: border-box; /* For overlap handling with width/left */
 }
 
 /* ===== Year View ===== */
+/* Grid layout for yearly overview with 12 mini-month calendars */
 .year-view {
   flex: 1;
   overflow-y: auto;
@@ -333,6 +414,7 @@ button:hover {
 }
 
 /* ===== Modals ===== */
+/* Overlay and content styles for pop-up modals like event creation and details */
 .modal {
   opacity: 0;
   pointer-events: none;
@@ -355,8 +437,9 @@ button:hover {
 }
 
 .modal-content {
-  width: 66%;
+  width: 90%; /* Responsive width */
   max-width: 500px;
+  min-width: 300px; /* Prevent too narrow on small screens */
   padding: 20px;
   border-radius: 8px;
   background: white;
@@ -402,7 +485,29 @@ button:hover {
   margin-top: 10px;
 }
 
+/* ===== Error Message in Event Modal ===== */
+/* Styles for temporary error messages displayed in the event modal */
+#errorMessage {
+  display: none;
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  text-align: center;
+  animation: fadeOut 2s ease-in-out;
+}
+
+/* Fade-out animation for error message */
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* ===== All Day / Until Styling ===== */
+/* Layout for time input fields in the event creation modal */
 #allDayCheckbox,
 #untilCheckbox {
   margin-right: 5px;
@@ -421,12 +526,25 @@ button:hover {
 }
 
 /* ===== Hide Section Utility ===== */
+/* Simple utility class to hide/show views dynamically */
 .hidden {
   display: none;
 }
 
 /* ===== Responsive Adjustments ===== */
+/* Media queries for smaller screens, including collapsible sidebar and year grid adjustments */
 @media (max-width: 768px) {
+  .sidebar {
+    width: 60px;
+    overflow-x: hidden;
+    transition: width 0.3s;
+  }
+  .sidebar:hover {
+    width: 300px;
+  }
+  .main-view {
+    margin-left: 60px;
+  }
   #yearGrid {
     grid-template-columns: repeat(2, 1fr);
   }

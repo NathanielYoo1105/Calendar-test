@@ -1,11 +1,17 @@
-// script.js (updated with fixed and improved All Day & Until features, dynamic durations, and week->month->year cycle)
+// script.js (updated with week view title centering via structure change and mini calendar desync fix)
 
 // ===== Global State =====
-let events = JSON.parse(localStorage.getItem("calendarEvents")) || [];
+let events = [];
+try {
+  events = JSON.parse(localStorage.getItem("calendarEvents")) || [];
+} catch (e) {
+  console.error("Failed to load events:", e);
+  alert("Error loading events. Local storage may be disabled.");
+}
 let currentDate = new Date();
 let selectedDate = new Date();
-let use24Hour = false; // false = AM/PM, true = 24-hour
-let currentView = "week"; // Track current view: "month", "week", or "year"
+let use24Hour = false;
+let currentView = "week";
 
 // ===== DOM Elements =====
 const monthYear = document.getElementById("monthYear");
@@ -53,6 +59,7 @@ let editingEvent = null;
 // ===== Utility Functions =====
 function parseDateOnly(dateStr) {
   const [year, month, day] = dateStr.split("-").map(Number);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
   return new Date(year, month - 1, day);
 }
 
@@ -78,6 +85,26 @@ function getTimeInMinutes(timeStr) {
   if (!timeStr) return 0;
   const [hour, min] = timeStr.split(":").map(Number);
   return hour * 60 + min;
+}
+
+function showErrorMessage(message) {
+  let errorDiv = document.getElementById("errorMessage");
+  if (!errorDiv) {
+    errorDiv = document.createElement("div");
+    errorDiv.id = "errorMessage";
+    eventModal.querySelector(".modal-content").prepend(errorDiv);
+  }
+  errorDiv.textContent = message;
+  errorDiv.style.display = "block";
+  setTimeout(() => {
+    errorDiv.style.display = "none";
+  }, 2000);
+}
+
+function syncMiniCalendar() {
+  currentDate.setFullYear(selectedDate.getFullYear());
+  currentDate.setMonth(selectedDate.getMonth());
+  renderMiniCalendar(currentDate);
 }
 
 function updateTimeInputs() {
@@ -137,11 +164,12 @@ function renderMiniCalendar(date = new Date()) {
     if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
 
+    cell.setAttribute("aria-label", `Day ${day} of ${monthYear.textContent}`);
     cell.addEventListener("click", () => {
       selectedDate = cellDate;
-      currentView = "month"; // Switch to month view on click
+      syncMiniCalendar();
+      currentView = "month";
       updateView();
-      renderMiniCalendar(currentDate);
     });
 
     row.appendChild(cell);
@@ -176,25 +204,46 @@ function renderMonthView() {
     cell.textContent = day;
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
 
+    cell.setAttribute("aria-label", `Day ${day} of ${monthTitle.textContent}`);
     cell.addEventListener("click", () => {
       selectedDate = cellDate;
+      syncMiniCalendar();
       openEventModal(cellDate);
     });
 
     const dayEvents = events
-      .filter(e => parseDateOnly(e.date).toDateString() === cellDate.toDateString())
-      .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+      .filter(e => parseDateOnly(e.date)?.toDateString() === cellDate.toDateString())
+      .sort((a, b) => {
+        if (a.isAllDay && !b.isAllDay) return -1;
+        if (!a.isAllDay && b.isAllDay) return 1;
+        return (a.time || "00:00").localeCompare(b.time || "00:00");
+      });
 
-    dayEvents.forEach(event => {
+    dayEvents.slice(0, 3).forEach(event => {
       const div = document.createElement("div");
       div.classList.add("month-event");
+      if (event.isAllDay) div.classList.add("all-day");
       div.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
+      div.setAttribute("aria-label", `Event: ${event.title} on ${event.date} at ${formatTimeForDisplay(event)}`);
       div.addEventListener("click", ev => {
         ev.stopPropagation();
         openDetailsModal(event);
       });
       cell.appendChild(div);
     });
+
+    if (dayEvents.length > 3) {
+      const more = document.createElement("div");
+      more.classList.add("more-events");
+      more.textContent = `+${dayEvents.length - 3} more`;
+      more.addEventListener("click", () => {
+        selectedDate = cellDate;
+        syncMiniCalendar();
+        currentView = "week";
+        updateView();
+      });
+      cell.appendChild(more);
+    }
 
     row.appendChild(cell);
     if ((firstDay + day) % 7 === 0 || day === totalDays) {
@@ -208,6 +257,24 @@ function renderMonthView() {
 function renderWeekView() {
   weekView.innerHTML = "";
 
+  // Add week navigation with date range
+  const weekStart = new Date(selectedDate);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const nav = document.createElement("div");
+  nav.classList.add("week-nav");
+  nav.innerHTML = `
+    <button id="prevWeek" aria-label="Previous Week">‹</button>
+    <h2>${weekStart.toLocaleDateString("default", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}</h2>
+    <button id="nextWeek" aria-label="Next Week">›</button>
+  `;
+  weekView.appendChild(nav);
+
+  // Create grid container for time and day columns
+  const gridContainer = document.createElement("div");
+  gridContainer.classList.add("week-grid-container");
+
   const timeCol = document.createElement("div");
   timeCol.classList.add("time-column");
   for (let h = 0; h < 24; h++) {
@@ -220,10 +287,7 @@ function renderWeekView() {
     }
     timeCol.appendChild(div);
   }
-  weekView.appendChild(timeCol);
-
-  const weekStart = new Date(selectedDate);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  gridContainer.appendChild(timeCol);
 
   for (let d = 0; d < 7; d++) {
     const col = document.createElement("div");
@@ -233,8 +297,13 @@ function renderWeekView() {
     header.classList.add("day-header");
     const dayDate = new Date(weekStart);
     dayDate.setDate(weekStart.getDate() + d);
-    header.textContent = dayDate.toLocaleDateString("default", { weekday:"short", month:"short", day:"numeric" });
+    header.textContent = dayDate.toLocaleDateString("default", { weekday: "short", month: "short", day: "numeric" });
     col.appendChild(header);
+
+    // All-day events container
+    const allDayContainer = document.createElement("div");
+    allDayContainer.classList.add("all-day-container");
+    col.appendChild(allDayContainer);
 
     const slots = document.createElement("div");
     slots.classList.add("day-slots");
@@ -244,6 +313,7 @@ function renderWeekView() {
       slot.classList.add("hour-slot");
       slot.addEventListener("click", () => {
         selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
+        syncMiniCalendar();
         openEventModal(selectedDate);
       });
       slots.appendChild(slot);
@@ -251,27 +321,63 @@ function renderWeekView() {
     col.appendChild(slots);
 
     const dayEvents = events
-      .filter(e => parseDateOnly(e.date).toDateString() === dayDate.toDateString())
-      .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+      .filter(e => parseDateOnly(e.date)?.toDateString() === dayDate.toDateString())
+      .sort((a, b) => {
+        if (a.isAllDay && !b.isAllDay) return -1;
+        if (!a.isAllDay && b.isAllDay) return 1;
+        return (a.time || "00:00").localeCompare(b.time || "00:00");
+      });
 
-    dayEvents.forEach(event => {
+    // Render all-day events
+    dayEvents.filter(e => e.isAllDay).forEach(event => {
+      const evBox = document.createElement("div");
+      evBox.classList.add("all-day-event");
+      evBox.textContent = event.title;
+      evBox.addEventListener("click", e => {
+        e.stopPropagation();
+        openDetailsModal(event);
+      });
+      allDayContainer.appendChild(evBox);
+    });
+
+    // Render timed events with overlap handling
+    const timedEvents = dayEvents.filter(e => !e.isAllDay);
+    const overlaps = timedEvents.map(event => ({
+      event,
+      startMin: getTimeInMinutes(event.time || "00:00"),
+      endMin: getTimeInMinutes(event.endTime || (event.time ? `${parseInt(event.time.split(":")[0]) + 1}:00` : "01:00")),
+    }));
+
+    // Calculate overlap groups
+    const lanes = [];
+    overlaps.forEach((item, index) => {
+      let placed = false;
+      for (let lane of lanes) {
+        if (!lane.some(other => item.startMin < other.endMin && item.endMin > other.startMin)) {
+          lane.push(item);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) lanes.push([item]);
+    });
+
+    timedEvents.forEach((event, index) => {
       const evBox = document.createElement("div");
       evBox.classList.add("event-box");
       evBox.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
 
       const startMin = getTimeInMinutes(event.time || "00:00");
-      evBox.style.top = `${startMin}px`;
+      const endMin = event.endTime ? getTimeInMinutes(event.endTime) : startMin + 60;
+      evBox.style.top = `${(startMin / 60) * 60}px`; // 60px per hour
+      evBox.style.height = `${((endMin - startMin) / 60) * 60}px`; // 60px per hour
 
-      let height;
-      if (event.isAllDay) {
-        height = 24 * 60;
-      } else if (event.endTime) {
-        const endMin = getTimeInMinutes(event.endTime);
-        height = endMin - startMin;
-      } else {
-        height = 60; // Default 1 hour
-      }
-      evBox.style.height = `${height}px`;
+      // Find the lane for this event
+      const laneIndex = lanes.findIndex(lane => lane.some(item => item.event === event));
+      const lane = lanes[laneIndex] || [];
+      const laneWidth = 100 / Math.max(1, lanes.length);
+      evBox.style.width = `${laneWidth}%`;
+      evBox.style.left = `${laneIndex * laneWidth}%`;
 
       evBox.addEventListener("click", e => {
         e.stopPropagation();
@@ -281,7 +387,26 @@ function renderWeekView() {
       col.appendChild(evBox);
     });
 
-    weekView.appendChild(col);
+    gridContainer.appendChild(col);
+  }
+  weekView.appendChild(gridContainer);
+
+  // Week navigation event listeners
+  const prevWeekBtn = document.getElementById("prevWeek");
+  const nextWeekBtn = document.getElementById("nextWeek");
+  if (prevWeekBtn) {
+    prevWeekBtn.addEventListener("click", () => {
+      selectedDate.setDate(selectedDate.getDate() - 7);
+      syncMiniCalendar();
+      updateView();
+    });
+  }
+  if (nextWeekBtn) {
+    nextWeekBtn.addEventListener("click", () => {
+      selectedDate.setDate(selectedDate.getDate() + 7);
+      syncMiniCalendar();
+      updateView();
+    });
   }
 }
 
@@ -326,15 +451,14 @@ function renderYearView() {
       if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
       if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
 
-      const dayEvents = events.filter(e => parseDateOnly(e.date).toDateString() === cellDate.toDateString());
+      const dayEvents = events.filter(e => parseDateOnly(e.date)?.toDateString() === cellDate.toDateString());
       if (dayEvents.length > 0) cell.classList.add("has-events");
 
       cell.addEventListener("click", () => {
         selectedDate = cellDate;
-        currentDate = new Date(cellDate); // Sync currentDate with selectedDate
-        currentView = "month"; // Switch to month view on click
+        syncMiniCalendar();
+        currentView = "month";
         updateView();
-        renderMiniCalendar(currentDate);
       });
 
       row.appendChild(cell);
@@ -357,23 +481,24 @@ function updateView() {
 
   if (currentView === "month") {
     monthView.classList.remove("hidden");
-    viewToggle.textContent = "Year View"; // Next is year
+    viewToggle.textContent = "Year View";
     renderMonthView();
   } else if (currentView === "week") {
     weekView.classList.remove("hidden");
-    viewToggle.textContent = "Month View"; // Next is month
+    viewToggle.textContent = "Month View";
     renderWeekView();
   } else if (currentView === "year") {
     yearView.classList.remove("hidden");
-    viewToggle.textContent = "Week View"; // Next is week
+    viewToggle.textContent = "Week View";
     renderYearView();
   }
+  syncMiniCalendar();
 }
 
 // ===== Modals =====
 function openEventModal(date, event = null) {
   eventForm.reset();
-  eventDateInput.value = date.toISOString().slice(0,10);
+  eventDateInput.value = date.toISOString().slice(0, 10);
   allDayCheckbox.checked = false;
   untilCheckbox.checked = false;
 
@@ -419,9 +544,30 @@ closeEventModal.addEventListener("click", () => closeModal(eventModal));
 closeDetailsModal.addEventListener("click", () => closeModal(detailsModal));
 closeLoginModal.addEventListener("click", () => closeModal(loginModal));
 
+// Keyboard support for modal close buttons
+[closeEventModal, closeDetailsModal, closeLoginModal].forEach(btn => {
+  btn.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      closeModal(btn.closest(".modal"));
+    }
+  });
+});
+
 // ===== Event Handling =====
 eventForm.addEventListener("submit", e => {
   e.preventDefault();
+
+  if (!eventTitleInput.value.trim()) {
+    showErrorMessage("Event title is required");
+    return;
+  }
+
+  const eventDate = parseDateOnly(eventDateInput.value);
+  if (!eventDate || eventDate < new Date().setHours(0, 0, 0, 0)) {
+    showErrorMessage("Invalid or past date");
+    return;
+  }
 
   let isAllDay = allDayCheckbox.checked;
   let timeStr = null;
@@ -434,7 +580,7 @@ eventForm.addEventListener("submit", e => {
     let startHour = parseInt(eventHourInput.value, 10);
     let startMinute = parseInt(eventMinuteInput.value, 10);
     if (isNaN(startHour) || isNaN(startMinute) || startHour < 0 || startHour > 23 || startMinute < 0 || startMinute > 59) {
-      alert("Invalid start time");
+      showErrorMessage("Invalid start time");
       return;
     }
     if (!use24Hour) {
@@ -448,7 +594,7 @@ eventForm.addEventListener("submit", e => {
       let endHour = parseInt(eventEndHourInput.value, 10);
       let endMinute = parseInt(eventEndMinuteInput.value, 10);
       if (isNaN(endHour) || isNaN(endMinute) || endHour < 0 || endHour > 23 || endMinute < 0 || endMinute > 59) {
-        alert("Invalid end time");
+        showErrorMessage("Invalid end time");
         return;
       }
       if (!use24Hour) {
@@ -461,33 +607,33 @@ eventForm.addEventListener("submit", e => {
       const startMin = getTimeInMinutes(timeStr);
       const endMin = getTimeInMinutes(endTimeStr);
       if (endMin <= startMin) {
-        alert("End time must be after start time");
+        showErrorMessage("End time must be after start time");
         return;
       }
     }
   }
 
   const eventData = {
-    title: eventTitleInput.value,
+    id: editingEvent ? editingEvent.id : Date.now(),
+    title: eventTitleInput.value.trim(),
     date: eventDateInput.value,
     time: timeStr,
     endTime: endTimeStr,
     isAllDay: isAllDay,
-    details: eventDetailsInput.value,
+    details: eventDetailsInput.value.trim(),
   };
 
   if (editingEvent) {
     const index = events.findIndex(ev => ev.id === editingEvent.id);
     if (index !== -1) {
-      events[index] = { ...events[index], ...eventData };
+      events[index] = eventData;
     }
   } else {
-    events.push({ id: Date.now(), ...eventData });
+    events.push(eventData);
   }
 
   saveEvents();
   updateView();
-  renderMiniCalendar(currentDate);
   closeModal(eventModal);
 });
 
@@ -496,7 +642,7 @@ function openDetailsModal(event) {
   activeEventId = event.id;
   detailsContent.innerHTML = `
     <h3>${event.title}</h3>
-    <p><strong>Date:</strong> ${event.date}</p>
+    <p><strong>Date:</strong> <time datetime="${event.date}">${event.date}</time></p>
     <p><strong>Time:</strong> ${formatTimeForDisplay(event)}</p>
     <p>${event.details || "No details provided"}</p>
   `;
@@ -509,7 +655,6 @@ deleteEventBtn.addEventListener("click", () => {
     events = events.filter(e => e.id !== activeEventId);
     saveEvents();
     updateView();
-    renderMiniCalendar(currentDate);
     closeModal(detailsModal);
   }
 });
@@ -520,7 +665,7 @@ editEventBtn.addEventListener("click", () => {
   if (event) {
     closeModal(detailsModal);
     const date = parseDateOnly(event.date);
-    openEventModal(date, event);
+    if (date) openEventModal(date, event);
   }
 });
 
@@ -537,7 +682,10 @@ viewToggle.addEventListener("click", () => {
 });
 
 // ===== Create Event Button =====
-createEventBtn.addEventListener("click", () => openEventModal(selectedDate));
+createEventBtn.addEventListener("click", () => {
+  syncMiniCalendar();
+  openEventModal(selectedDate);
+});
 
 // ===== Time Format Toggle =====
 timeFormatToggle.addEventListener("click", () => {
@@ -553,7 +701,12 @@ untilCheckbox.addEventListener("change", updateTimeInputs);
 
 // ===== Local Storage =====
 function saveEvents() {
-  localStorage.setItem("calendarEvents", JSON.stringify(events));
+  try {
+    localStorage.setItem("calendarEvents", JSON.stringify(events));
+  } catch (e) {
+    console.error("Failed to save events:", e);
+    showErrorMessage("Error saving events. Local storage may be disabled or full.");
+  }
 }
 
 // ===== Month Navigation =====
@@ -577,6 +730,6 @@ logInButton.addEventListener("click", () => {
 });
 
 // ===== Init =====
-renderMiniCalendar(currentDate);
+syncMiniCalendar();
 updateView();
 updateTimeInputs();
