@@ -1,5 +1,4 @@
 /* ===== Global Styles ===== */
-/* These styles set the overall font, layout, and full-height structure for the app */
 body {
   font-family: sans-serif;
   margin: 0;
@@ -13,7 +12,6 @@ body {
 }
 
 /* ===== Sidebar / Mini Calendar ===== */
-/* Styles for the left sidebar containing the logo and compact monthly calendar for quick navigation */
 .sidebar {
   width: 300px;
   border-right: 1px solid #ddd;
@@ -73,13 +71,12 @@ body {
 }
 
 /* ===== Main View Layout ===== */
-/* Layout for the main content area, including topbar and scrollable view sections */
 .main-view {
   flex: 1;
   display: flex;
   flex-direction: column;
   padding: 10px;
-  min-height: 0; /* allow children to scroll properly */
+  min-height: 0;
 }
 
 .topbar {
@@ -98,8 +95,38 @@ body {
   gap: 10px;
 }
 
+/* ===== View Selector ===== */
+.view-selector {
+  display: flex;
+  gap: 10px;
+}
+
+.view-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.view-btn:hover {
+  text-decoration: underline;
+}
+
+.view-btn.active {
+  font-weight: bold;
+  color: #2196f3;
+  text-decoration: underline;
+}
+
+.month-view.active,
+.week-view.active,
+.year-view.active {
+  border: 2px solid #2196f3;
+  border-radius: 4px;
+}
+
 /* ===== Buttons ===== */
-/* General button styling, including hover effects and responsive font sizing */
 button {
   padding: 10px 20px;
   background-color: green;
@@ -115,22 +142,7 @@ button:hover {
   background-color: darkgreen;
 }
 
-/* Toggle button */
-.view-toggle {
-  font-size: 1.2rem;
-  font-weight: bold;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #333;
-}
-
-.view-toggle:hover {
-  text-decoration: underline;
-}
-
 /* ===== Month View ===== */
-/* Styles for the large monthly calendar grid, including event display and hover effects */
 .month-view {
   flex: 1;
   overflow-y: auto;
@@ -163,9 +175,9 @@ button:hover {
   height: 80px;
   vertical-align: top;
   padding: 4px;
-  position: relative; /* For positioning event elements */
-  overflow: hidden; /* Prevent overflow from many events */
-  max-height: 80px; /* Cap height to fit multiple events */
+  position: relative;
+  overflow: hidden;
+  max-height: 80px;
 }
 
 .big-calendar td {
@@ -176,7 +188,6 @@ button:hover {
   background-color: #f0f0f0;
 }
 
-/* Events inside month cells */
 .month-event {
   background: #2196f3;
   color: white;
@@ -192,9 +203,8 @@ button:hover {
   max-width: 100%;
 }
 
-/* All-day events in month view */
 .month-event.all-day {
-  background: #ff9800; /* Distinct color for all-day events */
+  background: #ff9800;
   font-weight: bold;
 }
 
@@ -205,7 +215,6 @@ button:hover {
 }
 
 /* ===== Week View ===== */
-/* Flex-based layout for weekly schedule to allow nav at top, with inner grid for time slots and day columns */
 .event-grid {
   flex: 1;
   display: flex;
@@ -215,15 +224,13 @@ button:hover {
   min-height: 0;
 }
 
-/* Inner grid container for time column and day columns */
 .week-grid-container {
   display: grid;
-  grid-template-columns: 60px repeat(7, 1fr); /* time column + 7 days */
+  grid-template-columns: 60px repeat(7, 1fr);
   flex: 1;
   overflow-y: auto;
 }
 
-/* Time column (left) */
 .time-column {
   grid-column: 1;
   display: flex;
@@ -246,7 +253,6 @@ button:hover {
   box-sizing: border-box;
 }
 
-/* Day columns */
 .day-column {
   display: flex;
   flex-direction: column;
@@ -255,7 +261,6 @@ button:hover {
   position: relative;
 }
 
-/* Sticky header */
 .day-header {
   background: #f7f7f7;
   text-align: center;
@@ -267,12 +272,11 @@ button:hover {
   z-index: 5;
 }
 
-/* Week view navigation (Centered) */
 .week-nav {
   display: flex;
-  justify-content: center; /* Center the navigation */
+  justify-content: center;
   align-items: center;
-  gap: 10px; /* Space between buttons and title */
+  gap: 10px;
   margin-bottom: 10px;
 }
 
@@ -296,7 +300,6 @@ button:hover {
   font-size: 1.2rem;
 }
 
-/* Hour slots */
 .day-slots {
   flex: 1;
   display: block;
@@ -314,13 +317,12 @@ button:hover {
   background-color: #f0f0f0;
 }
 
-/* All-day events in week view */
 .all-day-container {
   background: #f7f7f7;
   border-bottom: 1px solid #ddd;
   padding: 4px;
   position: sticky;
-  top: 30px; /* Below day-header */
+  top: 30px;
   z-index: 4;
   min-height: 30px;
 }
@@ -336,7 +338,6 @@ button:hover {
   display: inline-block;
 }
 
-/* Events in week view */
 .event-box {
   position: absolute;
   left: 5px;
@@ -350,12 +351,11 @@ button:hover {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  min-height: 20px; /* Ensure short events are visible */
-  box-sizing: border-box; /* For overlap handling with width/left */
+  min-height: 20px;
+  box-sizing: border-box;
 }
 
 /* ===== Year View ===== */
-/* Grid layout for yearly overview with 12 mini-month calendars */
 .year-view {
   flex: 1;
   overflow-y: auto;
@@ -414,7 +414,6 @@ button:hover {
 }
 
 /* ===== Modals ===== */
-/* Overlay and content styles for pop-up modals like event creation and details */
 .modal {
   opacity: 0;
   pointer-events: none;
@@ -437,9 +436,9 @@ button:hover {
 }
 
 .modal-content {
-  width: 90%; /* Responsive width */
+  width: 90%;
   max-width: 500px;
-  min-width: 300px; /* Prevent too narrow on small screens */
+  min-width: 300px;
   padding: 20px;
   border-radius: 8px;
   background: white;
@@ -486,7 +485,6 @@ button:hover {
 }
 
 /* ===== Error Message in Event Modal ===== */
-/* Styles for temporary error messages displayed in the event modal */
 #errorMessage {
   display: none;
   background-color: #ffebee;
@@ -499,7 +497,6 @@ button:hover {
   animation: fadeOut 2s ease-in-out;
 }
 
-/* Fade-out animation for error message */
 @keyframes fadeOut {
   0% { opacity: 1; }
   80% { opacity: 1; }
@@ -507,7 +504,6 @@ button:hover {
 }
 
 /* ===== All Day / Until Styling ===== */
-/* Layout for time input fields in the event creation modal */
 #allDayCheckbox,
 #untilCheckbox {
   margin-right: 5px;
@@ -526,13 +522,11 @@ button:hover {
 }
 
 /* ===== Hide Section Utility ===== */
-/* Simple utility class to hide/show views dynamically */
 .hidden {
   display: none;
 }
 
 /* ===== Responsive Adjustments ===== */
-/* Media queries for smaller screens, including collapsible sidebar and year grid adjustments */
 @media (max-width: 768px) {
   .sidebar {
     width: 60px;

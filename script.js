@@ -1,5 +1,3 @@
-// script.js (updated with week view title centering via structure change and mini calendar desync fix)
-
 // ===== Global State =====
 let events = [];
 try {
@@ -23,7 +21,6 @@ const yearGrid = document.getElementById("yearGrid");
 const monthView = document.getElementById("monthView");
 const weekView = document.getElementById("weekView");
 const yearView = document.getElementById("yearView");
-const viewToggle = document.getElementById("viewToggle");
 const createEventBtn = document.getElementById("createEventButton");
 const timeFormatToggle = document.getElementById("timeFormatToggle");
 
@@ -101,9 +98,20 @@ function showErrorMessage(message) {
   }, 2000);
 }
 
+function getEventsByDate() {
+  const eventMap = {};
+  events.forEach(event => {
+    const dateStr = parseDateOnly(event.date)?.toDateString();
+    if (dateStr) {
+      if (!eventMap[dateStr]) eventMap[dateStr] = [];
+      eventMap[dateStr].push(event);
+    }
+  });
+  return eventMap;
+}
+
 function syncMiniCalendar() {
-  currentDate.setFullYear(selectedDate.getFullYear());
-  currentDate.setMonth(selectedDate.getMonth());
+  currentDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
   renderMiniCalendar(currentDate);
 }
 
@@ -112,15 +120,19 @@ function updateTimeInputs() {
   const untilDisabled = !untilCheckbox.checked || allDayDisabled;
 
   eventHourInput.disabled = allDayDisabled;
+  eventHourInput.style.display = allDayDisabled ? "none" : "inline-block";
   eventMinuteInput.disabled = allDayDisabled;
+  eventMinuteInput.style.display = allDayDisabled ? "none" : "inline-block";
   eventAMPMSelect.disabled = allDayDisabled;
+  eventAMPMSelect.style.display = allDayDisabled || use24Hour ? "none" : "inline-block";
   untilCheckbox.disabled = allDayDisabled;
+  untilCheckbox.style.display = allDayDisabled ? "none" : "inline-block";
   eventEndHourInput.disabled = untilDisabled;
+  eventEndHourInput.style.display = untilDisabled ? "none" : "inline-block";
   eventEndMinuteInput.disabled = untilDisabled;
+  eventEndMinuteInput.style.display = untilDisabled ? "none" : "inline-block";
   eventEndAMPMSelect.disabled = untilDisabled;
-
-  eventAMPMSelect.style.display = use24Hour ? "none" : "inline-block";
-  eventEndAMPMSelect.style.display = use24Hour ? "none" : "inline-block";
+  eventEndAMPMSelect.style.display = untilDisabled || use24Hour ? "none" : "inline-block";
 
   if (use24Hour) {
     eventHourInput.min = 0;
@@ -167,7 +179,6 @@ function renderMiniCalendar(date = new Date()) {
     cell.setAttribute("aria-label", `Day ${day} of ${monthYear.textContent}`);
     cell.addEventListener("click", () => {
       selectedDate = cellDate;
-      syncMiniCalendar();
       currentView = "month";
       updateView();
     });
@@ -182,6 +193,7 @@ function renderMiniCalendar(date = new Date()) {
 
 // ===== Month View =====
 function renderMonthView() {
+  const eventMap = getEventsByDate();
   const monthTitle = document.getElementById("monthTitle");
   monthTitle.textContent = selectedDate.toLocaleDateString("default", {
     month: "long",
@@ -211,13 +223,11 @@ function renderMonthView() {
       openEventModal(cellDate);
     });
 
-    const dayEvents = events
-      .filter(e => parseDateOnly(e.date)?.toDateString() === cellDate.toDateString())
-      .sort((a, b) => {
-        if (a.isAllDay && !b.isAllDay) return -1;
-        if (!a.isAllDay && b.isAllDay) return 1;
-        return (a.time || "00:00").localeCompare(b.time || "00:00");
-      });
+    const dayEvents = (eventMap[cellDate.toDateString()] || []).sort((a, b) => {
+      if (a.isAllDay && !b.isAllDay) return -1;
+      if (!a.isAllDay && b.isAllDay) return 1;
+      return (a.time || "00:00").localeCompare(b.time || "00:00");
+    });
 
     dayEvents.slice(0, 3).forEach(event => {
       const div = document.createElement("div");
@@ -238,7 +248,6 @@ function renderMonthView() {
       more.textContent = `+${dayEvents.length - 3} more`;
       more.addEventListener("click", () => {
         selectedDate = cellDate;
-        syncMiniCalendar();
         currentView = "week";
         updateView();
       });
@@ -257,7 +266,6 @@ function renderMonthView() {
 function renderWeekView() {
   weekView.innerHTML = "";
 
-  // Add week navigation with date range
   const weekStart = new Date(selectedDate);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const weekEnd = new Date(weekStart);
@@ -271,7 +279,7 @@ function renderWeekView() {
   `;
   weekView.appendChild(nav);
 
-  // Create grid container for time and day columns
+  const eventMap = getEventsByDate();
   const gridContainer = document.createElement("div");
   gridContainer.classList.add("week-grid-container");
 
@@ -300,7 +308,6 @@ function renderWeekView() {
     header.textContent = dayDate.toLocaleDateString("default", { weekday: "short", month: "short", day: "numeric" });
     col.appendChild(header);
 
-    // All-day events container
     const allDayContainer = document.createElement("div");
     allDayContainer.classList.add("all-day-container");
     col.appendChild(allDayContainer);
@@ -320,15 +327,12 @@ function renderWeekView() {
     }
     col.appendChild(slots);
 
-    const dayEvents = events
-      .filter(e => parseDateOnly(e.date)?.toDateString() === dayDate.toDateString())
-      .sort((a, b) => {
-        if (a.isAllDay && !b.isAllDay) return -1;
-        if (!a.isAllDay && b.isAllDay) return 1;
-        return (a.time || "00:00").localeCompare(b.time || "00:00");
-      });
+    const dayEvents = (eventMap[dayDate.toDateString()] || []).sort((a, b) => {
+      if (a.isAllDay && !b.isAllDay) return -1;
+      if (!a.isAllDay && b.isAllDay) return 1;
+      return (a.time || "00:00").localeCompare(b.time || "00:00");
+    });
 
-    // Render all-day events
     dayEvents.filter(e => e.isAllDay).forEach(event => {
       const evBox = document.createElement("div");
       evBox.classList.add("all-day-event");
@@ -340,7 +344,6 @@ function renderWeekView() {
       allDayContainer.appendChild(evBox);
     });
 
-    // Render timed events with overlap handling
     const timedEvents = dayEvents.filter(e => !e.isAllDay);
     const overlaps = timedEvents.map(event => ({
       event,
@@ -348,7 +351,6 @@ function renderWeekView() {
       endMin: getTimeInMinutes(event.endTime || (event.time ? `${parseInt(event.time.split(":")[0]) + 1}:00` : "01:00")),
     }));
 
-    // Calculate overlap groups
     const lanes = [];
     overlaps.forEach((item, index) => {
       let placed = false;
@@ -369,10 +371,9 @@ function renderWeekView() {
 
       const startMin = getTimeInMinutes(event.time || "00:00");
       const endMin = event.endTime ? getTimeInMinutes(event.endTime) : startMin + 60;
-      evBox.style.top = `${(startMin / 60) * 60}px`; // 60px per hour
-      evBox.style.height = `${((endMin - startMin) / 60) * 60}px`; // 60px per hour
+      evBox.style.top = `${(startMin / 60) * 60}px`;
+      evBox.style.height = `${((endMin - startMin) / 60) * 60}px`;
 
-      // Find the lane for this event
       const laneIndex = lanes.findIndex(lane => lane.some(item => item.event === event));
       const lane = lanes[laneIndex] || [];
       const laneWidth = 100 / Math.max(1, lanes.length);
@@ -391,7 +392,6 @@ function renderWeekView() {
   }
   weekView.appendChild(gridContainer);
 
-  // Week navigation event listeners
   const prevWeekBtn = document.getElementById("prevWeek");
   const nextWeekBtn = document.getElementById("nextWeek");
   if (prevWeekBtn) {
@@ -412,6 +412,7 @@ function renderWeekView() {
 
 // ===== Year View =====
 function renderYearView() {
+  const eventMap = getEventsByDate();
   const year = selectedDate.getFullYear();
   yearTitle.textContent = year;
   yearGrid.innerHTML = "";
@@ -451,12 +452,10 @@ function renderYearView() {
       if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
       if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
 
-      const dayEvents = events.filter(e => parseDateOnly(e.date)?.toDateString() === cellDate.toDateString());
-      if (dayEvents.length > 0) cell.classList.add("has-events");
+      if (eventMap[cellDate.toDateString()]?.length > 0) cell.classList.add("has-events");
 
       cell.addEventListener("click", () => {
         selectedDate = cellDate;
-        syncMiniCalendar();
         currentView = "month";
         updateView();
       });
@@ -478,18 +477,26 @@ function updateView() {
   monthView.classList.add("hidden");
   weekView.classList.add("hidden");
   yearView.classList.add("hidden");
+  monthView.classList.remove("active");
+  weekView.classList.remove("active");
+  yearView.classList.remove("active");
+
+  document.querySelectorAll(".view-btn").forEach(btn => btn.classList.remove("active"));
 
   if (currentView === "month") {
     monthView.classList.remove("hidden");
-    viewToggle.textContent = "Year View";
+    monthView.classList.add("active");
+    document.querySelector(".view-btn[data-view='month']").classList.add("active");
     renderMonthView();
   } else if (currentView === "week") {
     weekView.classList.remove("hidden");
-    viewToggle.textContent = "Month View";
+    weekView.classList.add("active");
+    document.querySelector(".view-btn[data-view='week']").classList.add("active");
     renderWeekView();
   } else if (currentView === "year") {
     yearView.classList.remove("hidden");
-    viewToggle.textContent = "Week View";
+    yearView.classList.add("active");
+    document.querySelector(".view-btn[data-view='year']").classList.add("active");
     renderYearView();
   }
   syncMiniCalendar();
@@ -544,7 +551,6 @@ closeEventModal.addEventListener("click", () => closeModal(eventModal));
 closeDetailsModal.addEventListener("click", () => closeModal(detailsModal));
 closeLoginModal.addEventListener("click", () => closeModal(loginModal));
 
-// Keyboard support for modal close buttons
 [closeEventModal, closeDetailsModal, closeLoginModal].forEach(btn => {
   btn.addEventListener("keydown", e => {
     if (e.key === "Enter" || e.key === " ") {
@@ -564,8 +570,8 @@ eventForm.addEventListener("submit", e => {
   }
 
   const eventDate = parseDateOnly(eventDateInput.value);
-  if (!eventDate || eventDate < new Date().setHours(0, 0, 0, 0)) {
-    showErrorMessage("Invalid or past date");
+  if (!eventDate) {
+    showErrorMessage("Invalid date");
     return;
   }
 
@@ -669,16 +675,12 @@ editEventBtn.addEventListener("click", () => {
   }
 });
 
-// ===== View Toggle =====
-viewToggle.addEventListener("click", () => {
-  if (currentView === "week") {
-    currentView = "month";
-  } else if (currentView === "month") {
-    currentView = "year";
-  } else {
-    currentView = "week";
-  }
-  updateView();
+// ===== View Selection =====
+document.querySelectorAll(".view-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    currentView = btn.dataset.view;
+    updateView();
+  });
 });
 
 // ===== Create Event Button =====
@@ -705,22 +707,20 @@ function saveEvents() {
     localStorage.setItem("calendarEvents", JSON.stringify(events));
   } catch (e) {
     console.error("Failed to save events:", e);
-    showErrorMessage("Error saving events. Local storage may be disabled or full.");
+    showErrorMessage("Unable to save events. They will not persist after closing the browser.");
   }
 }
 
 // ===== Month Navigation =====
 document.getElementById("prevMonth").addEventListener("click", () => {
-  currentDate.setMonth(currentDate.getMonth() - 1);
   selectedDate.setMonth(selectedDate.getMonth() - 1);
-  renderMiniCalendar(currentDate);
+  syncMiniCalendar();
   updateView();
 });
 
 document.getElementById("nextMonth").addEventListener("click", () => {
-  currentDate.setMonth(currentDate.getMonth() + 1);
   selectedDate.setMonth(selectedDate.getMonth() + 1);
-  renderMiniCalendar(currentDate);
+  syncMiniCalendar();
   updateView();
 });
 

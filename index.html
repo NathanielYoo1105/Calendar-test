@@ -34,7 +34,11 @@
     <main class="main-view">
       <header class="topbar">
         <div class="left-buttons">
-          <button id="viewToggle" class="view-toggle">Week View</button>
+          <div class="view-selector">
+            <button class="view-btn" data-view="week">Week</button>
+            <button class="view-btn" data-view="month">Month</button>
+            <button class="view-btn" data-view="year">Year</button>
+          </div>
           <button id="createEventButton">Create Event</button>
           <button id="timeFormatToggle">Switch to 24-Hour</button>
         </div>
