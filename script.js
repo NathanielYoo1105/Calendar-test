@@ -42,6 +42,62 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // ==================== LOGIN SYSTEM ====================
+loginForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  if (!username || !password) {
+    alert("Please enter both username and password!");
+    return;
+  }
+
+  // Simple demo login (no backend yet)
+  currentUser = username;
+  localStorage.setItem("currentUser", username);
+
+  alert(`Welcome, ${username}!`);
+  closeModal(loginModal);
+  updateAuthUI();
+  filterEventsForUser();
+});
+
+function logOut() {
+  localStorage.removeItem("currentUser");
+  currentUser = null;
+  updateAuthUI();
+  renderWeekEvents();
+  renderMonthEvents();
+  alert("You have been logged out.");
+}
+
+function updateAuthUI() {
+  if (currentUser) {
+    logInButton.textContent = `Log Out (${currentUser})`;
+  } else {
+    logInButton.textContent = "Log In";
+  }
+}
+
+// When the button is clicked
+logInButton.addEventListener("click", () => {
+  if (currentUser) {
+    logOut();
+  } else {
+    openModal(loginModal);
+  }
+});
+
+updateAuthUI();
+
+// Filter events to only show the current user's events
+function filterEventsForUser() {
+  if (!currentUser) return [];
+  return events.filter(ev => ev.user === currentUser);
+}
+
+
   // ----- Mini calendar -----
   function renderCalendar(date) {
     const year = date.getFullYear();
