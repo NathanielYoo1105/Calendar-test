@@ -297,7 +297,10 @@ function renderWeekView() {
   }
   gridContainer.appendChild(timeCol);
 
-  for (let d = 0; d < 7; d++) {
+  const isSmallScreen = window.matchMedia("(max-width: 480px)").matches;
+  const daysToShow = isSmallScreen ? 3 : 7;
+
+  for (let d = 0; d < daysToShow; d++) {
     const col = document.createElement("div");
     col.classList.add("day-column");
 
@@ -364,6 +367,7 @@ function renderWeekView() {
       if (!placed) lanes.push([item]);
     });
 
+    const hourSlotHeight = isSmallScreen ? 50 : 60; // Match CSS heights
     timedEvents.forEach((event, index) => {
       const evBox = document.createElement("div");
       evBox.classList.add("event-box");
@@ -371,11 +375,10 @@ function renderWeekView() {
 
       const startMin = getTimeInMinutes(event.time || "00:00");
       const endMin = event.endTime ? getTimeInMinutes(event.endTime) : startMin + 60;
-      evBox.style.top = `${(startMin / 60) * 60}px`;
-      evBox.style.height = `${((endMin - startMin) / 60) * 60}px`;
+      evBox.style.top = `${(startMin / 60) * hourSlotHeight}px`;
+      evBox.style.height = `${((endMin - startMin) / 60) * hourSlotHeight}px`;
 
       const laneIndex = lanes.findIndex(lane => lane.some(item => item.event === event));
-      const lane = lanes[laneIndex] || [];
       const laneWidth = 100 / Math.max(1, lanes.length);
       evBox.style.width = `${laneWidth}%`;
       evBox.style.left = `${laneIndex * laneWidth}%`;
@@ -391,6 +394,13 @@ function renderWeekView() {
     gridContainer.appendChild(col);
   }
   weekView.appendChild(gridContainer);
+
+  // Auto-scroll to current time
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const scrollPosition = (currentHour + currentMinute / 60) * hourSlotHeight;
+  gridContainer.scrollTop = scrollPosition - (hourSlotHeight * 2); // Center current time, offset by 2 hours
 
   const prevWeekBtn = document.getElementById("prevWeek");
   const nextWeekBtn = document.getElementById("nextWeek");
