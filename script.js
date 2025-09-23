@@ -17,12 +17,21 @@ const calendarBody = document.getElementById("calendarBody");
 const bigCalendarBody = document.getElementById("bigCalendarBody");
 const yearTitle = document.getElementById("yearTitle");
 const yearGrid = document.getElementById("yearGrid");
+const monthTitle = document.getElementById("monthTitle");
+const weekTitle = document.getElementById("weekTitle");
 
 const monthView = document.getElementById("monthView");
 const weekView = document.getElementById("weekView");
 const yearView = document.getElementById("yearView");
 const createEventBtn = document.getElementById("createEventButton");
 const timeFormatToggle = document.getElementById("timeFormatToggle");
+const darkModeToggle = document.getElementById("darkModeToggle");
+
+// Navigation Buttons
+const prevMonthMain = document.getElementById("prevMonthMain");
+const nextMonthMain = document.getElementById("nextMonthMain");
+const prevYear = document.getElementById("prevYear");
+const nextYear = document.getElementById("nextYear");
 
 // Modals
 const eventModal = document.getElementById("eventModal");
@@ -39,6 +48,10 @@ const untilCheckbox = document.getElementById("untilCheckbox");
 const eventEndHourInput = document.getElementById("eventEndHour");
 const eventEndMinuteInput = document.getElementById("eventEndMinute");
 const eventEndAMPMSelect = document.getElementById("eventEndAMPM");
+const recurrenceTypeSelect = document.getElementById("recurrenceType");
+const recurrenceIntervalInput = document.getElementById("recurrenceInterval");
+const recurrenceUnitSpan = document.getElementById("recurrenceUnit");
+const recurrenceUntilInput = document.getElementById("recurrenceUntil");
 
 const detailsModal = document.getElementById("detailsModal");
 const closeDetailsModal = detailsModal.querySelector(".close-btn");
@@ -49,6 +62,11 @@ const editEventBtn = document.getElementById("editEventButton");
 const loginModal = document.getElementById("loginModal");
 const closeLoginModal = loginModal.querySelector(".close-btn");
 const logInButton = document.getElementById("logInButton");
+
+// Settings
+const settingsButton = document.getElementById("settingsButton");
+const miniCalendar = document.querySelector(".mini-calendar");
+const settingsPanel = document.getElementById("settingsPanel");
 
 let activeEventId = null;
 let editingEvent = null;
@@ -98,16 +116,48 @@ function showErrorMessage(message) {
   }, 2000);
 }
 
-function getEventsByDate() {
-  const eventMap = {};
-  events.forEach(event => {
-    const dateStr = parseDateOnly(event.date)?.toDateString();
-    if (dateStr) {
-      if (!eventMap[dateStr]) eventMap[dateStr] = [];
-      eventMap[dateStr].push(event);
-    }
-  });
-  return eventMap;
+function monthsBetween(d1, d2) {
+  return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+}
+
+function matchesDate(ev, date) {
+  const evDate = parseDateOnly(ev.date);
+  if (!evDate) return false;
+
+  if (!ev.recurrence) {
+    return evDate.toDateString() === date.toDateString();
+  }
+
+  const { type, interval = 1, until } = ev.recurrence;
+  if (evDate > date) return false;
+  const untilDate = until ? parseDateOnly(until) : null;
+  if (untilDate && untilDate < date) return false;
+
+  const diffMs = date - evDate;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (type === "daily") {
+    return diffDays % interval === 0;
+  } else if (type === "weekly") {
+    return date.getDay() === evDate.getDay() && (diffDays % (7 * interval) === 0);
+  } else if (type === "monthly") {
+    const monthsDiff = monthsBetween(evDate, date);
+    return date.getDate() === evDate.getDate() && (monthsDiff % interval === 0);
+  }
+  return false;
+}
+
+function getEventsForDate(targetDate) {
+  return events
+    .filter(ev => matchesDate(ev, targetDate))
+    .map(ev => {
+      const instance = { ...ev, instanceDate: targetDate.toISOString().slice(0, 10) };
+      if (ev.date !== instance.instanceDate) {
+        instance.date = instance.instanceDate;
+        instance.isInstance = true;
+      }
+      return instance;
+    });
 }
 
 function syncMiniCalendar() {
@@ -148,6 +198,19 @@ function updateTimeInputs() {
     eventEndHourInput.min = 1;
     eventEndHourInput.max = 12;
     eventEndHourInput.placeholder = "HH (1-12)";
+  }
+}
+
+function updateRecurrenceInputs() {
+  const type = recurrenceTypeSelect.value;
+  const isRecurring = type !== "none";
+  recurrenceIntervalInput.disabled = !isRecurring;
+  recurrenceUntilInput.disabled = !isRecurring;
+
+  if (isRecurring) {
+    recurrenceUnitSpan.textContent = type === "daily" ? "day(s)" : type === "weekly" ? "week(s)" : "month(s)";
+  } else {
+    recurrenceUnitSpan.textContent = "";
   }
 }
 
@@ -193,8 +256,6 @@ function renderMiniCalendar(date = new Date()) {
 
 // ===== Month View =====
 function renderMonthView() {
-  const eventMap = getEventsByDate();
-  const monthTitle = document.getElementById("monthTitle");
   monthTitle.textContent = selectedDate.toLocaleDateString("default", {
     month: "long",
     year: "numeric",
@@ -223,7 +284,7 @@ function renderMonthView() {
       openEventModal(cellDate);
     });
 
-    const dayEvents = (eventMap[cellDate.toDateString()] || []).sort((a, b) => {
+    const dayEvents = getEventsForDate(cellDate).sort((a, b) => {
       if (a.isAllDay && !b.isAllDay) return -1;
       if (!a.isAllDay && b.isAllDay) return 1;
       return (a.time || "00:00").localeCompare(b.time || "00:00");
@@ -274,12 +335,23 @@ function renderWeekView() {
   nav.classList.add("week-nav");
   nav.innerHTML = `
     <button id="prevWeek" aria-label="Previous Week">‹</button>
-    <h2>${weekStart.toLocaleDateString("default", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}</h2>
+    <h2 id="weekTitle">${weekStart.toLocaleDateString("default", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}</h2>
     <button id="nextWeek" aria-label="Next Week">›</button>
   `;
   weekView.appendChild(nav);
 
-  const eventMap = getEventsByDate();
+  // Attach listeners to the newly created week navigation buttons
+  document.getElementById("prevWeek").addEventListener("click", () => {
+    selectedDate.setDate(selectedDate.getDate() - 7);
+    syncMiniCalendar();
+    updateView();
+  });
+  document.getElementById("nextWeek").addEventListener("click", () => {
+    selectedDate.setDate(selectedDate.getDate() + 7);
+    syncMiniCalendar();
+    updateView();
+  });
+
   const gridContainer = document.createElement("div");
   gridContainer.classList.add("week-grid-container");
 
@@ -330,7 +402,7 @@ function renderWeekView() {
     }
     col.appendChild(slots);
 
-    const dayEvents = (eventMap[dayDate.toDateString()] || []).sort((a, b) => {
+    const dayEvents = getEventsForDate(dayDate).sort((a, b) => {
       if (a.isAllDay && !b.isAllDay) return -1;
       if (!a.isAllDay && b.isAllDay) return 1;
       return (a.time || "00:00").localeCompare(b.time || "00:00");
@@ -367,7 +439,7 @@ function renderWeekView() {
       if (!placed) lanes.push([item]);
     });
 
-    const hourSlotHeight = isSmallScreen ? 50 : 60; // Match CSS heights
+    const hourSlotHeight = isSmallScreen ? 50 : 60;
     timedEvents.forEach((event, index) => {
       const evBox = document.createElement("div");
       evBox.classList.add("event-box");
@@ -395,34 +467,15 @@ function renderWeekView() {
   }
   weekView.appendChild(gridContainer);
 
-  // Auto-scroll to current time
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
   const scrollPosition = (currentHour + currentMinute / 60) * hourSlotHeight;
-  gridContainer.scrollTop = scrollPosition - (hourSlotHeight * 2); // Center current time, offset by 2 hours
-
-  const prevWeekBtn = document.getElementById("prevWeek");
-  const nextWeekBtn = document.getElementById("nextWeek");
-  if (prevWeekBtn) {
-    prevWeekBtn.addEventListener("click", () => {
-      selectedDate.setDate(selectedDate.getDate() - 7);
-      syncMiniCalendar();
-      updateView();
-    });
-  }
-  if (nextWeekBtn) {
-    nextWeekBtn.addEventListener("click", () => {
-      selectedDate.setDate(selectedDate.getDate() + 7);
-      syncMiniCalendar();
-      updateView();
-    });
-  }
+  gridContainer.scrollTop = scrollPosition - (hourSlotHeight * 2);
 }
 
 // ===== Year View =====
 function renderYearView() {
-  const eventMap = getEventsByDate();
   const year = selectedDate.getFullYear();
   yearTitle.textContent = year;
   yearGrid.innerHTML = "";
@@ -462,7 +515,8 @@ function renderYearView() {
       if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
       if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
 
-      if (eventMap[cellDate.toDateString()]?.length > 0) cell.classList.add("has-events");
+      const dayEvents = getEventsForDate(cellDate);
+      if (dayEvents.length > 0) cell.classList.add("has-events");
 
       cell.addEventListener("click", () => {
         selectedDate = cellDate;
@@ -518,15 +572,19 @@ function openEventModal(date, event = null) {
   eventDateInput.value = date.toISOString().slice(0, 10);
   allDayCheckbox.checked = false;
   untilCheckbox.checked = false;
+  recurrenceTypeSelect.value = "none";
+  recurrenceIntervalInput.value = 1;
+  recurrenceUntilInput.value = "";
 
   if (event) {
-    editingEvent = event;
-    eventTitleInput.value = event.title;
-    eventDateInput.value = event.date;
-    eventDetailsInput.value = event.details || "";
-    allDayCheckbox.checked = event.isAllDay || false;
+    const baseEvent = event.isInstance ? events.find(e => e.id === event.id) : event;
+    editingEvent = baseEvent;
+    eventTitleInput.value = baseEvent.title;
+    eventDateInput.value = baseEvent.date;
+    eventDetailsInput.value = baseEvent.details || "";
+    allDayCheckbox.checked = baseEvent.isAllDay || false;
 
-    let [hour, minute] = (event.time || "00:00").split(":").map(Number);
+    let [hour, minute] = (baseEvent.time || "00:00").split(":").map(Number);
     eventMinuteInput.value = minute;
     if (!use24Hour) {
       const ampm = hour >= 12 ? "PM" : "AM";
@@ -535,9 +593,9 @@ function openEventModal(date, event = null) {
     }
     eventHourInput.value = hour;
 
-    if (event.endTime) {
+    if (baseEvent.endTime) {
       untilCheckbox.checked = true;
-      let [endHour, endMinute] = event.endTime.split(":").map(Number);
+      let [endHour, endMinute] = baseEvent.endTime.split(":").map(Number);
       eventEndMinuteInput.value = endMinute;
       if (!use24Hour) {
         const endAmpm = endHour >= 12 ? "PM" : "AM";
@@ -546,10 +604,17 @@ function openEventModal(date, event = null) {
       }
       eventEndHourInput.value = endHour;
     }
+
+    if (baseEvent.recurrence) {
+      recurrenceTypeSelect.value = baseEvent.recurrence.type;
+      recurrenceIntervalInput.value = baseEvent.recurrence.interval || 1;
+      recurrenceUntilInput.value = baseEvent.recurrence.until || "";
+    }
   } else {
     editingEvent = null;
   }
   updateTimeInputs();
+  updateRecurrenceInputs();
   eventModal.classList.add("open");
 }
 
@@ -629,6 +694,22 @@ eventForm.addEventListener("submit", e => {
     }
   }
 
+  let recurrence = null;
+  const recurrenceType = recurrenceTypeSelect.value;
+  if (recurrenceType !== "none") {
+    const interval = parseInt(recurrenceIntervalInput.value, 10);
+    if (isNaN(interval) || interval < 1) {
+      showErrorMessage("Invalid recurrence interval");
+      return;
+    }
+    const until = recurrenceUntilInput.value || null;
+    if (until && parseDateOnly(until) < eventDate) {
+      showErrorMessage("Recurrence end date must be after start date");
+      return;
+    }
+    recurrence = { type: recurrenceType, interval, until };
+  }
+
   const eventData = {
     id: editingEvent ? editingEvent.id : Date.now(),
     title: eventTitleInput.value.trim(),
@@ -637,6 +718,7 @@ eventForm.addEventListener("submit", e => {
     endTime: endTimeStr,
     isAllDay: isAllDay,
     details: eventDetailsInput.value.trim(),
+    recurrence,
   };
 
   if (editingEvent) {
@@ -655,12 +737,13 @@ eventForm.addEventListener("submit", e => {
 
 // ===== Details Modal =====
 function openDetailsModal(event) {
-  activeEventId = event.id;
+  activeEventId = event.isInstance ? event.id : event.id;
   detailsContent.innerHTML = `
     <h3>${event.title}</h3>
-    <p><strong>Date:</strong> <time datetime="${event.date}">${event.date}</time></p>
+    <p><strong>Date:</strong> <time datetime="${event.instanceDate || event.date}">${event.instanceDate || event.date}</time></p>
     <p><strong>Time:</strong> ${formatTimeForDisplay(event)}</p>
     <p>${event.details || "No details provided"}</p>
+    ${event.recurrence ? '<p><strong>Recurring:</strong> Yes</p>' : ''}
   `;
   detailsModal.classList.add("open");
 }
@@ -693,6 +776,31 @@ document.querySelectorAll(".view-btn").forEach(btn => {
   });
 });
 
+// ===== Navigation Events =====
+prevMonthMain.addEventListener("click", () => {
+  selectedDate.setMonth(selectedDate.getMonth() - 1);
+  syncMiniCalendar();
+  updateView();
+});
+
+nextMonthMain.addEventListener("click", () => {
+  selectedDate.setMonth(selectedDate.getMonth() + 1);
+  syncMiniCalendar();
+  updateView();
+});
+
+prevYear.addEventListener("click", () => {
+  selectedDate.setFullYear(selectedDate.getFullYear() - 1);
+  syncMiniCalendar();
+  updateView();
+});
+
+nextYear.addEventListener("click", () => {
+  selectedDate.setFullYear(selectedDate.getFullYear() + 1);
+  syncMiniCalendar();
+  updateView();
+});
+
 // ===== Create Event Button =====
 createEventBtn.addEventListener("click", () => {
   syncMiniCalendar();
@@ -707,9 +815,21 @@ timeFormatToggle.addEventListener("click", () => {
   updateView();
 });
 
-// ===== Checkbox Events =====
+// ===== Dark Mode Toggle =====
+darkModeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("dark-mode");
+});
+
+// ===== Checkbox and Select Events =====
 allDayCheckbox.addEventListener("change", updateTimeInputs);
 untilCheckbox.addEventListener("change", updateTimeInputs);
+recurrenceTypeSelect.addEventListener("change", updateRecurrenceInputs);
+
+// ===== Settings Toggle =====
+settingsButton.addEventListener("click", () => {
+  miniCalendar.classList.toggle("hidden");
+  settingsPanel.classList.toggle("hidden");
+});
 
 // ===== Local Storage =====
 function saveEvents() {
@@ -721,7 +841,7 @@ function saveEvents() {
   }
 }
 
-// ===== Month Navigation =====
+// ===== Month Navigation (Sidebar) =====
 document.getElementById("prevMonth").addEventListener("click", () => {
   selectedDate.setMonth(selectedDate.getMonth() - 1);
   syncMiniCalendar();
@@ -743,3 +863,4 @@ logInButton.addEventListener("click", () => {
 syncMiniCalendar();
 updateView();
 updateTimeInputs();
+updateRecurrenceInputs();

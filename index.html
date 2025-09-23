@@ -11,7 +11,9 @@
     
     <!-- Sidebar / Mini Calendar -->
     <aside class="sidebar">
-      <h1 class="logo">My Calendar</h1>
+      <div class="sidebar-header">
+        <button id="settingsButton" aria-label="Settings"></button>
+      </div>
       <div class="mini-calendar">
         <div class="calendar-header">
           <button id="prevMonth" aria-label="Previous Month">‹</button>
@@ -28,6 +30,11 @@
           <tbody id="calendarBody"></tbody>
         </table>
       </div>
+      <div id="settingsPanel" class="settings-panel hidden">
+        <h2>Settings</h2>
+        <button id="timeFormatToggle">Switch to 24-Hour</button>
+        <button id="darkModeToggle">Toggle Dark Mode</button>
+      </div>
     </aside>
 
     <!-- Main Content -->
@@ -40,7 +47,9 @@
             <button class="view-btn" data-view="year">Year</button>
           </div>
           <button id="createEventButton">Create Event</button>
-          <button id="timeFormatToggle">Switch to 24-Hour</button>
+        </div>
+        <div class="title-center">
+          <h1 class="logo">My Calendar</h1>
         </div>
         <div class="auth-buttons">
           <button id="logInButton">Log In</button>
@@ -50,7 +59,9 @@
       <!-- Month View -->
       <section id="monthView" class="month-view">
         <div class="month-header">
+          <button id="prevMonthMain" aria-label="Previous Month">‹</button>
           <h2 id="monthTitle"></h2>
+          <button id="nextMonthMain" aria-label="Next Month">›</button>
         </div>
         <table class="calendar-grid big-calendar">
           <thead>
@@ -65,12 +76,21 @@
 
       <!-- Week View -->
       <section id="weekView" class="event-grid hidden">
+        <div class="week-nav">
+          <button id="prevWeek" aria-label="Previous Week">‹</button>
+          <h2 id="weekTitle"></h2>
+          <button id="nextWeek" aria-label="Next Week">›</button>
+        </div>
         <!-- Time column + 7 day columns generated in JS -->
       </section>
 
       <!-- Year View -->
       <section id="yearView" class="year-view hidden">
-        <h2 id="yearTitle"></h2>
+        <div class="year-nav">
+          <button id="prevYear" aria-label="Previous Year">‹</button>
+          <h2 id="yearTitle"></h2>
+          <button id="nextYear" aria-label="Next Year">›</button>
+        </div>
         <div id="yearGrid"></div>
       </section>
     </main>
@@ -123,6 +143,21 @@
             <option value="PM">PM</option>
           </select>
         </label>
+
+        <!-- Recurrence Section -->
+        <label>Recurrence: 
+          <select id="recurrenceType">
+            <option value="none">None</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </label>
+        <label>Every 
+          <input type="number" id="recurrenceInterval" min="1" value="1" disabled style="width: 50px;"> 
+          <span id="recurrenceUnit"></span>
+        </label>
+        <label>Ends on: <input type="date" id="recurrenceUntil" disabled></label>
 
         <label>Details: <textarea id="eventDetails"></textarea></label>
         <button type="submit">Save Event</button>
