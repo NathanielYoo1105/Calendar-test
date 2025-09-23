@@ -19,11 +19,13 @@ body {
   flex-direction: column;
   padding: 10px;
   background-color: #f7f7f7;
+  transition: width 0.3s ease;
 }
 
 .logo {
   text-align: center;
   margin-bottom: 10px;
+  font-size: clamp(1rem, 3vw, 1.5rem);
 }
 
 .calendar-header {
@@ -38,9 +40,11 @@ body {
   color: #333;
   font-weight: bold;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: clamp(0.8rem, 2vw, 1rem);
   border: none;
   cursor: pointer;
+  min-width: 30px;
+  touch-action: manipulation;
 }
 
 .calendar-header button:hover {
@@ -57,7 +61,8 @@ body {
 .calendar-grid td {
   border: 1px solid #ddd;
   text-align: center;
-  padding: 4px;
+  padding: clamp(4px, 1vw, 6px);
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
 }
 
 .today {
@@ -66,7 +71,7 @@ body {
 
 .selected {
   background-color: #c8e6c9;
-  border-radius: 50%;
+  border-radius: 4px; /* Square indicator for selected date */
   font-weight: bold;
 }
 
@@ -75,19 +80,22 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 10px;
-  min-height: 0; /* allow children to scroll properly */
+  padding: clamp(8px, 2vw, 10px);
+  min-height: 0;
 }
 
 .topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .topbar-left {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .auth-buttons {
@@ -95,34 +103,57 @@ body {
   gap: 10px;
 }
 
+/* ===== View Selector ===== */
+.view-selector {
+  display: flex;
+  gap: 10px;
+}
+
+.view-btn {
+  background: none;
+  border: none; /* Removed border */
+  cursor: pointer;
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  color: #333;
+  padding: 8px;
+  touch-action: manipulation;
+}
+
+.view-btn:hover {
+  text-decoration: underline;
+  /* Removed border-color */
+}
+
+.view-btn.active {
+  font-weight: bold;
+  color: #2196f3;
+  text-decoration: underline;
+  /* Removed border-color */
+}
+
+.month-view.active,
+.week-view.active,
+.year-view.active {
+  border: 2px solid #2196f3;
+  border-radius: 4px;
+}
+
 /* ===== Buttons ===== */
 button {
-  padding: 10px 20px;
+  padding: clamp(8px, 2vw, 10px) clamp(16px, 3vw, 20px);
   background-color: green;
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: clamp(0.8rem, 1.2vw, 1rem);
+  font-size: clamp(0.8rem, 2vw, 1rem);
   transition: background-color 0.3s;
+  min-width: 60px;
+  touch-action: manipulation;
 }
 
 button:hover {
   background-color: darkgreen;
-}
-
-/* Toggle button */
-.view-toggle {
-  font-size: 1.2rem;
-  font-weight: bold;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #333;
-}
-
-.view-toggle:hover {
-  text-decoration: underline;
 }
 
 /* ===== Month View ===== */
@@ -133,19 +164,39 @@ button:hover {
   min-height: 0;
 }
 
+.month-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.month-header h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  color: #333;
+}
+
 .big-calendar {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .big-calendar th,
 .big-calendar td {
   border: 1px solid #ddd;
   text-align: center;
-  height: 80px;
+  height: clamp(60px, 12vw, 80px);
   vertical-align: top;
-  padding: 4px;
+  padding: clamp(4px, 1vw, 6px);
   position: relative;
+  overflow: hidden;
+  max-height: clamp(60px, 12vw, 80px);
+}
+
+.big-calendar th {
+  width: 14.28%;
 }
 
 .big-calendar td {
@@ -156,47 +207,72 @@ button:hover {
   background-color: #f0f0f0;
 }
 
-/* Events inside month cells */
 .month-event {
   background: #2196f3;
   color: white;
   border-radius: 4px;
   padding: 2px 4px;
   margin-top: 2px;
-  font-size: 0.75rem;
+  font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
   display: block;
-  max-width: 100%;
+  max-width: calc(100% - 8px);
+}
+
+.month-event.all-day {
+  background: #ff9800;
+  font-weight: bold;
+}
+
+.more-events {
+  font-size: clamp(0.65rem, 1.5vw, 0.7rem);
+  color: #2196f3;
+  cursor: pointer;
 }
 
 /* ===== Week View ===== */
 .event-grid {
   flex: 1;
-  display: grid;
-  grid-template-columns: 60px repeat(7, 1fr); /* time column + 7 days */
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   margin-top: 10px;
   min-height: 0;
 }
 
-/* Time column (left) */
-.time-column {
-  grid-column: 1;
+.week-grid-container {
+  display: grid;
+  grid-template-columns: clamp(50px, 10vw, 60px) repeat(7, 1fr);
+  flex: 1;
+  overflow-y: auto;
+  height: 100%; /* Fill available space */
+}
+
+.time-column,
+.day-slots {
   display: flex;
   flex-direction: column;
-  font-size: 12px;
+  min-height: 100%; /* Ensure they stretch to fit content */
+}
+
+.time-column {
+  grid-column: 1;
+  position: sticky;
+  left: 0;
+  z-index: 5; /* Ensure it stays above other content */
+  background: #fff; /* Prevent transparency issues */
+  font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   color: #5f6368;
   text-align: right;
   padding-right: 8px;
-  background: transparent;
   box-sizing: border-box;
 }
 
 .time-column div {
-  height: 60px;
+  height: 60px; /* Match .hour-slot height */
   border-bottom: 1px solid #f1f3f4;
   display: flex;
   align-items: center;
@@ -205,37 +281,63 @@ button:hover {
   box-sizing: border-box;
 }
 
-/* Day columns */
 .day-column {
   display: flex;
   flex-direction: column;
   border-left: 1px solid #ddd;
-  min-height: 0;
   position: relative;
+  flex: 1; /* Ensure columns fill available space */
 }
 
-/* Sticky header */
 .day-header {
   background: #f7f7f7;
   text-align: center;
   font-weight: bold;
-  padding: 6px;
+  padding: clamp(4px, 1vw, 6px);
   border-bottom: 1px solid #ddd;
   position: sticky;
   top: 0;
   z-index: 5;
+  font-size: clamp(0.8rem, 1.8vw, 0.9rem);
 }
 
-/* Hour slots */
+.week-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.week-nav button {
+  padding: 4px 8px;
+  background-color: #ccc;
+  color: #333;
+  font-weight: bold;
+  border-radius: 4px;
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  border: none;
+  cursor: pointer;
+  min-width: 30px;
+}
+
+.week-nav button:hover {
+  background-color: #bbb;
+}
+
+.week-nav h2 {
+  margin: 0;
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+}
+
 .day-slots {
   flex: 1;
   display: block;
-  min-height: 0;
 }
 
 .hour-slot {
   border-bottom: 1px solid #f1f3f4;
-  height: 60px;
+  height: 60px; /* Use fixed height for consistency */
   box-sizing: border-box;
   cursor: pointer;
 }
@@ -244,7 +346,27 @@ button:hover {
   background-color: #f0f0f0;
 }
 
-/* Events in week view */
+.all-day-container {
+  background: #f7f7f7;
+  border-bottom: 1px solid #ddd;
+  padding: 4px;
+  position: sticky;
+  top: 30px;
+  z-index: 4;
+  min-height: 30px;
+}
+
+.all-day-event {
+  background: #ff9800;
+  color: white;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 2px;
+  font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+  cursor: pointer;
+  display: inline-block;
+}
+
 .event-box {
   position: absolute;
   left: 5px;
@@ -253,12 +375,73 @@ button:hover {
   color: white;
   border-radius: 4px;
   padding: 2px 4px;
-  font-size: 0.8rem;
+  font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   cursor: pointer;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  max-height: 58px; /* keep within one slot */
+  min-height: 20px;
+  box-sizing: border-box;
+}
+
+/* ===== Year View ===== */
+.year-view {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 10px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#yearTitle {
+  text-align: center;
+  margin: 0 0 10px 0;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+}
+
+#yearGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(10px, 2vw, 20px);
+}
+
+.year-month {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: clamp(8px, 2vw, 10px);
+  border-radius: 4px;
+}
+
+.year-month h3 {
+  margin: 0 0 10px 0;
+  text-align: center;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+.year-month table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.year-month th,
+.year-month td {
+  border: 1px solid #ddd;
+  text-align: center;
+  padding: clamp(2px, 1vw, 4px);
+  font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+}
+
+.year-month td {
+  cursor: pointer;
+}
+
+.year-month td:hover {
+  background-color: #f0f0f0;
+}
+
+.year-month .has-events {
+  background-color: #e3f2fd;
 }
 
 /* ===== Modals ===== */
@@ -284,9 +467,9 @@ button:hover {
 }
 
 .modal-content {
-  width: 66%;
+  width: clamp(280px, 90vw, 400px);
   max-width: 500px;
-  padding: 20px;
+  padding: clamp(15px, 3vw, 20px);
   border-radius: 8px;
   background: white;
   position: relative;
@@ -297,12 +480,14 @@ button:hover {
   position: absolute;
   top: 10px;
   right: 15px;
-  font-size: 24px;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
   cursor: pointer;
+  padding: 8px;
 }
 
 .modal-content h2 {
   margin-top: 0;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
 }
 
 .modal-content form {
@@ -312,18 +497,153 @@ button:hover {
 }
 
 .modal-content input,
-.modal-content textarea {
-  padding: 8px;
+.modal-content textarea,
+.modal-content select {
+  padding: clamp(6px, 2vw, 8px);
   border-radius: 4px;
   border: 1px solid #ccc;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2vw, 1rem);
 }
 
 .modal-content button {
   align-self: flex-start;
 }
 
+.modal-content .modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+
+/* ===== Error Message in Event Modal ===== */
+#errorMessage {
+  display: none;
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: clamp(0.8rem, 1.8vw, 0.9rem);
+  text-align: center;
+  animation: fadeOut 2s ease-in-out;
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ===== All Day / Until Styling ===== */
+#allDayCheckbox,
+#untilCheckbox {
+  margin-right: 5px;
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#endTimeLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 /* ===== Hide Section Utility ===== */
 .hidden {
   display: none;
+}
+
+/* ===== Responsive Adjustments ===== */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 60px;
+    overflow-x: hidden;
+    transition: width 0.3s ease;
+  }
+  .sidebar:hover {
+    width: 280px;
+  }
+  .sidebar:not(:hover) .logo,
+  .sidebar:not(:hover) .calendar-header h2 {
+    display: none;
+  }
+  .sidebar:not(:hover) .calendar-grid th {
+    font-size: 0.7rem;
+  }
+  .main-view {
+    margin-left: 60px;
+  }
+  #yearGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .big-calendar th,
+  .big-calendar td {
+    font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+    height: clamp(50px, 10vw, 60px);
+  }
+  .month-event {
+    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+  }
+  .week-grid-container {
+    grid-template-columns: clamp(40px, 8vw, 50px) repeat(7, 1fr);
+  }
+  .time-column div {
+    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .app-layout {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    overflow-y: auto;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+  .sidebar:hover {
+    max-height: 300px;
+  }
+  .main-view {
+    margin-left: 0;
+    flex: 1;
+  }
+  #yearGrid {
+    grid-template-columns: 1fr;
+  }
+  .week-grid-container {
+    grid-template-columns: 40px repeat(3, 1fr);
+    overflow-x: auto;
+    height: 100%; /* Ensure full height */
+  }
+  .day-column:nth-child(n+5) {
+    display: none;
+  }
+  .week-nav h2 {
+    font-size: clamp(0.9rem, 2vw, 1rem);
+  }
+  .view-selector {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .modal-content {
+    width: clamp(250px, 95vw, 320px);
+    padding: clamp(10px, 2vw, 15px);
+  }
+  .hour-slot,
+  .time-column div {
+    height: 50px; /* Adjust for smaller screens */
+  }
 }

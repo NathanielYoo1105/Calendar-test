@@ -33,9 +33,14 @@
     <!-- Main Content -->
     <main class="main-view">
       <header class="topbar">
-        <div class="view-controls">
-          <button id="viewToggle" class="view-toggle">Week View</button>
-          <button id="createEventBtn" class="view-toggle">Create Event</button>
+        <div class="left-buttons">
+          <div class="view-selector">
+            <button class="view-btn" data-view="week">Week</button>
+            <button class="view-btn" data-view="month">Month</button>
+            <button class="view-btn" data-view="year">Year</button>
+          </div>
+          <button id="createEventButton">Create Event</button>
+          <button id="timeFormatToggle">Switch to 24-Hour</button>
         </div>
         <div class="auth-buttons">
           <button id="logInButton">Log In</button>
@@ -43,7 +48,10 @@
       </header>
 
       <!-- Month View -->
-      <section id="monthView" class="month-view hidden">
+      <section id="monthView" class="month-view">
+        <div class="month-header">
+          <h2 id="monthTitle"></h2>
+        </div>
         <table class="calendar-grid big-calendar">
           <thead>
             <tr>
@@ -56,57 +64,80 @@
       </section>
 
       <!-- Week View -->
-      <section id="weekView" class="event-grid">
-        <div class="time-column"></div>
+      <section id="weekView" class="event-grid hidden">
+        <!-- Time column + 7 day columns generated in JS -->
+      </section>
+
+      <!-- Year View -->
+      <section id="yearView" class="year-view hidden">
+        <h2 id="yearTitle"></h2>
+        <div id="yearGrid"></div>
       </section>
     </main>
   </div>
 
   <!-- ===== Login Modal ===== -->
-<div id="loginModal" class="modal hidden">
-  <div class="modal-content login-box">
-    <!-- Close button -->
-    <span id="closeModal" class="close">&times;</span>
-    
-    <h2>Log In</h2>
-    
-    <form id="loginForm">
-      <label for="username">Username</label>
-      <input type="text" id="username" name="username" required />
-
-      <label for="password">Password</label>
-      <input type="password" id="password" name="password" required />
-
-      <button type="submit">Log In</button>
-    </form>
-
-    <p class="info-text">There is no log in function yet.</p>
+  <div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="loginTitle">
+    <div class="modal-content login-box">
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2 id="loginTitle">Log In</h2>
+      <p>There is no log in function yet.</p>
+    </div>
   </div>
-</div>
 
-  <!-- ===== Add Event Modal ===== -->
-  <div id="eventModal" class="modal">
+  <!-- ===== Create Event Modal ===== -->
+  <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
     <div class="modal-content">
-      <span class="close-btn">&times;</span>
-      <h2>Add Event</h2>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2>Create Event</h2>
       <form id="eventForm">
-        <label>Event Name:<input type="text" id="eventName" required></label><br>
-        <label>Date:<input type="date" id="eventDate" required></label><br>
-        <label>Time:<input type="time" id="eventTime"></label><br>
-        <label>Details:<textarea id="eventDetails"></textarea></label><br>
+        <label>Title: <input type="text" id="eventTitle" required></label>
+        <label>Date: <input type="date" id="eventDate" required></label>
+
+        <!-- All Day Checkbox -->
+        <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
+
+        <!-- Time Inputs -->
+        <label>
+          Time: 
+          <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 50px;">
+          :
+          <input type="number" id="eventMinute" min="0" max="59" placeholder="MM" required style="width: 50px;">
+          <select id="eventAMPM">
+            <option value="AM">AM</option>
+            <option value="PM">PM</option>
+          </select>
+        </label>
+
+        <!-- Until Checkbox + End Time -->
+        <label>
+          <input type="checkbox" id="untilCheckbox"> Until
+        </label>
+        <label id="endTimeLabel">
+          End Time: 
+          <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
+          :
+          <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 50px;" disabled>
+          <select id="eventEndAMPM" disabled>
+            <option value="AM">AM</option>
+            <option value="PM">PM</option>
+          </select>
+        </label>
+
+        <label>Details: <textarea id="eventDetails"></textarea></label>
         <button type="submit">Save Event</button>
       </form>
     </div>
   </div>
 
   <!-- ===== Event Details Modal ===== -->
-  <div id="detailsModal" class="modal">
+  <div id="detailsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="detailsTitle">
     <div class="modal-content">
-      <span class="close-btn">&times;</span>
-      <h2 id="detailsTitle">Event Details</h2>
-      <p id="detailsDate"></p>
-      <p id="detailsTime"></p>
-      <p id="detailsText"></p>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2>Event Details</h2>
+      <div id="detailsContent"></div>
+      <button id="deleteEventButton">Delete Event</button>
+      <button id="editEventButton">Edit Event</button>
     </div>
   </div>
 
