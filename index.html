@@ -99,9 +99,9 @@
   <!-- ===== Login Modal ===== -->
   <div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="loginTitle">
     <div class="modal-content login-box">
-      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="loginTitle">Log In</h2>
-      <p>There is no log in function yet.</p>
+      <p>No log in function yet</p>
     </div>
   </div>
 
@@ -118,31 +118,37 @@
         <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
 
         <!-- Time Inputs -->
-        <label>
-          Time: 
-          <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 50px;">
-          :
-          <input type="number" id="eventMinute" min="0" max="59" placeholder="MM" required style="width: 50px;">
-          <select id="eventAMPM">
-            <option value="AM">AM</option>
-            <option value="PM">PM</option>
-          </select>
-        </label>
+        <div id="timeInputs" class="time-inputs">
+          <label>
+            Time: 
+            <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 50px;">
+            :
+            <input type="number" id="eventMinute" min="0" max="59" placeholder="MM" required style="width: 50px;">
+            <select id="eventAMPM">
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+          </label>
+        </div>
 
-        <!-- Until Checkbox + End Time -->
-        <label>
-          <input type="checkbox" id="untilCheckbox"> Until
-        </label>
-        <label id="endTimeLabel">
-          End Time: 
-          <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
-          :
-          <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 50px;" disabled>
-          <select id="eventEndAMPM" disabled>
-            <option value="AM">AM</option>
-            <option value="PM">PM</option>
-          </select>
-        </label>
+        <!-- Until Checkbox -->
+        <div id="untilContainer">
+          <label><input type="checkbox" id="untilCheckbox"> Until</label>
+        </div>
+
+        <!-- End Time Inputs -->
+        <div id="endTimeInputs" class="time-inputs hidden">
+          <label>
+            End Time: 
+            <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
+            :
+            <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 50px;" disabled>
+            <select id="eventEndAMPM" disabled>
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+          </label>
+        </div>
 
         <!-- Recurrence Section -->
         <label>Recurrence: 
@@ -153,11 +159,13 @@
             <option value="monthly">Monthly</option>
           </select>
         </label>
-        <label>Every 
-          <input type="number" id="recurrenceInterval" min="1" value="1" disabled style="width: 50px;"> 
-          <span id="recurrenceUnit"></span>
-        </label>
-        <label>Ends on: <input type="date" id="recurrenceUntil" disabled></label>
+        <div id="recurrenceInputs" class="hidden">
+          <label>Every 
+            <input type="number" id="recurrenceInterval" min="1" value="1" disabled style="width: 50px;"> 
+            <span id="recurrenceUnit"></span>
+          </label>
+          <label>Ends on: <input type="date" id="recurrenceUntil" disabled></label>
+        </div>
 
         <label>Details: <textarea id="eventDetails"></textarea></label>
         <button type="submit">Save Event</button>
@@ -177,85 +185,5 @@
   </div>
 
   <script src="script.js"></script>
-
-  <!-- ===== FIXED LOGIN SYSTEM JS ===== -->
-  <script>
-    const logInButton = document.getElementById("logInButton");
-    const loginModal = document.getElementById("loginModal");
-    const loginForm = document.getElementById("loginForm");
-    const closeLoginModal = document.getElementById("closeModal");
-
-    let currentUser = localStorage.getItem("currentUser") || null;
-
-    // Open modal
-    function openModal(modal) {
-      modal.classList.remove("hidden");
-    }
-
-    // Close modal
-    function closeModal(modal) {
-      modal.classList.add("hidden");
-    }
-
-    // Show login modal when clicking "Log In"
-    logInButton.addEventListener("click", () => {
-      if (currentUser) {
-        // If logged in, clicking button logs out
-        logOut();
-      } else {
-        openModal(loginModal);
-      }
-    });
-
-    // Close modal when clicking the X
-    closeLoginModal.addEventListener("click", () => {
-      closeModal(loginModal);
-    });
-
-    // Handle login form submission
-    loginForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value.trim();
-
-      if (!username || !password) {
-        alert("Please enter both username and password!");
-        return;
-      }
-
-      // Demo login
-      localStorage.setItem("currentUser", username);
-      currentUser = username;
-
-      alert(`Welcome, ${username}!`);
-      closeModal(loginModal);
-      updateAuthUI();
-    });
-
-    // Log out
-    function logOut() {
-      localStorage.removeItem("currentUser");
-      currentUser = null;
-      updateAuthUI();
-      alert("You have been logged out.");
-    }
-
-    // Update the login/logout button UI
-    function updateAuthUI() {
-      if (currentUser) {
-        logInButton.textContent = `Log Out (${currentUser})`;
-      } else {
-        logInButton.textContent = "Log In";
-      }
-    }
-
-    // Initialize UI on load
-    updateAuthUI();
-  </script>
-
-  <script src="script.js"></script>
-</body>
-</html>
-
 </body>
 </html>

@@ -52,6 +52,10 @@ const recurrenceTypeSelect = document.getElementById("recurrenceType");
 const recurrenceIntervalInput = document.getElementById("recurrenceInterval");
 const recurrenceUnitSpan = document.getElementById("recurrenceUnit");
 const recurrenceUntilInput = document.getElementById("recurrenceUntil");
+const timeInputs = document.getElementById("timeInputs");
+const untilContainer = document.getElementById("untilContainer");
+const endTimeInputs = document.getElementById("endTimeInputs");
+const recurrenceInputs = document.getElementById("recurrenceInputs");
 
 const detailsModal = document.getElementById("detailsModal");
 const closeDetailsModal = detailsModal.querySelector(".close-btn");
@@ -60,7 +64,7 @@ const deleteEventBtn = document.getElementById("deleteEventButton");
 const editEventBtn = document.getElementById("editEventButton");
 
 const loginModal = document.getElementById("loginModal");
-const closeLoginModal = loginModal.querySelector(".close-btn");
+const closeLoginModal = document.getElementById("closeLoginModal");
 const logInButton = document.getElementById("logInButton");
 
 // Settings
@@ -167,22 +171,18 @@ function syncMiniCalendar() {
 
 function updateTimeInputs() {
   const allDayDisabled = allDayCheckbox.checked;
-  const untilDisabled = !untilCheckbox.checked || allDayDisabled;
+  const untilChecked = untilCheckbox.checked;
+
+  timeInputs.classList.toggle("hidden", allDayDisabled);
+  untilContainer.classList.toggle("hidden", allDayDisabled);
+  endTimeInputs.classList.toggle("hidden", allDayDisabled || !untilChecked);
 
   eventHourInput.disabled = allDayDisabled;
-  eventHourInput.style.display = allDayDisabled ? "none" : "inline-block";
   eventMinuteInput.disabled = allDayDisabled;
-  eventMinuteInput.style.display = allDayDisabled ? "none" : "inline-block";
   eventAMPMSelect.disabled = allDayDisabled;
-  eventAMPMSelect.style.display = allDayDisabled || use24Hour ? "none" : "inline-block";
-  untilCheckbox.disabled = allDayDisabled;
-  untilCheckbox.style.display = allDayDisabled ? "none" : "inline-block";
-  eventEndHourInput.disabled = untilDisabled;
-  eventEndHourInput.style.display = untilDisabled ? "none" : "inline-block";
-  eventEndMinuteInput.disabled = untilDisabled;
-  eventEndMinuteInput.style.display = untilDisabled ? "none" : "inline-block";
-  eventEndAMPMSelect.disabled = untilDisabled;
-  eventEndAMPMSelect.style.display = untilDisabled || use24Hour ? "none" : "inline-block";
+  eventEndHourInput.disabled = allDayDisabled || !untilChecked;
+  eventEndMinuteInput.disabled = allDayDisabled || !untilChecked;
+  eventEndAMPMSelect.disabled = allDayDisabled || !untilChecked;
 
   if (use24Hour) {
     eventHourInput.min = 0;
@@ -191,6 +191,8 @@ function updateTimeInputs() {
     eventEndHourInput.min = 0;
     eventEndHourInput.max = 23;
     eventEndHourInput.placeholder = "HH (0-23)";
+    eventAMPMSelect.classList.add("hidden");
+    eventEndAMPMSelect.classList.add("hidden");
   } else {
     eventHourInput.min = 1;
     eventHourInput.max = 12;
@@ -198,12 +200,15 @@ function updateTimeInputs() {
     eventEndHourInput.min = 1;
     eventEndHourInput.max = 12;
     eventEndHourInput.placeholder = "HH (1-12)";
+    eventAMPMSelect.classList.remove("hidden");
+    eventEndAMPMSelect.classList.toggle("hidden", allDayDisabled || !untilChecked);
   }
 }
 
 function updateRecurrenceInputs() {
   const type = recurrenceTypeSelect.value;
   const isRecurring = type !== "none";
+  recurrenceInputs.classList.toggle("hidden", !isRecurring);
   recurrenceIntervalInput.disabled = !isRecurring;
   recurrenceUntilInput.disabled = !isRecurring;
 
@@ -325,32 +330,14 @@ function renderMonthView() {
 
 // ===== Week View =====
 function renderWeekView() {
-  weekView.innerHTML = "";
-
   const weekStart = new Date(selectedDate);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6);
-  const nav = document.createElement("div");
-  nav.classList.add("week-nav");
-  nav.innerHTML = `
-    <button id="prevWeek" aria-label="Previous Week">‹</button>
-    <h2 id="weekTitle">${weekStart.toLocaleDateString("default", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}</h2>
-    <button id="nextWeek" aria-label="Next Week">›</button>
-  `;
-  weekView.appendChild(nav);
+  const isSmallScreen = window.matchMedia("(max-width: 480px)").matches;
+  const daysToShow = isSmallScreen ? 3 : 7;
+  weekEnd.setDate(weekEnd.getDate() + daysToShow - 1);
 
-  // Attach listeners to the newly created week navigation buttons
-  document.getElementById("prevWeek").addEventListener("click", () => {
-    selectedDate.setDate(selectedDate.getDate() - 7);
-    syncMiniCalendar();
-    updateView();
-  });
-  document.getElementById("nextWeek").addEventListener("click", () => {
-    selectedDate.setDate(selectedDate.getDate() + 7);
-    syncMiniCalendar();
-    updateView();
-  });
+  weekTitle.textContent = `${weekStart.toLocaleDateString("default", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}`;
 
   const gridContainer = document.createElement("div");
   gridContainer.classList.add("week-grid-container");
@@ -368,9 +355,6 @@ function renderWeekView() {
     timeCol.appendChild(div);
   }
   gridContainer.appendChild(timeCol);
-
-  const isSmallScreen = window.matchMedia("(max-width: 480px)").matches;
-  const daysToShow = isSmallScreen ? 3 : 7;
 
   for (let d = 0; d < daysToShow; d++) {
     const col = document.createElement("div");
@@ -440,6 +424,9 @@ function renderWeekView() {
     });
 
     const hourSlotHeight = isSmallScreen ? 50 : 60;
+    const headerHeight = 40;
+    const allDayContainerHeight = 30;
+
     timedEvents.forEach((event, index) => {
       const evBox = document.createElement("div");
       evBox.classList.add("event-box");
@@ -447,7 +434,7 @@ function renderWeekView() {
 
       const startMin = getTimeInMinutes(event.time || "00:00");
       const endMin = event.endTime ? getTimeInMinutes(event.endTime) : startMin + 60;
-      evBox.style.top = `${(startMin / 60) * hourSlotHeight}px`;
+      evBox.style.top = `${(startMin / 60) * hourSlotHeight + headerHeight + allDayContainerHeight}px`;
       evBox.style.height = `${((endMin - startMin) / 60) * hourSlotHeight}px`;
 
       const laneIndex = lanes.findIndex(lane => lane.some(item => item.event === event));
@@ -465,11 +452,13 @@ function renderWeekView() {
 
     gridContainer.appendChild(col);
   }
+  weekView.innerHTML = "";
   weekView.appendChild(gridContainer);
 
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
+  const hourSlotHeight = isSmallScreen ? 50 : 60;
   const scrollPosition = (currentHour + currentMinute / 60) * hourSlotHeight;
   gridContainer.scrollTop = scrollPosition - (hourSlotHeight * 2);
 }
@@ -801,10 +790,32 @@ nextYear.addEventListener("click", () => {
   updateView();
 });
 
+document.getElementById("prevWeek").addEventListener("click", () => {
+  selectedDate.setDate(selectedDate.getDate() - 7);
+  syncMiniCalendar();
+  updateView();
+});
+
+document.getElementById("nextWeek").addEventListener("click", () => {
+  selectedDate.setDate(selectedDate.getDate() + 7);
+  syncMiniCalendar();
+  updateView();
+});
+
 // ===== Create Event Button =====
 createEventBtn.addEventListener("click", () => {
-  syncMiniCalendar();
-  openEventModal(selectedDate);
+  try {
+    syncMiniCalendar();
+    openEventModal(selectedDate);
+  } catch (e) {
+    console.error("Error opening event modal:", e);
+    showErrorMessage("Failed to open event creation modal. Please try again.");
+  }
+});
+
+// ===== Log In Button =====
+logInButton.addEventListener("click", () => {
+  loginModal.classList.add("open");
 });
 
 // ===== Time Format Toggle =====
@@ -852,11 +863,6 @@ document.getElementById("nextMonth").addEventListener("click", () => {
   selectedDate.setMonth(selectedDate.getMonth() + 1);
   syncMiniCalendar();
   updateView();
-});
-
-// ===== Log In Button =====
-logInButton.addEventListener("click", () => {
-  loginModal.classList.add("open");
 });
 
 // ===== Init =====

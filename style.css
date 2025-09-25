@@ -644,7 +644,9 @@ body.dark-mode .year-month .has-events {
 }
 
 .modal-content {
-  width: clamp(280px, 90vw, 400px);
+  width
+
+: clamp(280px, 90vw, 400px);
   max-width: 500px;
   padding: clamp(15px, 3vw, 20px);
   border-radius: 8px;
@@ -746,10 +748,16 @@ body.dark-mode #errorMessage {
   gap: 10px;
 }
 
-#endTimeLabel {
+#endTimeInputs {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+/* ===== Details Textarea ===== */
+#eventDetails {
+  height: 60px; /* Reduced height */
+  resize: vertical; /* Allow vertical resizing only */
 }
 
 /* ===== Hide Section Utility ===== */
