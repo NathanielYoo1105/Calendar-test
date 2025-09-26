@@ -26,6 +26,10 @@ const yearView = document.getElementById("yearView");
 const createEventBtn = document.getElementById("createEventButton");
 const timeFormatToggle = document.getElementById("timeFormatToggle");
 const darkModeToggle = document.getElementById("darkModeToggle");
+const buttonColorPicker = document.getElementById("buttonColorPicker");
+const buttonColorPreset = document.getElementById("buttonColorPreset");
+const eventColorPicker = document.getElementById("eventColorPicker");
+const eventColorPreset = document.getElementById("eventColorPreset");
 
 // Navigation Buttons
 const prevMonthMain = document.getElementById("prevMonthMain");
@@ -219,6 +223,46 @@ function updateRecurrenceInputs() {
   }
 }
 
+// ===== Button Color Management =====
+function loadButtonColor() {
+  try {
+    const savedColor = localStorage.getItem("buttonColor");
+    if (savedColor) {
+      buttonColorPicker.value = savedColor;
+      buttonColorPreset.value = savedColor;
+      updateButtonColor(savedColor);
+    }
+  } catch (e) {
+    console.error("Failed to load button color:", e);
+  }
+}
+
+function updateButtonColor(color) {
+  const root = document.documentElement;
+  const isDarkMode = document.body.classList.contains("dark-mode");
+  const hoverColor = adjustColorBrightness(color, isDarkMode ? 1.2 : 0.8); // Lighter for dark mode, darker for light mode
+  root.style.setProperty("--button-bg", color);
+  root.style.setProperty("--button-hover-bg", hoverColor);
+  root.style.setProperty("--button-dark-bg", color);
+  root.style.setProperty("--button-dark-hover-bg", hoverColor);
+  try {
+    localStorage.setItem("buttonColor", color);
+  } catch (e) {
+    console.error("Failed to save button color:", e);
+  }
+}
+
+function adjustColorBrightness(hex, factor) {
+  hex = hex.replace("#", "");
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const newR = Math.min(255, Math.max(0, Math.round(r * factor)));
+  const newG = Math.min(255, Math.max(0, Math.round(g * factor)));
+  const newB = Math.min(255, Math.max(0, Math.round(b * factor)));
+  return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
+}
+
 // ===== Mini Calendar =====
 function renderMiniCalendar(date = new Date()) {
   const year = date.getFullYear();
@@ -299,6 +343,8 @@ function renderMonthView() {
       const div = document.createElement("div");
       div.classList.add("month-event");
       if (event.isAllDay) div.classList.add("all-day");
+      else if (event.color) div.style.backgroundColor = event.color;
+      else div.style.backgroundColor = document.body.classList.contains("dark-mode") ? "var(--event-box-dark-bg)" : "var(--event-box-bg)";
       div.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
       div.setAttribute("aria-label", `Event: ${event.title} on ${event.date} at ${formatTimeForDisplay(event)}`);
       div.addEventListener("click", ev => {
@@ -395,6 +441,7 @@ function renderWeekView() {
     dayEvents.filter(e => e.isAllDay).forEach(event => {
       const evBox = document.createElement("div");
       evBox.classList.add("all-day-event");
+      if (event.color) evBox.style.backgroundColor = event.color;
       evBox.textContent = event.title;
       evBox.addEventListener("click", e => {
         e.stopPropagation();
@@ -430,6 +477,8 @@ function renderWeekView() {
     timedEvents.forEach((event, index) => {
       const evBox = document.createElement("div");
       evBox.classList.add("event-box");
+      if (event.color) evBox.style.backgroundColor = event.color;
+      else evBox.style.backgroundColor = document.body.classList.contains("dark-mode") ? "var(--event-box-dark-bg)" : "var(--event-box-bg)";
       evBox.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
 
       const startMin = getTimeInMinutes(event.time || "00:00");
@@ -530,25 +579,19 @@ function updateView() {
   monthView.classList.add("hidden");
   weekView.classList.add("hidden");
   yearView.classList.add("hidden");
-  monthView.classList.remove("active");
-  weekView.classList.remove("active");
-  yearView.classList.remove("active");
 
   document.querySelectorAll(".view-btn").forEach(btn => btn.classList.remove("active"));
 
   if (currentView === "month") {
     monthView.classList.remove("hidden");
-    monthView.classList.add("active");
     document.querySelector(".view-btn[data-view='month']").classList.add("active");
     renderMonthView();
   } else if (currentView === "week") {
     weekView.classList.remove("hidden");
-    weekView.classList.add("active");
     document.querySelector(".view-btn[data-view='week']").classList.add("active");
     renderWeekView();
   } else if (currentView === "year") {
     yearView.classList.remove("hidden");
-    yearView.classList.add("active");
     document.querySelector(".view-btn[data-view='year']").classList.add("active");
     renderYearView();
   }
@@ -564,6 +607,8 @@ function openEventModal(date, event = null) {
   recurrenceTypeSelect.value = "none";
   recurrenceIntervalInput.value = 1;
   recurrenceUntilInput.value = "";
+  eventColorPicker.value = document.body.classList.contains("dark-mode") ? "#66bb6a" : "#4caf50";
+  eventColorPreset.value = eventColorPicker.value;
 
   if (event) {
     const baseEvent = event.isInstance ? events.find(e => e.id === event.id) : event;
@@ -572,6 +617,8 @@ function openEventModal(date, event = null) {
     eventDateInput.value = baseEvent.date;
     eventDetailsInput.value = baseEvent.details || "";
     allDayCheckbox.checked = baseEvent.isAllDay || false;
+    eventColorPicker.value = baseEvent.color || (document.body.classList.contains("dark-mode") ? "#66bb6a" : "#4caf50");
+    eventColorPreset.value = baseEvent.color || eventColorPicker.value;
 
     let [hour, minute] = (baseEvent.time || "00:00").split(":").map(Number);
     eventMinuteInput.value = minute;
@@ -708,6 +755,7 @@ eventForm.addEventListener("submit", e => {
     isAllDay: isAllDay,
     details: eventDetailsInput.value.trim(),
     recurrence,
+    color: eventColorPicker.value,
   };
 
   if (editingEvent) {
@@ -731,6 +779,7 @@ function openDetailsModal(event) {
     <h3>${event.title}</h3>
     <p><strong>Date:</strong> <time datetime="${event.instanceDate || event.date}">${event.instanceDate || event.date}</time></p>
     <p><strong>Time:</strong> ${formatTimeForDisplay(event)}</p>
+    <p><strong>Color:</strong> <span style="display: inline-block; width: 20px; height: 20px; background-color: ${event.color || (document.body.classList.contains("dark-mode") ? "#66bb6a" : "#4caf50")}; vertical-align: middle; border: 1px solid #000;"></span></p>
     <p>${event.details || "No details provided"}</p>
     ${event.recurrence ? '<p><strong>Recurring:</strong> Yes</p>' : ''}
   `;
@@ -829,6 +878,31 @@ timeFormatToggle.addEventListener("click", () => {
 // ===== Dark Mode Toggle =====
 darkModeToggle.addEventListener("click", () => {
   document.body.classList.toggle("dark-mode");
+  updateView(); // Refresh to update event colors
+});
+
+// ===== Button Color Management =====
+buttonColorPicker.addEventListener("input", () => {
+  const color = buttonColorPicker.value;
+  buttonColorPreset.value = color; // Update preset to match if it's a preset color
+  updateButtonColor(color);
+});
+
+buttonColorPreset.addEventListener("change", () => {
+  const color = buttonColorPreset.value;
+  buttonColorPicker.value = color;
+  updateButtonColor(color);
+});
+
+// ===== Event Color Management =====
+eventColorPicker.addEventListener("input", () => {
+  const color = eventColorPicker.value;
+  eventColorPreset.value = color; // Update preset to match if it's a preset color
+});
+
+eventColorPreset.addEventListener("change", () => {
+  const color = eventColorPreset.value;
+  eventColorPicker.value = color;
 });
 
 // ===== Checkbox and Select Events =====
@@ -870,3 +944,4 @@ syncMiniCalendar();
 updateView();
 updateTimeInputs();
 updateRecurrenceInputs();
+loadButtonColor();

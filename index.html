@@ -34,6 +34,19 @@
         <h2>Settings</h2>
         <button id="timeFormatToggle">Switch to 24-Hour</button>
         <button id="darkModeToggle">Toggle Dark Mode</button>
+        <div class="color-picker-container">
+          <label for="buttonColorPicker">Button Color:</label>
+          <div class="color-picker-wrapper">
+            <input type="color" id="buttonColorPicker" value="#008000">
+            <select id="buttonColorPreset">
+              <option value="#008000">Green</option>
+              <option value="#2196f3">Blue</option>
+              <option value="#f44336">Red</option>
+              <option value="#9c27b0">Purple</option>
+              <option value="#ff9800">Orange</option>
+            </select>
+          </div>
+        </div>
       </div>
     </aside>
 
@@ -113,7 +126,19 @@
       <form id="eventForm">
         <label>Title: <input type="text" id="eventTitle" required></label>
         <label>Date: <input type="date" id="eventDate" required></label>
-
+        <div class="color-picker-container">
+          <label for="eventColorPicker">Event Color:</label>
+          <div class="color-picker-wrapper">
+            <input type="color" id="eventColorPicker" value="#4caf50">
+            <select id="eventColorPreset">
+              <option value="#4caf50">Green</option>
+              <option value="#2196f3">Blue</option>
+              <option value="#f44336">Red</option>
+              <option value="#9c27b0">Purple</option>
+              <option value="#ff9800">Orange</option>
+            </select>
+          </div>
+        </div>
         <!-- All Day Checkbox -->
         <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
 

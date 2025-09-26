@@ -1,4 +1,15 @@
 /* ===== Global Styles ===== */
+:root {
+  --button-bg: #008000; /* Default green */
+  --button-hover-bg: #006400; /* Default dark green */
+  --button-dark-bg: #388e3c; /* Default dark mode green */
+  --button-dark-hover-bg: #2e7d32; /* Default dark mode hover green */
+  --event-box-bg: #4caf50; /* Default event box green */
+  --event-box-dark-bg: #66bb6a; /* Default dark mode event box green */
+  --all-day-bg: #ff9800; /* Default all-day event orange */
+  --all-day-dark-bg: #ffb74d; /* Default dark mode all-day event orange */
+}
+
 body {
   font-family: sans-serif;
   margin: 0;
@@ -50,7 +61,6 @@ body.dark-mode .sidebar {
   border-radius: 4px;
   cursor: pointer;
   position: relative;
-  /* Placeholder for image overlay; user can add background-image later */
 }
 
 body.dark-mode #settingsButton {
@@ -150,6 +160,46 @@ body.dark-mode .settings-panel {
   border: 1px solid #555;
 }
 
+/* Color picker styling */
+#buttonColorPicker,
+#eventColorPicker {
+  padding: 0;
+  width: 40px;
+  height: 30px;
+  border: none;
+  cursor: pointer;
+  background: none;
+}
+
+.color-picker-container {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.color-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#buttonColorPreset,
+#eventColorPreset {
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
+  background: #fff;
+  color: #333;
+}
+
+body.dark-mode #buttonColorPreset,
+body.dark-mode #eventColorPreset {
+  border: 1px solid #444;
+  background: #444;
+  color: #e0e0e0;
+}
+
 /* ===== Main View Layout ===== */
 .main-view {
   flex: 1;
@@ -165,7 +215,7 @@ body.dark-mode .settings-panel {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  position: relative; /* Added to position .title-center absolutely */
+  position: relative;
 }
 
 .left-buttons {
@@ -175,18 +225,18 @@ body.dark-mode .settings-panel {
 }
 
 .title-center {
-  position: absolute; /* Use absolute positioning to center relative to page */
+  position: absolute;
   left: 50%;
-  transform: translateX(-50%); /* Center horizontally */
+  transform: translateX(-50%);
   top: 50%;
-  transform: translate(-50%, -50%); /* Center both horizontally and vertically */
-  text-align: center; /* Ensure text is centered within the element */
-  margin: 0; /* Remove any default margins */
+  transform: translate(-50%, -50%);
+  text-align: center;
+  margin: 0;
 }
 
 .logo {
   margin: 0;
-  font-size: clamp(1rem, 3vw, 1.5rem); /* Kept smaller size for better fit */
+  font-size: clamp(1rem, 3vw, 1.5rem);
 }
 
 .auth-buttons {
@@ -212,10 +262,16 @@ body.dark-mode .settings-panel {
 
 body.dark-mode .view-btn {
   color: #e0e0e0;
+  background-color: #2a2a2a; /* Match topbar background in dark mode */
 }
 
 .view-btn:hover {
   text-decoration: underline;
+  background-color: #fff; /* Match topbar background in light mode */
+}
+
+body.dark-mode .view-btn:hover {
+  background-color: #2a2a2a; /* Match topbar background in dark mode */
 }
 
 .view-btn.active {
@@ -224,17 +280,10 @@ body.dark-mode .view-btn {
   text-decoration: underline;
 }
 
-.month-view.active,
-.week-view.active,
-.year-view.active {
-  border: 2px solid #2196f3;
-  border-radius: 4px;
-}
-
 /* ===== Buttons ===== */
 button {
   padding: clamp(8px, 2vw, 10px) clamp(16px, 3vw, 20px);
-  background-color: green;
+  background-color: var(--button-bg);
   color: white;
   border: none;
   border-radius: 6px;
@@ -246,27 +295,23 @@ button {
 }
 
 button:hover {
-  background-color: darkgreen;
+  background-color: var(--button-hover-bg);
 }
 
 body.dark-mode button {
-  background-color: #388e3c;
+  background-color: var(--button-dark-bg);
 }
 
 body.dark-mode button:hover {
-  background-color: #2e7d32;
+  background-color: var(--button-dark-hover-bg);
 }
 
-/* ===== Navigation Arrows ===== */
-.month-header, .week-nav, .year-nav {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.month-header button, .week-nav button, .year-nav button {
+/* Exceptions for buttons that shouldn't use the custom color */
+.calendar-header button,
+.month-header button,
+.week-nav button,
+.year-nav button,
+#settingsButton {
   padding: 4px 8px;
   background-color: #ccc;
   color: #333;
@@ -278,23 +323,38 @@ body.dark-mode button:hover {
   min-width: 30px;
 }
 
+body.dark-mode .calendar-header button,
 body.dark-mode .month-header button,
 body.dark-mode .week-nav button,
-body.dark-mode .year-nav button {
+body.dark-mode .year-nav button,
+body.dark-mode #settingsButton {
   background-color: #555;
   color: #e0e0e0;
 }
 
+.calendar-header button:hover,
 .month-header button:hover,
 .week-nav button:hover,
-.year-nav button:hover {
+.year-nav button:hover,
+#settingsButton:hover {
   background-color: #bbb;
 }
 
+body.dark-mode .calendar-header button:hover,
 body.dark-mode .month-header button:hover,
 body.dark-mode .week-nav button:hover,
-body.dark-mode .year-nav button:hover {
+body.dark-mode .year-nav button:hover,
+body.dark-mode #settingsButton:hover {
   background-color: #666;
+}
+
+/* ===== Navigation Arrows ===== */
+.month-header, .week-nav, .year-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .month-header h2, .week-nav h2, .year-nav h2 {
@@ -350,8 +410,6 @@ body.dark-mode .big-calendar td:hover {
 }
 
 .month-event {
-  background: #2196f3;
-  color: white;
   border-radius: 4px;
   padding: 2px 4px;
   margin-top: 2px;
@@ -362,19 +420,16 @@ body.dark-mode .big-calendar td:hover {
   cursor: pointer;
   display: block;
   max-width: calc(100% - 8px);
-}
-
-body.dark-mode .month-event {
-  background: #64b5f6;
+  color: white;
 }
 
 .month-event.all-day {
-  background: #ff9800;
+  background: var(--all-day-bg);
   font-weight: bold;
 }
 
 body.dark-mode .month-event.all-day {
-  background: #ffb74d;
+  background: var(--all-day-dark-bg);
 }
 
 .more-events {
@@ -423,7 +478,7 @@ body.dark-mode .more-events {
   text-align: right;
   padding-right: 8px;
   box-sizing: border-box;
-  padding-top: 30px; /* Offset to account for all-day-container height */
+  padding-top: 30px;
 }
 
 body.dark-mode .time-column {
@@ -514,7 +569,7 @@ body.dark-mode .all-day-container {
 }
 
 .all-day-event {
-  background: #ff9800;
+  background: var(--all-day-bg);
   color: white;
   border-radius: 4px;
   padding: 2px 4px;
@@ -525,15 +580,13 @@ body.dark-mode .all-day-container {
 }
 
 body.dark-mode .all-day-event {
-  background: #ffb74d;
+  background: var(--all-day-dark-bg);
 }
 
 .event-box {
   position: absolute;
   left: 5px;
   right: 5px;
-  background: #4caf50;
-  color: white;
   border-radius: 4px;
   padding: 2px 4px;
   font-size: clamp(0.7rem, 1.5vw, 0.8rem);
@@ -543,10 +596,7 @@ body.dark-mode .all-day-event {
   text-overflow: ellipsis;
   min-height: 20px;
   box-sizing: border-box;
-}
-
-body.dark-mode .event-box {
-  background: #66bb6a;
+  color: white;
 }
 
 /* ===== Year View ===== */
@@ -644,9 +694,7 @@ body.dark-mode .year-month .has-events {
 }
 
 .modal-content {
-  width
-
-: clamp(280px, 90vw, 400px);
+  width: clamp(280px, 90vw, 400px);
   max-width: 500px;
   padding: clamp(15px, 3vw, 20px);
   border-radius: 8px;
@@ -756,8 +804,8 @@ body.dark-mode #errorMessage {
 
 /* ===== Details Textarea ===== */
 #eventDetails {
-  height: 60px; /* Reduced height */
-  resize: vertical; /* Allow vertical resizing only */
+  height: 60px;
+  resize: vertical;
 }
 
 /* ===== Hide Section Utility ===== */
@@ -849,8 +897,8 @@ body.dark-mode #errorMessage {
   }
   .title-center {
     width: 100%;
-    position: static; /* Reset to static for mobile to avoid overlap */
-    transform: none; /* Remove transform for mobile */
+    position: static;
+    transform: none;
     text-align: center;
   }
   .modal-content {
