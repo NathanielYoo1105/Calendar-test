@@ -743,3 +743,41 @@ logInButton.addEventListener("click", () => {
 syncMiniCalendar();
 updateView();
 updateTimeInputs();
+
+// =======================
+// Rank Bar XP System
+// =======================
+
+// Example: progress towards next rank
+let currentXP = 35; // Current experience points
+let maxXP = 100;    // XP needed to reach next rank
+
+function updateRankBar() {
+  const rankProgress = document.getElementById("rankProgress");
+  const rankPercent = document.getElementById("rankPercent");
+
+  if (!rankProgress || !rankPercent) return; // Prevents errors if elements are missing
+
+  const percent = Math.min((currentXP / maxXP) * 100, 100); // Calculate percentage
+  rankProgress.style.width = percent + "%";
+  rankPercent.textContent = Math.round(percent) + "%";
+}
+
+// Simulate gaining XP
+function addXP(amount) {
+  currentXP += amount;
+  if (currentXP > maxXP) currentXP = maxXP; // Prevent overflow
+  updateRankBar();
+}
+
+// Initialize the bar when page loads
+document.addEventListener("DOMContentLoaded", () => {
+  updateRankBar();
+});
+
+// Example: Automatically increase XP every 3 seconds
+setInterval(() => {
+  if (currentXP < maxXP) {
+    addXP(10);
+  }
+}, 3000);
