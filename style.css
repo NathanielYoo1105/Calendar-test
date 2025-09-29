@@ -1,9 +1,28 @@
 /* ===== Global Styles ===== */
+:root {
+  --button-bg: #008000; /* Default green */
+  --button-hover-bg: #006400; /* Default dark green */
+  --button-dark-bg: #388e3c; /* Default dark mode green */
+  --button-dark-hover-bg: #2e7d32; /* Default dark mode hover green */
+  --event-box-bg: #4caf50; /* Default event box green */
+  --event-box-dark-bg: #66bb6a; /* Default dark mode event box green */
+  --all-day-bg: #ff9800; /* Default all-day event orange */
+  --all-day-dark-bg: #ffb74d; /* Default dark mode all-day event orange */
+}
+
 body {
   font-family: sans-serif;
   margin: 0;
   padding: 0;
   height: 100vh;
+  background-color: #fff;
+  color: #333;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+body.dark-mode {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
 }
 
 .app-layout {
@@ -19,13 +38,41 @@ body {
   flex-direction: column;
   padding: 10px;
   background-color: #f7f7f7;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background-color 0.3s, border-color 0.3s;
 }
 
-.logo {
-  text-align: center;
+body.dark-mode .sidebar {
+  background-color: #333333;
+  border-right: 1px solid #444;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
   margin-bottom: 10px;
-  font-size: clamp(1rem, 3vw, 1.5rem);
+}
+
+#settingsButton {
+  width: 30px;
+  height: 30px;
+  background-color: #ccc;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+}
+
+body.dark-mode #settingsButton {
+  background-color: #555;
+}
+
+#settingsButton:hover {
+  background-color: #bbb;
+}
+
+body.dark-mode #settingsButton:hover {
+  background-color: #666;
 }
 
 .calendar-header {
@@ -47,8 +94,17 @@ body {
   touch-action: manipulation;
 }
 
+body.dark-mode .calendar-header button {
+  background-color: #555;
+  color: #e0e0e0;
+}
+
 .calendar-header button:hover {
   background-color: #bbb;
+}
+
+body.dark-mode .calendar-header button:hover {
+  background-color: #666;
 }
 
 .calendar-grid {
@@ -65,14 +121,83 @@ body {
   font-size: clamp(0.8rem, 2vw, 0.9rem);
 }
 
+body.dark-mode .calendar-grid th,
+body.dark-mode .calendar-grid td {
+  border: 1px solid #444;
+}
+
 .today {
   background-color: #e0f7fa;
 }
 
+body.dark-mode .today {
+  background-color: #004d40;
+}
+
 .selected {
   background-color: #c8e6c9;
-  border-radius: 4px; /* Square indicator for selected date */
+  border-radius: 4px;
   font-weight: bold;
+}
+
+body.dark-mode .selected {
+  background-color: #388e3c;
+}
+
+.settings-panel {
+  flex: 1;
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+body.dark-mode .settings-panel {
+  background-color: #3c3c3c;
+  border: 1px solid #555;
+}
+
+/* Color picker styling */
+#buttonColorPicker,
+#eventColorPicker {
+  padding: 0;
+  width: 40px;
+  height: 30px;
+  border: none;
+  cursor: pointer;
+  background: none;
+}
+
+.color-picker-container {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.color-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#buttonColorPreset,
+#eventColorPreset {
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
+  background: #fff;
+  color: #333;
+}
+
+body.dark-mode #buttonColorPreset,
+body.dark-mode #eventColorPreset {
+  border: 1px solid #444;
+  background: #444;
+  color: #e0e0e0;
 }
 
 /* ===== Main View Layout ===== */
@@ -90,12 +215,28 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
+  position: relative;
 }
 
-.topbar-left {
+.left-buttons {
   display: flex;
   gap: 10px;
-  flex-wrap: wrap;
+  align-items: center;
+}
+
+.title-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  margin: 0;
+}
+
+.logo {
+  margin: 0;
+  font-size: clamp(1rem, 3vw, 1.5rem);
 }
 
 .auth-buttons {
@@ -155,7 +296,7 @@ body {
 
 .view-btn {
   background: none;
-  border: none; /* Removed border */
+  border: none;
   cursor: pointer;
   font-size: clamp(1rem, 2.5vw, 1.2rem);
   color: #333;
@@ -163,29 +304,30 @@ body {
   touch-action: manipulation;
 }
 
+body.dark-mode .view-btn {
+  color: #e0e0e0;
+  background-color: #2a2a2a; /* Match topbar background in dark mode */
+}
+
 .view-btn:hover {
   text-decoration: underline;
-  /* Removed border-color */
+  background-color: #fff; /* Match topbar background in light mode */
+}
+
+body.dark-mode .view-btn:hover {
+  background-color: #2a2a2a; /* Match topbar background in dark mode */
 }
 
 .view-btn.active {
   font-weight: bold;
   color: #2196f3;
   text-decoration: underline;
-  /* Removed border-color */
-}
-
-.month-view.active,
-.week-view.active,
-.year-view.active {
-  border: 2px solid #2196f3;
-  border-radius: 4px;
 }
 
 /* ===== Buttons ===== */
 button {
   padding: clamp(8px, 2vw, 10px) clamp(16px, 3vw, 20px);
-  background-color: green;
+  background-color: var(--button-bg);
   color: white;
   border: none;
   border-radius: 6px;
@@ -197,7 +339,71 @@ button {
 }
 
 button:hover {
-  background-color: darkgreen;
+  background-color: var(--button-hover-bg);
+}
+
+body.dark-mode button {
+  background-color: var(--button-dark-bg);
+}
+
+body.dark-mode button:hover {
+  background-color: var(--button-dark-hover-bg);
+}
+
+/* Exceptions for buttons that shouldn't use the custom color */
+.calendar-header button,
+.month-header button,
+.week-nav button,
+.year-nav button,
+#settingsButton {
+  padding: 4px 8px;
+  background-color: #ccc;
+  color: #333;
+  font-weight: bold;
+  border-radius: 4px;
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  border: none;
+  cursor: pointer;
+  min-width: 30px;
+}
+
+body.dark-mode .calendar-header button,
+body.dark-mode .month-header button,
+body.dark-mode .week-nav button,
+body.dark-mode .year-nav button,
+body.dark-mode #settingsButton {
+  background-color: #555;
+  color: #e0e0e0;
+}
+
+.calendar-header button:hover,
+.month-header button:hover,
+.week-nav button:hover,
+.year-nav button:hover,
+#settingsButton:hover {
+  background-color: #bbb;
+}
+
+body.dark-mode .calendar-header button:hover,
+body.dark-mode .month-header button:hover,
+body.dark-mode .week-nav button:hover,
+body.dark-mode .year-nav button:hover,
+body.dark-mode #settingsButton:hover {
+  background-color: #666;
+}
+
+/* ===== Navigation Arrows ===== */
+.month-header, .week-nav, .year-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.month-header h2, .week-nav h2, .year-nav h2 {
+  margin: 0;
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
 }
 
 /* ===== Month View ===== */
@@ -206,19 +412,6 @@ button:hover {
   overflow-y: auto;
   margin-top: 10px;
   min-height: 0;
-}
-
-.month-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.month-header h2 {
-  margin: 0;
-  font-size: clamp(1.2rem, 3vw, 1.5rem);
-  color: #333;
 }
 
 .big-calendar {
@@ -239,6 +432,11 @@ button:hover {
   max-height: clamp(60px, 12vw, 80px);
 }
 
+body.dark-mode .big-calendar th,
+body.dark-mode .big-calendar td {
+  border: 1px solid #444;
+}
+
 .big-calendar th {
   width: 14.28%;
 }
@@ -251,9 +449,11 @@ button:hover {
   background-color: #f0f0f0;
 }
 
+body.dark-mode .big-calendar td:hover {
+  background-color: #3c3c3c;
+}
+
 .month-event {
-  background: #2196f3;
-  color: white;
   border-radius: 4px;
   padding: 2px 4px;
   margin-top: 2px;
@@ -264,17 +464,26 @@ button:hover {
   cursor: pointer;
   display: block;
   max-width: calc(100% - 8px);
+  color: white;
 }
 
 .month-event.all-day {
-  background: #ff9800;
+  background: var(--all-day-bg);
   font-weight: bold;
+}
+
+body.dark-mode .month-event.all-day {
+  background: var(--all-day-dark-bg);
 }
 
 .more-events {
   font-size: clamp(0.65rem, 1.5vw, 0.7rem);
   color: #2196f3;
   cursor: pointer;
+}
+
+body.dark-mode .more-events {
+  color: #64b5f6;
 }
 
 /* ===== Week View ===== */
@@ -292,31 +501,37 @@ button:hover {
   grid-template-columns: clamp(50px, 10vw, 60px) repeat(7, 1fr);
   flex: 1;
   overflow-y: auto;
-  height: 100%; /* Fill available space */
+  height: 100%;
 }
 
 .time-column,
 .day-slots {
   display: flex;
   flex-direction: column;
-  min-height: 100%; /* Ensure they stretch to fit content */
+  min-height: 100%;
 }
 
 .time-column {
   grid-column: 1;
   position: sticky;
   left: 0;
-  z-index: 5; /* Ensure it stays above other content */
-  background: #fff; /* Prevent transparency issues */
+  z-index: 5;
+  background: #fff;
   font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   color: #5f6368;
   text-align: right;
   padding-right: 8px;
   box-sizing: border-box;
+  padding-top: 30px;
+}
+
+body.dark-mode .time-column {
+  background: #2a2a2a;
+  color: #9e9e9e;
 }
 
 .time-column div {
-  height: 60px; /* Match .hour-slot height */
+  height: 60px;
   border-bottom: 1px solid #f1f3f4;
   display: flex;
   align-items: center;
@@ -325,12 +540,20 @@ button:hover {
   box-sizing: border-box;
 }
 
+body.dark-mode .time-column div {
+  border-bottom: 1px solid #444;
+}
+
 .day-column {
   display: flex;
   flex-direction: column;
   border-left: 1px solid #ddd;
   position: relative;
-  flex: 1; /* Ensure columns fill available space */
+  flex: 1;
+}
+
+body.dark-mode .day-column {
+  border-left: 1px solid #444;
 }
 
 .day-header {
@@ -345,33 +568,9 @@ button:hover {
   font-size: clamp(0.8rem, 1.8vw, 0.9rem);
 }
 
-.week-nav {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.week-nav button {
-  padding: 4px 8px;
-  background-color: #ccc;
-  color: #333;
-  font-weight: bold;
-  border-radius: 4px;
-  font-size: clamp(0.8rem, 2vw, 1rem);
-  border: none;
-  cursor: pointer;
-  min-width: 30px;
-}
-
-.week-nav button:hover {
-  background-color: #bbb;
-}
-
-.week-nav h2 {
-  margin: 0;
-  font-size: clamp(1rem, 2.5vw, 1.2rem);
+body.dark-mode .day-header {
+  background: #333333;
+  border-bottom: 1px solid #444;
 }
 
 .day-slots {
@@ -381,13 +580,21 @@ button:hover {
 
 .hour-slot {
   border-bottom: 1px solid #f1f3f4;
-  height: 60px; /* Use fixed height for consistency */
+  height: 60px;
   box-sizing: border-box;
   cursor: pointer;
 }
 
+body.dark-mode .hour-slot {
+  border-bottom: 1px solid #444;
+}
+
 .hour-slot:hover {
   background-color: #f0f0f0;
+}
+
+body.dark-mode .hour-slot:hover {
+  background-color: #3c3c3c;
 }
 
 .all-day-container {
@@ -400,8 +607,13 @@ button:hover {
   min-height: 30px;
 }
 
+body.dark-mode .all-day-container {
+  background: #333333;
+  border-bottom: 1px solid #444;
+}
+
 .all-day-event {
-  background: #ff9800;
+  background: var(--all-day-bg);
   color: white;
   border-radius: 4px;
   padding: 2px 4px;
@@ -411,12 +623,14 @@ button:hover {
   display: inline-block;
 }
 
+body.dark-mode .all-day-event {
+  background: var(--all-day-dark-bg);
+}
+
 .event-box {
   position: absolute;
   left: 5px;
   right: 5px;
-  background: #4caf50;
-  color: white;
   border-radius: 4px;
   padding: 2px 4px;
   font-size: clamp(0.7rem, 1.5vw, 0.8rem);
@@ -426,6 +640,7 @@ button:hover {
   text-overflow: ellipsis;
   min-height: 20px;
   box-sizing: border-box;
+  color: white;
 }
 
 /* ===== Year View ===== */
@@ -436,12 +651,6 @@ button:hover {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-#yearTitle {
-  text-align: center;
-  margin: 0 0 10px 0;
-  font-size: clamp(1.2rem, 3vw, 1.5rem);
 }
 
 #yearGrid {
@@ -455,6 +664,11 @@ button:hover {
   border: 1px solid #ddd;
   padding: clamp(8px, 2vw, 10px);
   border-radius: 4px;
+}
+
+body.dark-mode .year-month {
+  background: #3c3c3c;
+  border: 1px solid #444;
 }
 
 .year-month h3 {
@@ -476,6 +690,11 @@ button:hover {
   font-size: clamp(0.7rem, 1.5vw, 0.85rem);
 }
 
+body.dark-mode .year-month th,
+body.dark-mode .year-month td {
+  border: 1px solid #444;
+}
+
 .year-month td {
   cursor: pointer;
 }
@@ -484,8 +703,16 @@ button:hover {
   background-color: #f0f0f0;
 }
 
+body.dark-mode .year-month td:hover {
+  background-color: #3c3c3c;
+}
+
 .year-month .has-events {
   background-color: #e3f2fd;
+}
+
+body.dark-mode .year-month .has-events {
+  background-color: #37474f;
 }
 
 /* ===== Modals ===== */
@@ -520,6 +747,10 @@ button:hover {
   box-sizing: border-box;
 }
 
+body.dark-mode .modal-content {
+  background: #3c3c3c;
+}
+
 .close-btn {
   position: absolute;
   top: 10px;
@@ -527,11 +758,21 @@ button:hover {
   font-size: clamp(1.2rem, 3vw, 1.5rem);
   cursor: pointer;
   padding: 8px;
+  color: #333;
+}
+
+body.dark-mode .close-btn {
+  color: #e0e0e0;
 }
 
 .modal-content h2 {
   margin-top: 0;
   font-size: clamp(1.2rem, 3vw, 1.5rem);
+  color: #333;
+}
+
+body.dark-mode .modal-content h2 {
+  color: #e0e0e0;
 }
 
 .modal-content form {
@@ -547,17 +788,20 @@ button:hover {
   border-radius: 4px;
   border: 1px solid #ccc;
   font-size: clamp(0.9rem, 2vw, 1rem);
+  background: #fff;
+  color: #333;
+}
+
+body.dark-mode .modal-content input,
+body.dark-mode .modal-content textarea,
+body.dark-mode .modal-content select {
+  border: 1px solid #444;
+  background: #444;
+  color: #e0e0e0;
 }
 
 .modal-content button {
   align-self: flex-start;
-}
-
-.modal-content .modal-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-start;
-  margin-top: 10px;
 }
 
 /* ===== Error Message in Event Modal ===== */
@@ -571,6 +815,11 @@ button:hover {
   font-size: clamp(0.8rem, 1.8vw, 0.9rem);
   text-align: center;
   animation: fadeOut 2s ease-in-out;
+}
+
+body.dark-mode #errorMessage {
+  background-color: #5c2e2e;
+  color: #ffcdd2;
 }
 
 @keyframes fadeOut {
@@ -591,10 +840,16 @@ button:hover {
   gap: 10px;
 }
 
-#endTimeLabel {
+#endTimeInputs {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+/* ===== Details Textarea ===== */
+#eventDetails {
+  height: 60px;
+  resize: vertical;
 }
 
 /* ===== Hide Section Utility ===== */
@@ -612,7 +867,6 @@ button:hover {
   .sidebar:hover {
     width: 280px;
   }
-  .sidebar:not(:hover) .logo,
   .sidebar:not(:hover) .calendar-header h2 {
     display: none;
   }
@@ -653,6 +907,9 @@ button:hover {
     border-right: none;
     border-bottom: 1px solid #ddd;
   }
+  body.dark-mode .sidebar {
+    border-bottom: 1px solid #444;
+  }
   .sidebar:hover {
     max-height: 300px;
   }
@@ -666,12 +923,12 @@ button:hover {
   .week-grid-container {
     grid-template-columns: 40px repeat(3, 1fr);
     overflow-x: auto;
-    height: 100%; /* Ensure full height */
+    height: 100%;
   }
   .day-column:nth-child(n+5) {
     display: none;
   }
-  .week-nav h2 {
+  .week-nav h2, .month-header h2, .year-nav h2 {
     font-size: clamp(0.9rem, 2vw, 1rem);
   }
   .view-selector {
@@ -682,12 +939,18 @@ button:hover {
     flex-direction: column;
     align-items: flex-start;
   }
+  .title-center {
+    width: 100%;
+    position: static;
+    transform: none;
+    text-align: center;
+  }
   .modal-content {
     width: clamp(250px, 95vw, 320px);
     padding: clamp(10px, 2vw, 15px);
   }
   .hour-slot,
   .time-column div {
-    height: 50px; /* Adjust for smaller screens */
+    height: 50px;
   }
 }
