@@ -1,35 +1,39 @@
-Node.js dependencies
+# Node.js dependencies
+node_modules/
+# Do NOT ignore package-lock.json
 
-node_modules/ package-lock.json
+# Environment variables
+*.env
 
-Environment variables
+# Build output
+dist/
+build/
 
-.env .env.local .env.development .env.production
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-Build output (if you add a build step later)
+# IDE and editor files
+.vscode/
+.idea/
 
-dist/ build/
-
-IDE and editor files
-
-.vscode/ .idea/ *.sublime-project *.sublime-workspace
-
-Logs
-
-.log npm-debug.logyarn-debug.log* yarn-error.log*
-
-macOS
-
+# macOS
 .DS_Store
 
-Windows
+# Windows
+Thumbs.db
+ehthumbs.db
 
-Thumbs.db ehthumbs.db
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
 
-Temporary files
-
-*.tmp *.bak *.swp *~
-
-Coverage reports (if you add testing)
-
+# Coverage reports
 coverage/
+
+# Yarn lock file
+yarn.lock

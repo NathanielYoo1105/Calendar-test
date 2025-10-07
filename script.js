@@ -144,17 +144,17 @@ function matchesDate(ev, date) {
   if (!ev.recurrence) {
     return evDate.toDateString() === date.toDateString();
   }
-  const { type, interval = 1, until } = ev.recurrence;
+  const { frequency, interval = 1, until } = ev.recurrence;
   if (evDate > date) return false;
   const untilDate = until ? parseDateOnly(until) : null;
   if (untilDate && untilDate < date) return false;
   const diffMs = date - evDate;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (type === "daily") {
+  if (frequency === "daily") {
     return diffDays % interval === 0;
-  } else if (type === "weekly") {
+  } else if (frequency === "weekly") {
     return date.getDay() === evDate.getDay() && (diffDays % (7 * interval) === 0);
-  } else if (type === "monthly") {
+  } else if (frequency === "monthly") {
     const monthsDiff = monthsBetween(evDate, date);
     return date.getDate() === evDate.getDate() && (monthsDiff % interval === 0);
   }
@@ -273,7 +273,7 @@ async function loadEvents() {
     return;
   }
   try {
-    const res = await fetch('http://localhost:5000/api/events', {
+    const res = await fetch('/api/events', {
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
     if (!res.ok) throw new Error('Failed to load events');
@@ -620,7 +620,7 @@ function openEventModal(date, event = null) {
       eventEndHourInput.value = endHour;
     }
     if (baseEvent.recurrence) {
-      recurrenceTypeSelect.value = baseEvent.recurrence.type;
+      recurrenceTypeSelect.value = baseEvent.recurrence.frequency;
       recurrenceIntervalInput.value = baseEvent.recurrence.interval || 1;
       recurrenceUntilInput.value = baseEvent.recurrence.until || "";
     }
@@ -661,7 +661,7 @@ authForm.addEventListener("submit", async e => {
   e.preventDefault();
   const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
   try {
-    const res = await fetch(`http://localhost:5000${endpoint}`, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
@@ -669,7 +669,7 @@ authForm.addEventListener("submit", async e => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Authentication failed');
     authToken = data.token;
-    localStorage.setItem("authToken", authToken); // ✅ save token
+    localStorage.setItem("authToken", authToken);
     closeModal(loginModal);
     logInButton.textContent = 'Log Out';
     authMessage.textContent = '';
@@ -682,6 +682,7 @@ authForm.addEventListener("submit", async e => {
 logInButton.addEventListener("click", () => {
   if (authToken) {
     authToken = null;
+    localStorage.removeItem("authToken");
     logInButton.textContent = 'Log In';
     events = [];
     updateView();
@@ -760,7 +761,7 @@ eventForm.addEventListener("submit", async e => {
       showErrorMessage("Recurrence end date must be after start date");
       return;
     }
-    recurrence = { type: recurrenceType, interval, until };
+    recurrence = { frequency: recurrenceType, interval, until };
   }
   const eventData = {
     title: eventTitleInput.value.trim(),
@@ -775,7 +776,7 @@ eventForm.addEventListener("submit", async e => {
   const endpoint = editingEvent ? `/api/events/${editingEvent.id}` : '/api/events';
   const method = editingEvent ? 'PUT' : 'POST';
   try {
-    const res = await fetch(`http://localhost:5000${endpoint}`, {
+    const res = await fetch(endpoint, {
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -783,7 +784,10 @@ eventForm.addEventListener("submit", async e => {
       },
       body: JSON.stringify(eventData)
     });
-    if (!res.ok) throw new Error('Error saving event');
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || 'Error saving event');
+    }
     closeModal(eventModal);
     loadEvents();
   } catch (err) {
@@ -809,11 +813,14 @@ function openDetailsModal(event) {
 deleteEventBtn.addEventListener("click", async () => {
   if (activeEventId && authToken) {
     try {
-      const res = await fetch(`http://localhost:5000/api/events/${activeEventId}`, {
+      const res = await fetch(`/api/events/${activeEventId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${authToken}` }
       });
-      if (!res.ok) throw new Error('Error deleting event');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Error deleting event');
+      }
       closeModal(detailsModal);
       loadEvents();
     } catch (err) {
@@ -915,6 +922,11 @@ timeFormatToggle.addEventListener("click", () => {
 // ===== Dark Mode Toggle =====
 darkModeToggle.addEventListener("click", () => {
   document.body.classList.toggle("dark-mode");
+  try {
+    localStorage.setItem("darkMode", document.body.classList.contains("dark-mode"));
+  } catch (e) {
+    console.error("Failed to save dark mode setting:", e);
+  }
   updateView();
 });
 
