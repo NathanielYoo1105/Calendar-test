@@ -9,6 +9,14 @@ let editingEvent = null;
 let activeEventId = null;
 let isLogin = true;
 
+// ===== Persistent Login =====
+const savedToken = localStorage.getItem("authToken");
+if (savedToken) {
+  authToken = savedToken;
+  logInButton.textContent = 'Log Out';
+  loadEvents();
+}
+
 // ===== DOM Elements =====
 const monthYear = document.getElementById("monthYear");
 const calendarBody = document.getElementById("calendarBody");
@@ -661,6 +669,7 @@ authForm.addEventListener("submit", async e => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Authentication failed');
     authToken = data.token;
+    localStorage.setItem("authToken", authToken); // ✅ save token
     closeModal(loginModal);
     logInButton.textContent = 'Log Out';
     authMessage.textContent = '';
