@@ -1,15 +1,13 @@
 // ===== Global State =====
 let events = [];
-try {
-  events = JSON.parse(localStorage.getItem("calendarEvents")) || [];
-} catch (e) {
-  console.error("Failed to load events:", e);
-  alert("Error loading events. Local storage may be disabled.");
-}
+let authToken = null; // Store JWT
 let currentDate = new Date();
 let selectedDate = new Date();
 let use24Hour = false;
 let currentView = "week";
+let editingEvent = null;
+let activeEventId = null;
+let isLogin = true;
 
 // ===== DOM Elements =====
 const monthYear = document.getElementById("monthYear");
@@ -19,7 +17,6 @@ const yearTitle = document.getElementById("yearTitle");
 const yearGrid = document.getElementById("yearGrid");
 const monthTitle = document.getElementById("monthTitle");
 const weekTitle = document.getElementById("weekTitle");
-
 const monthView = document.getElementById("monthView");
 const weekView = document.getElementById("weekView");
 const yearView = document.getElementById("yearView");
@@ -32,10 +29,14 @@ const eventColorPicker = document.getElementById("eventColorPicker");
 const eventColorPreset = document.getElementById("eventColorPreset");
 
 // Navigation Buttons
+const prevMonth = document.getElementById("prevMonth");
+const nextMonth = document.getElementById("nextMonth");
 const prevMonthMain = document.getElementById("prevMonthMain");
 const nextMonthMain = document.getElementById("nextMonthMain");
 const prevYear = document.getElementById("prevYear");
 const nextYear = document.getElementById("nextYear");
+const prevWeek = document.getElementById("prevWeek");
+const nextWeek = document.getElementById("nextWeek");
 
 // Modals
 const eventModal = document.getElementById("eventModal");
@@ -60,24 +61,25 @@ const timeInputs = document.getElementById("timeInputs");
 const untilContainer = document.getElementById("untilContainer");
 const endTimeInputs = document.getElementById("endTimeInputs");
 const recurrenceInputs = document.getElementById("recurrenceInputs");
-
 const detailsModal = document.getElementById("detailsModal");
 const closeDetailsModal = detailsModal.querySelector(".close-btn");
 const detailsContent = document.getElementById("detailsContent");
 const deleteEventBtn = document.getElementById("deleteEventButton");
 const editEventBtn = document.getElementById("editEventButton");
-
 const loginModal = document.getElementById("loginModal");
 const closeLoginModal = document.getElementById("closeLoginModal");
 const logInButton = document.getElementById("logInButton");
+const authForm = document.getElementById("authForm");
+const usernameInput = document.getElementById("username");
+const passwordInput = document.getElementById("password");
+const authSubmit = document.getElementById("authSubmit");
+const toggleAuth = document.getElementById("toggleAuth");
+const authMessage = document.getElementById("authMessage");
 
 // Settings
 const settingsButton = document.getElementById("settingsButton");
 const miniCalendar = document.querySelector(".mini-calendar");
 const settingsPanel = document.getElementById("settingsPanel");
-
-let activeEventId = null;
-let editingEvent = null;
 
 // ===== Utility Functions =====
 function parseDateOnly(dateStr) {
@@ -131,19 +133,15 @@ function monthsBetween(d1, d2) {
 function matchesDate(ev, date) {
   const evDate = parseDateOnly(ev.date);
   if (!evDate) return false;
-
   if (!ev.recurrence) {
     return evDate.toDateString() === date.toDateString();
   }
-
   const { type, interval = 1, until } = ev.recurrence;
   if (evDate > date) return false;
   const untilDate = until ? parseDateOnly(until) : null;
   if (untilDate && untilDate < date) return false;
-
   const diffMs = date - evDate;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
   if (type === "daily") {
     return diffDays % interval === 0;
   } else if (type === "weekly") {
@@ -176,18 +174,15 @@ function syncMiniCalendar() {
 function updateTimeInputs() {
   const allDayDisabled = allDayCheckbox.checked;
   const untilChecked = untilCheckbox.checked;
-
   timeInputs.classList.toggle("hidden", allDayDisabled);
   untilContainer.classList.toggle("hidden", allDayDisabled);
   endTimeInputs.classList.toggle("hidden", allDayDisabled || !untilChecked);
-
   eventHourInput.disabled = allDayDisabled;
   eventMinuteInput.disabled = allDayDisabled;
   eventAMPMSelect.disabled = allDayDisabled;
   eventEndHourInput.disabled = allDayDisabled || !untilChecked;
   eventEndMinuteInput.disabled = allDayDisabled || !untilChecked;
   eventEndAMPMSelect.disabled = allDayDisabled || !untilChecked;
-
   if (use24Hour) {
     eventHourInput.min = 0;
     eventHourInput.max = 23;
@@ -215,7 +210,6 @@ function updateRecurrenceInputs() {
   recurrenceInputs.classList.toggle("hidden", !isRecurring);
   recurrenceIntervalInput.disabled = !isRecurring;
   recurrenceUntilInput.disabled = !isRecurring;
-
   if (isRecurring) {
     recurrenceUnitSpan.textContent = type === "daily" ? "day(s)" : type === "weekly" ? "week(s)" : "month(s)";
   } else {
@@ -240,7 +234,7 @@ function loadButtonColor() {
 function updateButtonColor(color) {
   const root = document.documentElement;
   const isDarkMode = document.body.classList.contains("dark-mode");
-  const hoverColor = adjustColorBrightness(color, isDarkMode ? 1.2 : 0.8); // Lighter for dark mode, darker for light mode
+  const hoverColor = adjustColorBrightness(color, isDarkMode ? 1.2 : 0.8);
   root.style.setProperty("--button-bg", color);
   root.style.setProperty("--button-hover-bg", hoverColor);
   root.style.setProperty("--button-dark-bg", color);
@@ -263,38 +257,50 @@ function adjustColorBrightness(hex, factor) {
   return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
 }
 
+// ===== API Functions =====
+async function loadEvents() {
+  if (!authToken) {
+    events = [];
+    updateView();
+    return;
+  }
+  try {
+    const res = await fetch('http://localhost:5000/api/events', {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (!res.ok) throw new Error('Failed to load events');
+    events = await res.json();
+    // Map _id to id for compatibility
+    events = events.map(event => ({ ...event, id: event._id }));
+    updateView();
+  } catch (err) {
+    console.error('Error loading events:', err);
+    showErrorMessage('Failed to load events');
+  }
+}
+
 // ===== Mini Calendar =====
 function renderMiniCalendar(date = new Date()) {
   const year = date.getFullYear();
   const month = date.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const totalDays = new Date(year, month + 1, 0).getDate();
-
-  monthYear.textContent = date.toLocaleDateString("default", {
-    month: "long",
-    year: "numeric",
-  });
-
+  monthYear.textContent = date.toLocaleDateString("default", { month: "long", year: "numeric" });
   calendarBody.innerHTML = "";
   let row = document.createElement("tr");
-
   for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
-
   for (let day = 1; day <= totalDays; day++) {
     const cell = document.createElement("td");
     cell.textContent = day;
     const cellDate = new Date(year, month, day);
-
     if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
-
     cell.setAttribute("aria-label", `Day ${day} of ${monthYear.textContent}`);
     cell.addEventListener("click", () => {
       selectedDate = cellDate;
       currentView = "month";
       updateView();
     });
-
     row.appendChild(cell);
     if ((firstDay + day) % 7 === 0 || day === totalDays) {
       calendarBody.appendChild(row);
@@ -305,40 +311,34 @@ function renderMiniCalendar(date = new Date()) {
 
 // ===== Month View =====
 function renderMonthView() {
-  monthTitle.textContent = selectedDate.toLocaleDateString("default", {
-    month: "long",
-    year: "numeric",
-  });
-
+  monthTitle.textContent = selectedDate.toLocaleDateString("default", { month: "long", year: "numeric" });
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const totalDays = new Date(year, month + 1, 0).getDate();
-
   bigCalendarBody.innerHTML = "";
   let row = document.createElement("tr");
-
   for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
-
   for (let day = 1; day <= totalDays; day++) {
     const cell = document.createElement("td");
     const cellDate = new Date(year, month, day);
     cell.textContent = day;
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
-
     cell.setAttribute("aria-label", `Day ${day} of ${monthTitle.textContent}`);
     cell.addEventListener("click", () => {
       selectedDate = cellDate;
       syncMiniCalendar();
-      openEventModal(cellDate);
+      if (authToken) openEventModal(cellDate);
+      else {
+        showErrorMessage("Please log in to create events");
+        loginModal.classList.add("open");
+      }
     });
-
     const dayEvents = getEventsForDate(cellDate).sort((a, b) => {
       if (a.isAllDay && !b.isAllDay) return -1;
       if (!a.isAllDay && b.isAllDay) return 1;
       return (a.time || "00:00").localeCompare(b.time || "00:00");
     });
-
     dayEvents.slice(0, 3).forEach(event => {
       const div = document.createElement("div");
       div.classList.add("month-event");
@@ -353,7 +353,6 @@ function renderMonthView() {
       });
       cell.appendChild(div);
     });
-
     if (dayEvents.length > 3) {
       const more = document.createElement("div");
       more.classList.add("more-events");
@@ -365,7 +364,6 @@ function renderMonthView() {
       });
       cell.appendChild(more);
     }
-
     row.appendChild(cell);
     if ((firstDay + day) % 7 === 0 || day === totalDays) {
       bigCalendarBody.appendChild(row);
@@ -382,12 +380,9 @@ function renderWeekView() {
   const isSmallScreen = window.matchMedia("(max-width: 480px)").matches;
   const daysToShow = isSmallScreen ? 3 : 7;
   weekEnd.setDate(weekEnd.getDate() + daysToShow - 1);
-
   weekTitle.textContent = `${weekStart.toLocaleDateString("default", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}`;
-
   const gridContainer = document.createElement("div");
   gridContainer.classList.add("week-grid-container");
-
   const timeCol = document.createElement("div");
   timeCol.classList.add("time-column");
   for (let h = 0; h < 24; h++) {
@@ -401,43 +396,40 @@ function renderWeekView() {
     timeCol.appendChild(div);
   }
   gridContainer.appendChild(timeCol);
-
   for (let d = 0; d < daysToShow; d++) {
     const col = document.createElement("div");
     col.classList.add("day-column");
-
     const header = document.createElement("div");
     header.classList.add("day-header");
     const dayDate = new Date(weekStart);
     dayDate.setDate(weekStart.getDate() + d);
     header.textContent = dayDate.toLocaleDateString("default", { weekday: "short", month: "short", day: "numeric" });
     col.appendChild(header);
-
     const allDayContainer = document.createElement("div");
     allDayContainer.classList.add("all-day-container");
     col.appendChild(allDayContainer);
-
     const slots = document.createElement("div");
     slots.classList.add("day-slots");
-
     for (let h = 0; h < 24; h++) {
       const slot = document.createElement("div");
       slot.classList.add("hour-slot");
       slot.addEventListener("click", () => {
         selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
         syncMiniCalendar();
-        openEventModal(selectedDate);
+        if (authToken) openEventModal(selectedDate);
+        else {
+          showErrorMessage("Please log in to create events");
+          loginModal.classList.add("open");
+        }
       });
       slots.appendChild(slot);
     }
     col.appendChild(slots);
-
     const dayEvents = getEventsForDate(dayDate).sort((a, b) => {
       if (a.isAllDay && !b.isAllDay) return -1;
       if (!a.isAllDay && b.isAllDay) return 1;
       return (a.time || "00:00").localeCompare(b.time || "00:00");
     });
-
     dayEvents.filter(e => e.isAllDay).forEach(event => {
       const evBox = document.createElement("div");
       evBox.classList.add("all-day-event");
@@ -449,14 +441,12 @@ function renderWeekView() {
       });
       allDayContainer.appendChild(evBox);
     });
-
     const timedEvents = dayEvents.filter(e => !e.isAllDay);
     const overlaps = timedEvents.map(event => ({
       event,
       startMin: getTimeInMinutes(event.time || "00:00"),
       endMin: getTimeInMinutes(event.endTime || (event.time ? `${parseInt(event.time.split(":")[0]) + 1}:00` : "01:00")),
     }));
-
     const lanes = [];
     overlaps.forEach((item, index) => {
       let placed = false;
@@ -469,45 +459,36 @@ function renderWeekView() {
       }
       if (!placed) lanes.push([item]);
     });
-
     const hourSlotHeight = isSmallScreen ? 50 : 60;
     const headerHeight = 40;
     const allDayContainerHeight = 30;
-
     timedEvents.forEach((event, index) => {
       const evBox = document.createElement("div");
       evBox.classList.add("event-box");
       if (event.color) evBox.style.backgroundColor = event.color;
       else evBox.style.backgroundColor = document.body.classList.contains("dark-mode") ? "var(--event-box-dark-bg)" : "var(--event-box-bg)";
       evBox.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
-
       const startMin = getTimeInMinutes(event.time || "00:00");
       const endMin = event.endTime ? getTimeInMinutes(event.endTime) : startMin + 60;
       evBox.style.top = `${(startMin / 60) * hourSlotHeight + headerHeight + allDayContainerHeight}px`;
       evBox.style.height = `${((endMin - startMin) / 60) * hourSlotHeight}px`;
-
       const laneIndex = lanes.findIndex(lane => lane.some(item => item.event === event));
       const laneWidth = 100 / Math.max(1, lanes.length);
       evBox.style.width = `${laneWidth}%`;
       evBox.style.left = `${laneIndex * laneWidth}%`;
-
       evBox.addEventListener("click", e => {
         e.stopPropagation();
         openDetailsModal(event);
       });
-
       col.appendChild(evBox);
     });
-
     gridContainer.appendChild(col);
   }
   weekView.innerHTML = "";
   weekView.appendChild(gridContainer);
-
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
-  const hourSlotHeight = isSmallScreen ? 50 : 60;
   const scrollPosition = (currentHour + currentMinute / 60) * hourSlotHeight;
   gridContainer.scrollTop = scrollPosition - (hourSlotHeight * 2);
 }
@@ -517,15 +498,12 @@ function renderYearView() {
   const year = selectedDate.getFullYear();
   yearTitle.textContent = year;
   yearGrid.innerHTML = "";
-
   for (let month = 0; month < 12; month++) {
     const monthDiv = document.createElement("div");
     monthDiv.classList.add("year-month");
-
     const monthHeader = document.createElement("h3");
     monthHeader.textContent = new Date(year, month).toLocaleDateString("default", { month: "long" });
     monthDiv.appendChild(monthHeader);
-
     const table = document.createElement("table");
     table.classList.add("calendar-grid");
     const thead = document.createElement("thead");
@@ -537,31 +515,24 @@ function renderYearView() {
     });
     thead.appendChild(tr);
     table.appendChild(thead);
-
     const tbody = document.createElement("tbody");
     const firstDay = new Date(year, month, 1).getDay();
     const totalDays = new Date(year, month + 1, 0).getDate();
     let row = document.createElement("tr");
-
     for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
-
     for (let day = 1; day <= totalDays; day++) {
       const cell = document.createElement("td");
       cell.textContent = day;
       const cellDate = new Date(year, month, day);
-
       if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
       if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
-
       const dayEvents = getEventsForDate(cellDate);
       if (dayEvents.length > 0) cell.classList.add("has-events");
-
       cell.addEventListener("click", () => {
         selectedDate = cellDate;
         currentView = "month";
         updateView();
       });
-
       row.appendChild(cell);
       if ((firstDay + day) % 7 === 0 || day === totalDays) {
         tbody.appendChild(row);
@@ -579,9 +550,7 @@ function updateView() {
   monthView.classList.add("hidden");
   weekView.classList.add("hidden");
   yearView.classList.add("hidden");
-
   document.querySelectorAll(".view-btn").forEach(btn => btn.classList.remove("active"));
-
   if (currentView === "month") {
     monthView.classList.remove("hidden");
     document.querySelector(".view-btn[data-view='month']").classList.add("active");
@@ -600,6 +569,11 @@ function updateView() {
 
 // ===== Modals =====
 function openEventModal(date, event = null) {
+  if (!authToken) {
+    showErrorMessage("Please log in to create events");
+    loginModal.classList.add("open");
+    return;
+  }
   eventForm.reset();
   eventDateInput.value = date.toISOString().slice(0, 10);
   allDayCheckbox.checked = false;
@@ -609,7 +583,6 @@ function openEventModal(date, event = null) {
   recurrenceUntilInput.value = "";
   eventColorPicker.value = document.body.classList.contains("dark-mode") ? "#66bb6a" : "#4caf50";
   eventColorPreset.value = eventColorPicker.value;
-
   if (event) {
     const baseEvent = event.isInstance ? events.find(e => e.id === event.id) : event;
     editingEvent = baseEvent;
@@ -619,7 +592,6 @@ function openEventModal(date, event = null) {
     allDayCheckbox.checked = baseEvent.isAllDay || false;
     eventColorPicker.value = baseEvent.color || (document.body.classList.contains("dark-mode") ? "#66bb6a" : "#4caf50");
     eventColorPreset.value = baseEvent.color || eventColorPicker.value;
-
     let [hour, minute] = (baseEvent.time || "00:00").split(":").map(Number);
     eventMinuteInput.value = minute;
     if (!use24Hour) {
@@ -628,7 +600,6 @@ function openEventModal(date, event = null) {
       eventAMPMSelect.value = ampm;
     }
     eventHourInput.value = hour;
-
     if (baseEvent.endTime) {
       untilCheckbox.checked = true;
       let [endHour, endMinute] = baseEvent.endTime.split(":").map(Number);
@@ -640,7 +611,6 @@ function openEventModal(date, event = null) {
       }
       eventEndHourInput.value = endHour;
     }
-
     if (baseEvent.recurrence) {
       recurrenceTypeSelect.value = baseEvent.recurrence.type;
       recurrenceIntervalInput.value = baseEvent.recurrence.interval || 1;
@@ -671,25 +641,66 @@ closeLoginModal.addEventListener("click", () => closeModal(loginModal));
   });
 });
 
-// ===== Event Handling =====
-eventForm.addEventListener("submit", e => {
-  e.preventDefault();
+// ===== Authentication Handling =====
+toggleAuth.addEventListener("click", () => {
+  isLogin = !isLogin;
+  authSubmit.textContent = isLogin ? "Log In" : "Register";
+  toggleAuth.textContent = isLogin ? "Switch to Register" : "Switch to Log In";
+  authMessage.textContent = "";
+});
 
+authForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+  try {
+    const res = await fetch(`http://localhost:5000${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Authentication failed');
+    authToken = data.token;
+    closeModal(loginModal);
+    logInButton.textContent = 'Log Out';
+    authMessage.textContent = '';
+    loadEvents();
+  } catch (err) {
+    authMessage.textContent = err.message;
+  }
+});
+
+logInButton.addEventListener("click", () => {
+  if (authToken) {
+    authToken = null;
+    logInButton.textContent = 'Log In';
+    events = [];
+    updateView();
+  } else {
+    loginModal.classList.add("open");
+  }
+});
+
+// ===== Event Handling =====
+eventForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!authToken) {
+    showErrorMessage("Please log in to save events");
+    loginModal.classList.add("open");
+    return;
+  }
   if (!eventTitleInput.value.trim()) {
     showErrorMessage("Event title is required");
     return;
   }
-
   const eventDate = parseDateOnly(eventDateInput.value);
   if (!eventDate) {
     showErrorMessage("Invalid date");
     return;
   }
-
   let isAllDay = allDayCheckbox.checked;
   let timeStr = null;
   let endTimeStr = null;
-
   if (isAllDay) {
     timeStr = "00:00";
     endTimeStr = "23:59";
@@ -706,7 +717,6 @@ eventForm.addEventListener("submit", e => {
       if (ampm === "AM" && startHour === 12) startHour = 0;
     }
     timeStr = `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}`;
-
     if (untilCheckbox.checked) {
       let endHour = parseInt(eventEndHourInput.value, 10);
       let endMinute = parseInt(eventEndMinuteInput.value, 10);
@@ -720,7 +730,6 @@ eventForm.addEventListener("submit", e => {
         if (endAmpm === "AM" && endHour === 12) endHour = 0;
       }
       endTimeStr = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
-
       const startMin = getTimeInMinutes(timeStr);
       const endMin = getTimeInMinutes(endTimeStr);
       if (endMin <= startMin) {
@@ -729,7 +738,6 @@ eventForm.addEventListener("submit", e => {
       }
     }
   }
-
   let recurrence = null;
   const recurrenceType = recurrenceTypeSelect.value;
   if (recurrenceType !== "none") {
@@ -745,9 +753,7 @@ eventForm.addEventListener("submit", e => {
     }
     recurrence = { type: recurrenceType, interval, until };
   }
-
   const eventData = {
-    id: editingEvent ? editingEvent.id : Date.now(),
     title: eventTitleInput.value.trim(),
     date: eventDateInput.value,
     time: timeStr,
@@ -757,19 +763,23 @@ eventForm.addEventListener("submit", e => {
     recurrence,
     color: eventColorPicker.value,
   };
-
-  if (editingEvent) {
-    const index = events.findIndex(ev => ev.id === editingEvent.id);
-    if (index !== -1) {
-      events[index] = eventData;
-    }
-  } else {
-    events.push(eventData);
+  const endpoint = editingEvent ? `/api/events/${editingEvent.id}` : '/api/events';
+  const method = editingEvent ? 'PUT' : 'POST';
+  try {
+    const res = await fetch(`http://localhost:5000${endpoint}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify(eventData)
+    });
+    if (!res.ok) throw new Error('Error saving event');
+    closeModal(eventModal);
+    loadEvents();
+  } catch (err) {
+    showErrorMessage(err.message);
   }
-
-  saveEvents();
-  updateView();
-  closeModal(eventModal);
 });
 
 // ===== Details Modal =====
@@ -787,12 +797,19 @@ function openDetailsModal(event) {
 }
 
 // ===== Delete Event =====
-deleteEventBtn.addEventListener("click", () => {
-  if (activeEventId) {
-    events = events.filter(e => e.id !== activeEventId);
-    saveEvents();
-    updateView();
-    closeModal(detailsModal);
+deleteEventBtn.addEventListener("click", async () => {
+  if (activeEventId && authToken) {
+    try {
+      const res = await fetch(`http://localhost:5000/api/events/${activeEventId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (!res.ok) throw new Error('Error deleting event');
+      closeModal(detailsModal);
+      loadEvents();
+    } catch (err) {
+      showErrorMessage('Failed to delete event');
+    }
   }
 });
 
@@ -839,14 +856,26 @@ nextYear.addEventListener("click", () => {
   updateView();
 });
 
-document.getElementById("prevWeek").addEventListener("click", () => {
+prevWeek.addEventListener("click", () => {
   selectedDate.setDate(selectedDate.getDate() - 7);
   syncMiniCalendar();
   updateView();
 });
 
-document.getElementById("nextWeek").addEventListener("click", () => {
+nextWeek.addEventListener("click", () => {
   selectedDate.setDate(selectedDate.getDate() + 7);
+  syncMiniCalendar();
+  updateView();
+});
+
+prevMonth.addEventListener("click", () => {
+  selectedDate.setMonth(selectedDate.getMonth() - 1);
+  syncMiniCalendar();
+  updateView();
+});
+
+nextMonth.addEventListener("click", () => {
+  selectedDate.setMonth(selectedDate.getMonth() + 1);
   syncMiniCalendar();
   updateView();
 });
@@ -855,16 +884,15 @@ document.getElementById("nextWeek").addEventListener("click", () => {
 createEventBtn.addEventListener("click", () => {
   try {
     syncMiniCalendar();
-    openEventModal(selectedDate);
+    if (authToken) openEventModal(selectedDate);
+    else {
+      showErrorMessage("Please log in to create events");
+      loginModal.classList.add("open");
+    }
   } catch (e) {
     console.error("Error opening event modal:", e);
     showErrorMessage("Failed to open event creation modal. Please try again.");
   }
-});
-
-// ===== Log In Button =====
-logInButton.addEventListener("click", () => {
-  loginModal.classList.add("open");
 });
 
 // ===== Time Format Toggle =====
@@ -878,13 +906,13 @@ timeFormatToggle.addEventListener("click", () => {
 // ===== Dark Mode Toggle =====
 darkModeToggle.addEventListener("click", () => {
   document.body.classList.toggle("dark-mode");
-  updateView(); // Refresh to update event colors
+  updateView();
 });
 
 // ===== Button Color Management =====
 buttonColorPicker.addEventListener("input", () => {
   const color = buttonColorPicker.value;
-  buttonColorPreset.value = color; // Update preset to match if it's a preset color
+  buttonColorPreset.value = color;
   updateButtonColor(color);
 });
 
@@ -897,7 +925,7 @@ buttonColorPreset.addEventListener("change", () => {
 // ===== Event Color Management =====
 eventColorPicker.addEventListener("input", () => {
   const color = eventColorPicker.value;
-  eventColorPreset.value = color; // Update preset to match if it's a preset color
+  eventColorPreset.value = color;
 });
 
 eventColorPreset.addEventListener("change", () => {
@@ -916,30 +944,10 @@ settingsButton.addEventListener("click", () => {
   settingsPanel.classList.toggle("hidden");
 });
 
-// ===== Local Storage =====
-function saveEvents() {
-  try {
-    localStorage.setItem("calendarEvents", JSON.stringify(events));
-  } catch (e) {
-    console.error("Failed to save events:", e);
-    showErrorMessage("Unable to save events. They will not persist after closing the browser.");
-  }
-}
-
-// ===== Month Navigation (Sidebar) =====
-document.getElementById("prevMonth").addEventListener("click", () => {
-  selectedDate.setMonth(selectedDate.getMonth() - 1);
-  syncMiniCalendar();
-  updateView();
-});
-
-document.getElementById("nextMonth").addEventListener("click", () => {
-  selectedDate.setMonth(selectedDate.getMonth() + 1);
-  syncMiniCalendar();
-  updateView();
-});
-
 // ===== Init =====
 syncMiniCalendar();
 updateView();
 updateTimeInputs();
+updateRecurrenceInputs();
+loadButtonColor();
+loadEvents();

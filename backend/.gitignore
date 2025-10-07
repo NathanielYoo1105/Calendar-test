@@ -1,0 +1,35 @@
+Node.js dependencies
+
+node_modules/ package-lock.json
+
+Environment variables
+
+.env .env.local .env.development .env.production
+
+Build output (if you add a build step later)
+
+dist/ build/
+
+IDE and editor files
+
+.vscode/ .idea/ *.sublime-project *.sublime-workspace
+
+Logs
+
+.log npm-debug.logyarn-debug.log* yarn-error.log*
+
+macOS
+
+.DS_Store
+
+Windows
+
+Thumbs.db ehthumbs.db
+
+Temporary files
+
+*.tmp *.bak *.swp *~
+
+Coverage reports (if you add testing)
+
+coverage/

@@ -8,7 +8,6 @@
 </head>
 <body>
   <div class="app-layout">
-    
     <!-- Sidebar / Mini Calendar -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -23,8 +22,7 @@
         <table class="calendar-grid">
           <thead>
             <tr>
-              <th>Su</th><th>Mo</th><th>Tu</th>
-              <th>We</th><th>Th</th><th>Fr</th><th>Sa</th>
+              <th>Su</th><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th>
             </tr>
           </thead>
           <tbody id="calendarBody"></tbody>
@@ -49,7 +47,6 @@
         </div>
       </div>
     </aside>
-
     <!-- Main Content -->
     <main class="main-view">
       <header class="topbar">
@@ -76,7 +73,6 @@
           <button id="logInButton">Log In</button>
         </div>
       </header>
-
       <!-- Month View -->
       <section id="monthView" class="month-view">
         <div class="month-header">
@@ -87,14 +83,12 @@
         <table class="calendar-grid big-calendar">
           <thead>
             <tr>
-              <th>Sun</th><th>Mon</th><th>Tue</th>
-              <th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+              <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
             </tr>
           </thead>
           <tbody id="bigCalendarBody"></tbody>
         </table>
       </section>
-
       <!-- Week View -->
       <section id="weekView" class="event-grid hidden">
         <div class="week-nav">
@@ -104,7 +98,6 @@
         </div>
         <!-- Time column + 7 day columns generated in JS -->
       </section>
-
       <!-- Year View -->
       <section id="yearView" class="year-view hidden">
         <div class="year-nav">
@@ -116,21 +109,26 @@
       </section>
     </main>
   </div>
-
   <!-- ===== Login Modal ===== -->
   <div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="loginTitle">
     <div class="modal-content login-box">
       <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="loginTitle">Log In</h2>
-      <p>No log in function yet</p>
+      <form id="authForm">
+        <label>Username: <input type="text" id="username" required></label>
+        <label>Password: <input type="password" id="password" required></label>
+        <button type="submit" id="authSubmit">Log In</button>
+        <button type="button" id="toggleAuth">Switch to Register</button>
+      </form>
+      <p id="authMessage"></p>
     </div>
   </div>
-
   <!-- ===== Create Event Modal ===== -->
   <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
     <div class="modal-content">
       <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2>Create Event</h2>
+      <div id="errorMessage"></div>
       <form id="eventForm">
         <label>Title: <input type="text" id="eventTitle" required></label>
         <label>Date: <input type="date" id="eventDate" required></label>
@@ -149,11 +147,10 @@
         </div>
         <!-- All Day Checkbox -->
         <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
-
         <!-- Time Inputs -->
         <div id="timeInputs" class="time-inputs">
           <label>
-            Time: 
+            Time:
             <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 50px;">
             :
             <input type="number" id="eventMinute" min="0" max="59" placeholder="MM" required style="width: 50px;">
@@ -163,16 +160,14 @@
             </select>
           </label>
         </div>
-
         <!-- Until Checkbox -->
         <div id="untilContainer">
           <label><input type="checkbox" id="untilCheckbox"> Until</label>
         </div>
-
         <!-- End Time Inputs -->
         <div id="endTimeInputs" class="time-inputs hidden">
           <label>
-            End Time: 
+            End Time:
             <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
             :
             <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 50px;" disabled>
@@ -182,9 +177,9 @@
             </select>
           </label>
         </div>
-
         <!-- Recurrence Section -->
-        <label>Recurrence: 
+        <label>
+          Recurrence:
           <select id="recurrenceType">
             <option value="none">None</option>
             <option value="daily">Daily</option>
@@ -193,19 +188,21 @@
           </select>
         </label>
         <div id="recurrenceInputs" class="hidden">
-          <label>Every 
-            <input type="number" id="recurrenceInterval" min="1" value="1" disabled style="width: 50px;"> 
+          <label>
+            Every
+            <input type="number" id="recurrenceInterval" min="1" value="1" disabled style="width: 50px;">
             <span id="recurrenceUnit"></span>
           </label>
-          <label>Ends on: <input type="date" id="recurrenceUntil" disabled></label>
+          <label>
+            Ends on:
+            <input type="date" id="recurrenceUntil" disabled>
+          </label>
         </div>
-
         <label>Details: <textarea id="eventDetails"></textarea></label>
         <button type="submit">Save Event</button>
       </form>
     </div>
   </div>
-
   <!-- ===== Event Details Modal ===== -->
   <div id="detailsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="detailsTitle">
     <div class="modal-content">
@@ -216,7 +213,6 @@
       <button id="editEventButton">Edit Event</button>
     </div>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
