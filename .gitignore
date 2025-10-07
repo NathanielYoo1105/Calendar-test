@@ -36,4 +36,4 @@ ehthumbs.db
 coverage/
 
 # Yarn lock file
-yarn.lock
+yarn.lock.env
