@@ -9,6 +9,7 @@ let activeEventId = null;
 let userXP = 0;
 let userRank = "Bronze";
 let currentUser = null;
+const eventCache = new Map();
 const rankThresholds = [
   { rank: "Bronze", xp: 0 },
   { rank: "Silver", xp: 100 },
@@ -49,7 +50,6 @@ const bigCalendarBody = document.getElementById("bigCalendarBody");
 const yearTitle = document.getElementById("yearTitle");
 const yearGrid = document.getElementById("yearGrid");
 const monthTitle = document.getElementById("monthTitle");
-const weekTitle = document.getElementById("weekTitle");
 const monthView = document.getElementById("monthView");
 const weekView = document.getElementById("weekView");
 const yearView = document.getElementById("yearView");
@@ -66,8 +66,6 @@ const prevMonthMain = document.getElementById("prevMonthMain");
 const nextMonthMain = document.getElementById("nextMonthMain");
 const prevYear = document.getElementById("prevYear");
 const nextYear = document.getElementById("nextYear");
-const prevWeek = document.getElementById("prevWeek");
-const nextWeek = document.getElementById("nextWeek");
 const eventModal = document.getElementById("eventModal");
 const closeEventModal = eventModal.querySelector(".close-btn");
 const eventForm = document.getElementById("eventForm");
@@ -183,8 +181,18 @@ function matchesDate(ev, date) {
 }
 
 function getEventsForDate(targetDate) {
-  return events
-    .filter(ev => matchesDate(ev, targetDate))
+  const cacheKey = targetDate.toDateString();
+  if (eventCache.has(cacheKey)) return eventCache.get(cacheKey);
+  const result = events
+    .filter(ev => {
+      const evDate = parseDateOnly(ev.date);
+      if (!evDate) return false;
+      if (ev.recurrence && ev.recurrence.until) {
+        const untilDate = parseDateOnly(ev.recurrence.until);
+        if (untilDate && untilDate < targetDate) return false;
+      }
+      return matchesDate(ev, targetDate);
+    })
     .map(ev => {
       const instance = { ...ev, instanceDate: targetDate.toISOString().slice(0, 10) };
       if (ev.date !== instance.instanceDate) {
@@ -193,6 +201,8 @@ function getEventsForDate(targetDate) {
       }
       return instance;
     });
+  eventCache.set(cacheKey, result);
+  return result;
 }
 
 function updateButtonColor(color) {
@@ -442,19 +452,37 @@ function renderMonthView() {
 
 // ===== Week View =====
 function renderWeekView() {
-  weekView.innerHTML = ""; // Clear previous content
-  const weekNav = document.createElement("div");
-  weekNav.classList.add("week-nav");
-  weekNav.innerHTML = `
-    <button id="prevWeek" aria-label="Previous Week">‹</button>
-    <h2 id="weekTitle"></h2>
-    <button id="nextWeek" aria-label="Next Week">›</button>
-  `;
-  weekView.appendChild(weekNav);
+  let weekNav = weekView.querySelector(".week-nav");
+  if (!weekNav) {
+    weekNav = document.createElement("div");
+    weekNav.classList.add("week-nav");
+    weekNav.innerHTML = `
+      <button id="prevWeek" aria-label="Previous Week">‹</button>
+      <h2 id="weekTitle"></h2>
+      <button id="nextWeek" aria-label="Next Week">›</button>
+    `;
+    weekView.prepend(weekNav);
+    weekView.querySelector("#prevWeek").onclick = () => {
+      selectedDate.setDate(selectedDate.getDate() - 7);
+      syncMiniCalendar();
+      updateView();
+    };
+    weekView.querySelector("#nextWeek").onclick = () => {
+      selectedDate.setDate(selectedDate.getDate() + 7);
+      syncMiniCalendar();
+      updateView();
+    };
+  }
   const weekTitle = weekView.querySelector("#weekTitle");
-  const prevWeek = weekView.querySelector("#prevWeek");
-  const nextWeek = weekView.querySelector("#nextWeek");
-  
+  let gridContainer = weekView.querySelector(".week-grid-container");
+  if (!gridContainer) {
+    gridContainer = document.createElement("div");
+    gridContainer.classList.add("week-grid-container");
+    weekView.appendChild(gridContainer);
+  } else {
+    gridContainer.innerHTML = ""; // Clear only the grid
+  }
+
   const weekStart = new Date(selectedDate);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const isSmallScreen = window.matchMedia("(max-width: 480px)").matches;
@@ -463,8 +491,6 @@ function renderWeekView() {
   weekEnd.setDate(weekEnd.getDate() + daysToShow - 1);
   weekTitle.textContent = `${weekStart.toLocaleDateString("default", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}`;
 
-  const gridContainer = document.createElement("div");
-  gridContainer.classList.add("week-grid-container");
   const timeCol = document.createElement("div");
   timeCol.classList.add("time-column");
   for (let h = 0; h < 24; h++) {
@@ -586,22 +612,18 @@ function renderWeekView() {
     });
     gridContainer.appendChild(col);
   }
-  weekView.appendChild(gridContainer);
-  prevWeek.onclick = () => {
-    selectedDate.setDate(selectedDate.getDate() - 7);
-    syncMiniCalendar();
-    updateView();
-  };
-  nextWeek.onclick = () => {
-    selectedDate.setDate(selectedDate.getDate() + 7);
-    syncMiniCalendar();
-    updateView();
-  };
+
   const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const scrollPosition = (currentHour + currentMinute / 60) * (isSmallScreen ? 50 : 60);
-  gridContainer.scrollTop = scrollPosition - ((isSmallScreen ? 50 : 60) * 2);
+  const weekStartDate = new Date(weekStart);
+  const weekEndDate = new Date(weekEnd);
+  if (now >= weekStartDate && now <= weekEndDate) {
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const scrollPosition = (currentHour + currentMinute / 60) * (isSmallScreen ? 50 : 60);
+    gridContainer.scrollTop = scrollPosition - ((isSmallScreen ? 50 : 60) * 2);
+  } else {
+    gridContainer.scrollTop = 7 * (isSmallScreen ? 50 : 60);
+  }
 }
 
 // ===== Year View =====
@@ -664,19 +686,13 @@ function renderYearView() {
 
 // ===== View Management =====
 function updateView() {
-  // Hide all views first
+  eventCache.clear();
   monthView.classList.add("hidden");
   weekView.classList.add("hidden");
   yearView.classList.add("hidden");
-
-  // Remove active class from all view buttons
   document.querySelectorAll(".view-btn").forEach(btn => btn.classList.remove("active"));
-
-  // Add active class to the selected view button
   const activeBtn = document.querySelector(`.view-btn[data-view="${currentView}"]`);
   if (activeBtn) activeBtn.classList.add("active");
-
-  // Show and render the selected view
   if (currentView === "month") {
     monthView.classList.remove("hidden");
     renderMonthView();
@@ -687,7 +703,6 @@ function updateView() {
     yearView.classList.remove("hidden");
     renderYearView();
   }
-
   syncMiniCalendar();
 }
 
@@ -835,7 +850,7 @@ eventForm.onsubmit = e => {
   } else {
     let startHour = parseInt(eventHourInput.value, 10);
     let startMinute = parseInt(eventMinuteInput.value, 10);
-    if (isNaN(startHour) || isNaN(startMinute) || startHour < 0 || startHour > 23 || startMinute < 0 || startMinute > 59) {
+    if (!eventHourInput.value || !eventMinuteInput.value || isNaN(startHour) || isNaN(startMinute) || startHour < 0 || startHour > 23 || startMinute < 0 || startMinute > 59) {
       showErrorMessage("Invalid start time");
       return;
     }
@@ -848,7 +863,7 @@ eventForm.onsubmit = e => {
     if (untilCheckbox.checked) {
       let endHour = parseInt(eventEndHourInput.value, 10);
       let endMinute = parseInt(eventEndMinuteInput.value, 10);
-      if (isNaN(endHour) || isNaN(endMinute) || endHour < 0 || endHour > 23 || endMinute < 0 || endMinute > 59) {
+      if (!eventEndHourInput.value || !eventEndMinuteInput.value || isNaN(endHour) || isNaN(endMinute) || endHour < 0 || endHour > 23 || endMinute < 0 || endMinute > 59) {
         showErrorMessage("Invalid end time");
         return;
       }
@@ -870,8 +885,13 @@ eventForm.onsubmit = e => {
   const recurrenceType = recurrenceTypeSelect.value;
   if (recurrenceType !== "none") {
     const interval = parseInt(recurrenceIntervalInput.value, 10);
+    const untilDate = recurrenceUntilInput.value ? parseDateOnly(recurrenceUntilInput.value) : null;
     if (isNaN(interval) || interval < 1) {
       showErrorMessage("Invalid recurrence interval");
+      return;
+    }
+    if (untilDate && untilDate < eventDate) {
+      showErrorMessage("Recurrence end date must be after the event start date");
       return;
     }
     recurrence = {
@@ -887,7 +907,7 @@ eventForm.onsubmit = e => {
     time: timeStr,
     endTime: endTimeStr,
     isAllDay,
-    color: eventColorPicker.value,
+    color: eventColorPicker.value || "#4caf50",
     details: eventDetailsInput.value.trim(),
     recurrence,
   };
@@ -905,6 +925,7 @@ eventForm.onsubmit = e => {
     showErrorMessage("Error saving event");
     return;
   }
+  eventCache.clear();
   closeModal(eventModal);
   updateView();
 };
@@ -963,7 +984,9 @@ deleteEventBtn.onclick = () => {
       localStorage.setItem(`calendarEvents_${currentUser || 'guest'}`, JSON.stringify(events));
     } catch (e) {
       console.error("Failed to save events:", e);
+      showErrorMessage("Failed to save changes.");
     }
+    eventCache.clear();
     closeModal(detailsModal);
     updateView();
   }
@@ -1065,6 +1088,9 @@ document.querySelectorAll(".view-btn").forEach(btn => {
 });
 
 // ===== Initialize =====
-loadData();
-updateView();
-updateRankBar();
+document.addEventListener("DOMContentLoaded", () => {
+  settingsPanel.classList.add("hidden");
+  loadData();
+  updateView();
+  updateRankBar();
+});

@@ -159,6 +159,10 @@ body.dark-mode .settings-panel {
   border: 1px solid #555;
 }
 
+.settings-panel.hidden {
+  display: none !important;
+}
+
 /* Color picker styling */
 #buttonColorPicker,
 #eventColorPicker {
@@ -405,6 +409,8 @@ body.dark-mode #settingsButton:hover {
   overflow-y: auto;
   margin-top: 10px;
   min-height: 0;
+  width: 100%;
+  position: relative;
 }
 
 .big-calendar {
@@ -481,6 +487,8 @@ body.dark-mode .more-events {
   overflow: hidden;
   margin-top: 10px;
   min-height: 0;
+  width: 100%;
+  position: relative;
 }
 
 .week-grid-container {
@@ -619,6 +627,8 @@ body.dark-mode .all-day-event {
   overflow-y: auto;
   margin-top: 10px;
   min-height: 0;
+  width: 100%;
+  position: relative;
 }
 
 #yearGrid {
