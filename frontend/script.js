@@ -1,6 +1,6 @@
 // ===== Global State =====
 let events = [];
-let authToken = null; // Store JWT
+let authToken = null;
 let currentDate = new Date();
 let selectedDate = new Date();
 let use24Hour = false;
@@ -8,13 +8,26 @@ let currentView = "week";
 let editingEvent = null;
 let activeEventId = null;
 let isLogin = true;
+const API_BASE_URL = window.location.origin; // Use same origin as frontend
 
 // ===== Persistent Login =====
-const savedToken = localStorage.getItem("authToken");
-if (savedToken) {
-  authToken = savedToken;
-  logInButton.textContent = 'Log Out';
-  loadEvents();
+try {
+  const savedToken = localStorage.getItem("authToken");
+  if (savedToken) {
+    authToken = savedToken;
+    logInButton.textContent = "Log Out";
+    loadEvents();
+  }
+} catch (e) {
+  console.error("Failed to access localStorage for authToken:", e);
+}
+
+// ===== Persistent Settings =====
+try {
+  const savedDarkMode = localStorage.getItem("darkMode");
+  if (savedDarkMode === "true") document.body.classList.add("dark-mode");
+} catch (e) {
+  console.error("Failed to load dark mode setting:", e);
 }
 
 // ===== DOM Elements =====
@@ -35,8 +48,6 @@ const buttonColorPicker = document.getElementById("buttonColorPicker");
 const buttonColorPreset = document.getElementById("buttonColorPreset");
 const eventColorPicker = document.getElementById("eventColorPicker");
 const eventColorPreset = document.getElementById("eventColorPreset");
-
-// Navigation Buttons
 const prevMonth = document.getElementById("prevMonth");
 const nextMonth = document.getElementById("nextMonth");
 const prevMonthMain = document.getElementById("prevMonthMain");
@@ -45,8 +56,6 @@ const prevYear = document.getElementById("prevYear");
 const nextYear = document.getElementById("nextYear");
 const prevWeek = document.getElementById("prevWeek");
 const nextWeek = document.getElementById("nextWeek");
-
-// Modals
 const eventModal = document.getElementById("eventModal");
 const closeEventModal = eventModal.querySelector(".close-btn");
 const eventForm = document.getElementById("eventForm");
@@ -83,11 +92,12 @@ const passwordInput = document.getElementById("password");
 const authSubmit = document.getElementById("authSubmit");
 const toggleAuth = document.getElementById("toggleAuth");
 const authMessage = document.getElementById("authMessage");
-
-// Settings
 const settingsButton = document.getElementById("settingsButton");
-const miniCalendar = document.querySelector(".mini-calendar");
 const settingsPanel = document.getElementById("settingsPanel");
+
+// Note: rankProgress and rankPercent are placeholders for future gamification features
+// const rankProgress = document.getElementById("rankProgress");
+// const rankPercent = document.getElementById("rankPercent");
 
 // ===== Utility Functions =====
 function parseDateOnly(dateStr) {
@@ -131,7 +141,7 @@ function showErrorMessage(message) {
   errorDiv.style.display = "block";
   setTimeout(() => {
     errorDiv.style.display = "none";
-  }, 2000);
+  }, 3000);
 }
 
 function monthsBetween(d1, d2) {
@@ -273,17 +283,122 @@ async function loadEvents() {
     return;
   }
   try {
-    const res = await fetch('/api/events', {
-      headers: { 'Authorization': `Bearer ${authToken}` }
+    const res = await fetch(`${API_BASE_URL}/api/events`, {
+      headers: { Authorization: `Bearer ${authToken}` },
     });
-    if (!res.ok) throw new Error('Failed to load events');
+    if (!res.ok) {
+      if (res.status === 401) {
+        authToken = null;
+        localStorage.removeItem("authToken");
+        logInButton.textContent = "Log In";
+        events = [];
+        updateView();
+        showErrorMessage("Session expired. Please log in again.");
+        loginModal.classList.add("open");
+        return;
+      }
+      throw new Error("Failed to load events");
+    }
     events = await res.json();
-    // Map _id to id for compatibility
     events = events.map(event => ({ ...event, id: event._id }));
     updateView();
   } catch (err) {
-    console.error('Error loading events:', err);
-    showErrorMessage('Failed to load events');
+    console.error("Error loading events:", err);
+    showErrorMessage("Failed to load events. The server may be waking up, please try again.");
+  }
+}
+
+async function saveEvent(eventData) {
+  try {
+    const method = editingEvent ? "PUT" : "POST";
+    const url = editingEvent ? `${API_BASE_URL}/api/events/${editingEvent.id}` : `${API_BASE_URL}/api/events`;
+    const res = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(eventData),
+    });
+    if (!res.ok) {
+      if (res.status === 401) {
+        authToken = null;
+        localStorage.removeItem("authToken");
+        logInButton.textContent = "Log In";
+        showErrorMessage("Session expired. Please log in again.");
+        loginModal.classList.add("open");
+        return;
+      }
+      throw new Error("Failed to save event");
+    }
+    await loadEvents();
+    eventModal.classList.remove("open");
+  } catch (err) {
+    console.error("Error saving event:", err);
+    showErrorMessage("Failed to save event. Please try again.");
+  }
+}
+
+async function deleteEvent(eventId) {
+  const event = events.find(e => e.id === eventId);
+  if (event.recurrence && !confirm("This is a recurring event. Deleting will remove all instances. Continue?")) {
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/events/${eventId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    if (!res.ok) {
+      if (res.status === 401) {
+        authToken = null;
+        localStorage.removeItem("authToken");
+        logInButton.textContent = "Log In";
+        showErrorMessage("Session expired. Please log in again.");
+        loginModal.classList.add("open");
+        return;
+      }
+      throw new Error("Failed to delete event");
+    }
+    await loadEvents();
+    detailsModal.classList.remove("open");
+  } catch (err) {
+    console.error("Error deleting event:", err);
+    showErrorMessage("Failed to delete event. Please try again.");
+  }
+}
+
+async function loginOrRegister() {
+  const username = usernameInput.value;
+  const password = passwordInput.value;
+  if (!username || !password) {
+    authMessage.textContent = "Please fill in all fields";
+    return;
+  }
+  try {
+    const endpoint = isLogin ? "login" : "register";
+    const res = await fetch(`${API_BASE_URL}/api/auth/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      authMessage.textContent = data.message || `Failed to ${isLogin ? "log in" : "register"}`;
+      return;
+    }
+    authToken = data.token;
+    try {
+      localStorage.setItem("authToken", authToken);
+    } catch (e) {
+      console.error("Failed to save authToken:", e);
+    }
+    logInButton.textContent = "Log Out";
+    loginModal.classList.remove("open");
+    await loadEvents();
+  } catch (err) {
+    console.error(`Error ${isLogin ? "logging in" : "registering"}:`, err);
+    authMessage.textContent = `Failed to ${isLogin ? "log in" : "register"}. Please try again.`;
   }
 }
 
@@ -300,14 +415,22 @@ function renderMiniCalendar(date = new Date()) {
   for (let day = 1; day <= totalDays; day++) {
     const cell = document.createElement("td");
     cell.textContent = day;
+    cell.tabIndex = 0;
     const cellDate = new Date(year, month, day);
     if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
     cell.setAttribute("aria-label", `Day ${day} of ${monthYear.textContent}`);
-    cell.addEventListener("click", () => {
+    const handleSelect = () => {
       selectedDate = cellDate;
       currentView = "month";
       updateView();
+    };
+    cell.addEventListener("click", handleSelect);
+    cell.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleSelect();
+      }
     });
     row.appendChild(cell);
     if ((firstDay + day) % 7 === 0 || day === totalDays) {
@@ -329,17 +452,25 @@ function renderMonthView() {
   for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
   for (let day = 1; day <= totalDays; day++) {
     const cell = document.createElement("td");
+    cell.tabIndex = 0;
     const cellDate = new Date(year, month, day);
     cell.textContent = day;
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
     cell.setAttribute("aria-label", `Day ${day} of ${monthTitle.textContent}`);
-    cell.addEventListener("click", () => {
+    const handleCellClick = () => {
       selectedDate = cellDate;
       syncMiniCalendar();
       if (authToken) openEventModal(cellDate);
       else {
         showErrorMessage("Please log in to create events");
         loginModal.classList.add("open");
+      }
+    };
+    cell.addEventListener("click", handleCellClick);
+    cell.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleCellClick();
       }
     });
     const dayEvents = getEventsForDate(cellDate).sort((a, b) => {
@@ -350,25 +481,41 @@ function renderMonthView() {
     dayEvents.slice(0, 3).forEach(event => {
       const div = document.createElement("div");
       div.classList.add("month-event");
+      div.tabIndex = 0;
       if (event.isAllDay) div.classList.add("all-day");
       else if (event.color) div.style.backgroundColor = event.color;
       else div.style.backgroundColor = document.body.classList.contains("dark-mode") ? "var(--event-box-dark-bg)" : "var(--event-box-bg)";
       div.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
       div.setAttribute("aria-label", `Event: ${event.title} on ${event.date} at ${formatTimeForDisplay(event)}`);
-      div.addEventListener("click", ev => {
+      const handleEventClick = ev => {
         ev.stopPropagation();
         openDetailsModal(event);
+      };
+      div.addEventListener("click", handleEventClick);
+      div.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleEventClick(e);
+        }
       });
       cell.appendChild(div);
     });
     if (dayEvents.length > 3) {
       const more = document.createElement("div");
       more.classList.add("more-events");
+      more.tabIndex = 0;
       more.textContent = `+${dayEvents.length - 3} more`;
-      more.addEventListener("click", () => {
+      const handleMoreClick = () => {
         selectedDate = cellDate;
         currentView = "week";
         updateView();
+      };
+      more.addEventListener("click", handleMoreClick);
+      more.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleMoreClick();
+        }
       });
       cell.appendChild(more);
     }
@@ -385,10 +532,10 @@ function renderWeekView() {
   const weekStart = new Date(selectedDate);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const weekEnd = new Date(weekStart);
-  const isSmallScreen = window.matchMedia("(max-width: 480px)").matches;
-  const daysToShow = isSmallScreen ? 3 : 7;
-  weekEnd.setDate(weekEnd.getDate() + daysToShow - 1);
+  weekEnd.setDate(weekEnd.getDate() + 6);
   weekTitle.textContent = `${weekStart.toLocaleDateString("default", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })}`;
+  weekView.innerHTML = "";
+  weekView.appendChild(document.querySelector(".week-nav"));
   const gridContainer = document.createElement("div");
   gridContainer.classList.add("week-grid-container");
   const timeCol = document.createElement("div");
@@ -404,7 +551,7 @@ function renderWeekView() {
     timeCol.appendChild(div);
   }
   gridContainer.appendChild(timeCol);
-  for (let d = 0; d < daysToShow; d++) {
+  for (let d = 0; d < 7; d++) {
     const col = document.createElement("div");
     col.classList.add("day-column");
     const header = document.createElement("div");
@@ -421,13 +568,21 @@ function renderWeekView() {
     for (let h = 0; h < 24; h++) {
       const slot = document.createElement("div");
       slot.classList.add("hour-slot");
-      slot.addEventListener("click", () => {
+      slot.tabIndex = 0;
+      const handleSlotClick = () => {
         selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
         syncMiniCalendar();
         if (authToken) openEventModal(selectedDate);
         else {
           showErrorMessage("Please log in to create events");
           loginModal.classList.add("open");
+        }
+      };
+      slot.addEventListener("click", handleSlotClick);
+      slot.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleSlotClick();
         }
       });
       slots.appendChild(slot);
@@ -441,11 +596,19 @@ function renderWeekView() {
     dayEvents.filter(e => e.isAllDay).forEach(event => {
       const evBox = document.createElement("div");
       evBox.classList.add("all-day-event");
+      evBox.tabIndex = 0;
       if (event.color) evBox.style.backgroundColor = event.color;
       evBox.textContent = event.title;
-      evBox.addEventListener("click", e => {
+      const handleEventClick = e => {
         e.stopPropagation();
         openDetailsModal(event);
+      };
+      evBox.addEventListener("click", handleEventClick);
+      evBox.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleEventClick(e);
+        }
       });
       allDayContainer.appendChild(evBox);
     });
@@ -467,53 +630,53 @@ function renderWeekView() {
       }
       if (!placed) lanes.push([item]);
     });
-    const hourSlotHeight = isSmallScreen ? 50 : 60;
-    const headerHeight = 40;
-    const allDayContainerHeight = 30;
+    const hourSlotHeight = window.matchMedia("(max-width: 480px)").matches ? 50 : 60;
+    const headerHeight = 30;
+    const allDayContainerHeight = allDayContainer.children.length ? 30 : 0;
     timedEvents.forEach((event, index) => {
       const evBox = document.createElement("div");
       evBox.classList.add("event-box");
+      evBox.tabIndex = 0;
       if (event.color) evBox.style.backgroundColor = event.color;
       else evBox.style.backgroundColor = document.body.classList.contains("dark-mode") ? "var(--event-box-dark-bg)" : "var(--event-box-bg)";
       evBox.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
       const startMin = getTimeInMinutes(event.time || "00:00");
-      const endMin = event.endTime ? getTimeInMinutes(event.endTime) : startMin + 60;
-      evBox.style.top = `${(startMin / 60) * hourSlotHeight + headerHeight + allDayContainerHeight}px`;
-      evBox.style.height = `${((endMin - startMin) / 60) * hourSlotHeight}px`;
+      const endMin = getTimeInMinutes(event.endTime || (event.time ? `${parseInt(event.time.split(":")[0]) + 1}:00` : "01:00"));
       const laneIndex = lanes.findIndex(lane => lane.some(item => item.event === event));
-      const laneWidth = 100 / Math.max(1, lanes.length);
-      evBox.style.width = `${laneWidth}%`;
-      evBox.style.left = `${laneIndex * laneWidth}%`;
-      evBox.addEventListener("click", e => {
+      const laneWidth = 100 / lanes.length;
+      evBox.style.width = `calc(${laneWidth}% - 10px)`;
+      evBox.style.left = `calc(${laneIndex * laneWidth}% + 5px)`;
+      evBox.style.top = `${headerHeight + allDayContainerHeight + (startMin / 60) * hourSlotHeight}px`;
+      evBox.style.height = `${((endMin - startMin) / 60) * hourSlotHeight - 4}px`;
+      const handleEventClick = e => {
         e.stopPropagation();
         openDetailsModal(event);
+      };
+      evBox.addEventListener("click", handleEventClick);
+      evBox.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleEventClick(e);
+        }
       });
       col.appendChild(evBox);
     });
     gridContainer.appendChild(col);
   }
-  weekView.innerHTML = "";
   weekView.appendChild(gridContainer);
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const scrollPosition = (currentHour + currentMinute / 60) * hourSlotHeight;
-  gridContainer.scrollTop = scrollPosition - (hourSlotHeight * 2);
 }
 
 // ===== Year View =====
 function renderYearView() {
-  const year = selectedDate.getFullYear();
-  yearTitle.textContent = year;
+  yearTitle.textContent = selectedDate.getFullYear();
   yearGrid.innerHTML = "";
-  for (let month = 0; month < 12; month++) {
+  for (let m = 0; m < 12; m++) {
     const monthDiv = document.createElement("div");
     monthDiv.classList.add("year-month");
     const monthHeader = document.createElement("h3");
-    monthHeader.textContent = new Date(year, month).toLocaleDateString("default", { month: "long" });
+    monthHeader.textContent = new Date(selectedDate.getFullYear(), m, 1).toLocaleDateString("default", { month: "long" });
     monthDiv.appendChild(monthHeader);
     const table = document.createElement("table");
-    table.classList.add("calendar-grid");
     const thead = document.createElement("thead");
     const tr = document.createElement("tr");
     ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].forEach(day => {
@@ -524,22 +687,27 @@ function renderYearView() {
     thead.appendChild(tr);
     table.appendChild(thead);
     const tbody = document.createElement("tbody");
-    const firstDay = new Date(year, month, 1).getDay();
-    const totalDays = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(selectedDate.getFullYear(), m, 1).getDay();
+    const totalDays = new Date(selectedDate.getFullYear(), m + 1, 0).getDate();
     let row = document.createElement("tr");
     for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
     for (let day = 1; day <= totalDays; day++) {
       const cell = document.createElement("td");
       cell.textContent = day;
-      const cellDate = new Date(year, month, day);
-      if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
-      if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
-      const dayEvents = getEventsForDate(cellDate);
-      if (dayEvents.length > 0) cell.classList.add("has-events");
-      cell.addEventListener("click", () => {
+      cell.tabIndex = 0;
+      const cellDate = new Date(selectedDate.getFullYear(), m, day);
+      if (getEventsForDate(cellDate).length) cell.classList.add("has-events");
+      const handleCellClick = () => {
         selectedDate = cellDate;
         currentView = "month";
         updateView();
+      };
+      cell.addEventListener("click", handleCellClick);
+      cell.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleCellClick();
+        }
       });
       row.appendChild(cell);
       if ((firstDay + day) % 7 === 0 || day === totalDays) {
@@ -559,287 +727,61 @@ function updateView() {
   weekView.classList.add("hidden");
   yearView.classList.add("hidden");
   document.querySelectorAll(".view-btn").forEach(btn => btn.classList.remove("active"));
+  document.querySelector(`.view-btn[data-view="${currentView}"]`).classList.add("active");
   if (currentView === "month") {
     monthView.classList.remove("hidden");
-    document.querySelector(".view-btn[data-view='month']").classList.add("active");
     renderMonthView();
   } else if (currentView === "week") {
     weekView.classList.remove("hidden");
-    document.querySelector(".view-btn[data-view='week']").classList.add("active");
     renderWeekView();
   } else if (currentView === "year") {
     yearView.classList.remove("hidden");
-    document.querySelector(".view-btn[data-view='year']").classList.add("active");
     renderYearView();
   }
   syncMiniCalendar();
 }
 
-// ===== Modals =====
-function openEventModal(date, event = null) {
-  if (!authToken) {
-    showErrorMessage("Please log in to create events");
-    loginModal.classList.add("open");
-    return;
-  }
+// ===== Modal Management =====
+function openEventModal(date) {
+  editingEvent = null;
+  eventModal.querySelector("h2").textContent = "Create Event";
   eventForm.reset();
   eventDateInput.value = date.toISOString().slice(0, 10);
+  eventHourInput.value = "";
+  eventMinuteInput.value = "";
+  eventAMPMSelect.value = date.getHours() >= 12 ? "PM" : "AM";
+  eventEndHourInput.value = "";
+  eventEndMinuteInput.value = "";
+  eventEndAMPMSelect.value = date.getHours() >= 12 ? "PM" : "AM";
+  eventColorPicker.value = "#4caf50";
+  eventColorPreset.value = "#4caf50";
   allDayCheckbox.checked = false;
   untilCheckbox.checked = false;
   recurrenceTypeSelect.value = "none";
-  recurrenceIntervalInput.value = 1;
+  recurrenceIntervalInput.value = "1";
   recurrenceUntilInput.value = "";
-  eventColorPicker.value = document.body.classList.contains("dark-mode") ? "#66bb6a" : "#4caf50";
-  eventColorPreset.value = eventColorPicker.value;
-  if (event) {
-    const baseEvent = event.isInstance ? events.find(e => e.id === event.id) : event;
-    editingEvent = baseEvent;
-    eventTitleInput.value = baseEvent.title;
-    eventDateInput.value = baseEvent.date;
-    eventDetailsInput.value = baseEvent.details || "";
-    allDayCheckbox.checked = baseEvent.isAllDay || false;
-    eventColorPicker.value = baseEvent.color || (document.body.classList.contains("dark-mode") ? "#66bb6a" : "#4caf50");
-    eventColorPreset.value = baseEvent.color || eventColorPicker.value;
-    let [hour, minute] = (baseEvent.time || "00:00").split(":").map(Number);
-    eventMinuteInput.value = minute;
-    if (!use24Hour) {
-      const ampm = hour >= 12 ? "PM" : "AM";
-      hour = hour % 12 || 12;
-      eventAMPMSelect.value = ampm;
-    }
-    eventHourInput.value = hour;
-    if (baseEvent.endTime) {
-      untilCheckbox.checked = true;
-      let [endHour, endMinute] = baseEvent.endTime.split(":").map(Number);
-      eventEndMinuteInput.value = endMinute;
-      if (!use24Hour) {
-        const endAmpm = endHour >= 12 ? "PM" : "AM";
-        endHour = endHour % 12 || 12;
-        eventEndAMPMSelect.value = endAmpm;
-      }
-      eventEndHourInput.value = endHour;
-    }
-    if (baseEvent.recurrence) {
-      recurrenceTypeSelect.value = baseEvent.recurrence.frequency;
-      recurrenceIntervalInput.value = baseEvent.recurrence.interval || 1;
-      recurrenceUntilInput.value = baseEvent.recurrence.until || "";
-    }
-  } else {
-    editingEvent = null;
-  }
   updateTimeInputs();
   updateRecurrenceInputs();
   eventModal.classList.add("open");
+  eventModal.setAttribute("aria-hidden", "false");
+  eventTitleInput.focus();
 }
 
-function closeModal(modal) {
-  modal.classList.remove("open");
-}
-
-closeEventModal.addEventListener("click", () => closeModal(eventModal));
-closeDetailsModal.addEventListener("click", () => closeModal(detailsModal));
-closeLoginModal.addEventListener("click", () => closeModal(loginModal));
-
-[closeEventModal, closeDetailsModal, closeLoginModal].forEach(btn => {
-  btn.addEventListener("keydown", e => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      closeModal(btn.closest(".modal"));
-    }
-  });
-});
-
-// ===== Authentication Handling =====
-toggleAuth.addEventListener("click", () => {
-  isLogin = !isLogin;
-  authSubmit.textContent = isLogin ? "Log In" : "Register";
-  toggleAuth.textContent = isLogin ? "Switch to Register" : "Switch to Log In";
-  authMessage.textContent = "";
-});
-
-authForm.addEventListener("submit", async e => {
-  e.preventDefault();
-  const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-  try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: usernameInput.value, password: passwordInput.value })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Authentication failed');
-    authToken = data.token;
-    localStorage.setItem("authToken", authToken);
-    closeModal(loginModal);
-    logInButton.textContent = 'Log Out';
-    authMessage.textContent = '';
-    loadEvents();
-  } catch (err) {
-    authMessage.textContent = err.message;
-  }
-});
-
-logInButton.addEventListener("click", () => {
-  if (authToken) {
-    authToken = null;
-    localStorage.removeItem("authToken");
-    logInButton.textContent = 'Log In';
-    events = [];
-    updateView();
-  } else {
-    loginModal.classList.add("open");
-  }
-});
-
-// ===== Event Handling =====
-eventForm.addEventListener("submit", async e => {
-  e.preventDefault();
-  if (!authToken) {
-    showErrorMessage("Please log in to save events");
-    loginModal.classList.add("open");
-    return;
-  }
-  if (!eventTitleInput.value.trim()) {
-    showErrorMessage("Event title is required");
-    return;
-  }
-  const eventDate = parseDateOnly(eventDateInput.value);
-  if (!eventDate) {
-    showErrorMessage("Invalid date");
-    return;
-  }
-  let isAllDay = allDayCheckbox.checked;
-  let timeStr = null;
-  let endTimeStr = null;
-  if (isAllDay) {
-    timeStr = "00:00";
-    endTimeStr = "23:59";
-  } else {
-    let startHour = parseInt(eventHourInput.value, 10);
-    let startMinute = parseInt(eventMinuteInput.value, 10);
-    if (isNaN(startHour) || isNaN(startMinute) || startHour < 0 || startHour > 23 || startMinute < 0 || startMinute > 59) {
-      showErrorMessage("Invalid start time");
-      return;
-    }
-    if (!use24Hour) {
-      const ampm = eventAMPMSelect.value;
-      if (ampm === "PM" && startHour < 12) startHour += 12;
-      if (ampm === "AM" && startHour === 12) startHour = 0;
-    }
-    timeStr = `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}`;
-    if (untilCheckbox.checked) {
-      let endHour = parseInt(eventEndHourInput.value, 10);
-      let endMinute = parseInt(eventEndMinuteInput.value, 10);
-      if (isNaN(endHour) || isNaN(endMinute) || endHour < 0 || endHour > 23 || endMinute < 0 || endMinute > 59) {
-        showErrorMessage("Invalid end time");
-        return;
-      }
-      if (!use24Hour) {
-        const endAmpm = eventEndAMPMSelect.value;
-        if (endAmpm === "PM" && endHour < 12) endHour += 12;
-        if (endAmpm === "AM" && endHour === 12) endHour = 0;
-      }
-      endTimeStr = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
-      const startMin = getTimeInMinutes(timeStr);
-      const endMin = getTimeInMinutes(endTimeStr);
-      if (endMin <= startMin) {
-        showErrorMessage("End time must be after start time");
-        return;
-      }
-    }
-  }
-  let recurrence = null;
-  const recurrenceType = recurrenceTypeSelect.value;
-  if (recurrenceType !== "none") {
-    const interval = parseInt(recurrenceIntervalInput.value, 10);
-    if (isNaN(interval) || interval < 1) {
-      showErrorMessage("Invalid recurrence interval");
-      return;
-    }
-    const until = recurrenceUntilInput.value || null;
-    if (until && parseDateOnly(until) < eventDate) {
-      showErrorMessage("Recurrence end date must be after start date");
-      return;
-    }
-    recurrence = { frequency: recurrenceType, interval, until };
-  }
-  const eventData = {
-    title: eventTitleInput.value.trim(),
-    date: eventDateInput.value,
-    time: timeStr,
-    endTime: endTimeStr,
-    isAllDay: isAllDay,
-    details: eventDetailsInput.value.trim(),
-    recurrence,
-    color: eventColorPicker.value,
-  };
-  const endpoint = editingEvent ? `/api/events/${editingEvent.id}` : '/api/events';
-  const method = editingEvent ? 'PUT' : 'POST';
-  try {
-    const res = await fetch(endpoint, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify(eventData)
-    });
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || 'Error saving event');
-    }
-    closeModal(eventModal);
-    loadEvents();
-  } catch (err) {
-    showErrorMessage(err.message);
-  }
-});
-
-// ===== Details Modal =====
 function openDetailsModal(event) {
-  activeEventId = event.isInstance ? event.id : event.id;
+  activeEventId = event.id;
   detailsContent.innerHTML = `
-    <h3>${event.title}</h3>
-    <p><strong>Date:</strong> <time datetime="${event.instanceDate || event.date}">${event.instanceDate || event.date}</time></p>
+    <p><strong>Title:</strong> ${event.title}</p>
+    <p><strong>Date:</strong> ${event.date}</p>
     <p><strong>Time:</strong> ${formatTimeForDisplay(event)}</p>
-    <p><strong>Color:</strong> <span style="display: inline-block; width: 20px; height: 20px; background-color: ${event.color || (document.body.classList.contains("dark-mode") ? "#66bb6a" : "#4caf50")}; vertical-align: middle; border: 1px solid #000;"></span></p>
-    <p>${event.details || "No details provided"}</p>
-    ${event.recurrence ? '<p><strong>Recurring:</strong> Yes</p>' : ''}
+    ${event.details ? `<p><strong>Details:</strong> ${event.details}</p>` : ""}
+    ${event.recurrence ? `<p><strong>Recurrence:</strong> ${event.recurrence.frequency} every ${event.recurrence.interval} ${event.recurrence.frequency === "daily" ? "day(s)" : event.recurrence.frequency === "weekly" ? "week(s)" : "month(s)"} until ${event.recurrence.until || "indefinite"}</p>` : ""}
   `;
   detailsModal.classList.add("open");
+  detailsModal.setAttribute("aria-hidden", "false");
+  editEventBtn.focus();
 }
 
-// ===== Delete Event =====
-deleteEventBtn.addEventListener("click", async () => {
-  if (activeEventId && authToken) {
-    try {
-      const res = await fetch(`/api/events/${activeEventId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${authToken}` }
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Error deleting event');
-      }
-      closeModal(detailsModal);
-      loadEvents();
-    } catch (err) {
-      showErrorMessage('Failed to delete event');
-    }
-  }
-});
-
-// ===== Edit Event =====
-editEventBtn.addEventListener("click", () => {
-  const event = events.find(e => e.id === activeEventId);
-  if (event) {
-    closeModal(detailsModal);
-    const date = parseDateOnly(event.date);
-    if (date) openEventModal(date, event);
-  }
-});
-
-// ===== View Selection =====
+// ===== Event Handlers =====
 document.querySelectorAll(".view-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     currentView = btn.dataset.view;
@@ -847,79 +789,61 @@ document.querySelectorAll(".view-btn").forEach(btn => {
   });
 });
 
-// ===== Navigation Events =====
+prevMonth.addEventListener("click", () => {
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderMiniCalendar(currentDate);
+});
+
+nextMonth.addEventListener("click", () => {
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderMiniCalendar(currentDate);
+});
+
 prevMonthMain.addEventListener("click", () => {
   selectedDate.setMonth(selectedDate.getMonth() - 1);
-  syncMiniCalendar();
   updateView();
 });
 
 nextMonthMain.addEventListener("click", () => {
   selectedDate.setMonth(selectedDate.getMonth() + 1);
-  syncMiniCalendar();
   updateView();
 });
 
 prevYear.addEventListener("click", () => {
   selectedDate.setFullYear(selectedDate.getFullYear() - 1);
-  syncMiniCalendar();
   updateView();
 });
 
 nextYear.addEventListener("click", () => {
   selectedDate.setFullYear(selectedDate.getFullYear() + 1);
-  syncMiniCalendar();
   updateView();
 });
 
 prevWeek.addEventListener("click", () => {
   selectedDate.setDate(selectedDate.getDate() - 7);
-  syncMiniCalendar();
   updateView();
 });
 
 nextWeek.addEventListener("click", () => {
   selectedDate.setDate(selectedDate.getDate() + 7);
-  syncMiniCalendar();
   updateView();
 });
 
-prevMonth.addEventListener("click", () => {
-  selectedDate.setMonth(selectedDate.getMonth() - 1);
-  syncMiniCalendar();
-  updateView();
-});
-
-nextMonth.addEventListener("click", () => {
-  selectedDate.setMonth(selectedDate.getMonth() + 1);
-  syncMiniCalendar();
-  updateView();
-});
-
-// ===== Create Event Button =====
 createEventBtn.addEventListener("click", () => {
-  try {
-    syncMiniCalendar();
-    if (authToken) openEventModal(selectedDate);
-    else {
-      showErrorMessage("Please log in to create events");
-      loginModal.classList.add("open");
-    }
-  } catch (e) {
-    console.error("Error opening event modal:", e);
-    showErrorMessage("Failed to open event creation modal. Please try again.");
+  if (authToken) openEventModal(selectedDate);
+  else {
+    showErrorMessage("Please log in to create events");
+    loginModal.classList.add("open");
   }
 });
 
-// ===== Time Format Toggle =====
 timeFormatToggle.addEventListener("click", () => {
   use24Hour = !use24Hour;
-  timeFormatToggle.textContent = use24Hour ? "Switch to AM/PM" : "Switch to 24-Hour";
+  timeFormatToggle.textContent = `Switch to ${use24Hour ? "12-Hour" : "24-Hour"}`;
   updateTimeInputs();
   updateView();
 });
 
-// ===== Dark Mode Toggle =====
 darkModeToggle.addEventListener("click", () => {
   document.body.classList.toggle("dark-mode");
   try {
@@ -927,48 +851,192 @@ darkModeToggle.addEventListener("click", () => {
   } catch (e) {
     console.error("Failed to save dark mode setting:", e);
   }
-  updateView();
+  updateButtonColor(buttonColorPicker.value);
 });
 
-// ===== Button Color Management =====
 buttonColorPicker.addEventListener("input", () => {
-  const color = buttonColorPicker.value;
-  buttonColorPreset.value = color;
-  updateButtonColor(color);
+  buttonColorPreset.value = buttonColorPicker.value;
+  updateButtonColor(buttonColorPicker.value);
 });
 
 buttonColorPreset.addEventListener("change", () => {
-  const color = buttonColorPreset.value;
-  buttonColorPicker.value = color;
-  updateButtonColor(color);
+  buttonColorPicker.value = buttonColorPreset.value;
+  updateButtonColor(buttonColorPreset.value);
 });
 
-// ===== Event Color Management =====
 eventColorPicker.addEventListener("input", () => {
-  const color = eventColorPicker.value;
-  eventColorPreset.value = color;
+  eventColorPreset.value = eventColorPicker.value;
 });
 
 eventColorPreset.addEventListener("change", () => {
-  const color = eventColorPreset.value;
-  eventColorPicker.value = color;
+  eventColorPicker.value = eventColorPreset.value;
 });
 
-// ===== Checkbox and Select Events =====
 allDayCheckbox.addEventListener("change", updateTimeInputs);
 untilCheckbox.addEventListener("change", updateTimeInputs);
 recurrenceTypeSelect.addEventListener("change", updateRecurrenceInputs);
 
-// ===== Settings Toggle =====
+eventForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!authToken) {
+    showErrorMessage("Please log in to create events");
+    loginModal.classList.add("open");
+    return;
+  }
+  const title = eventTitleInput.value;
+  const date = eventDateInput.value;
+  const color = eventColorPicker.value;
+  const isAllDay = allDayCheckbox.checked;
+  let time = null;
+  let endTime = null;
+  if (!isAllDay) {
+    let hour = parseInt(eventHourInput.value);
+    const minute = parseInt(eventMinuteInput.value) || 0;
+    if (!use24Hour) {
+      if (eventAMPMSelect.value === "PM" && hour < 12) hour += 12;
+      if (eventAMPMSelect.value === "AM" && hour === 12) hour = 0;
+    }
+    if (isNaN(hour) || isNaN(minute)) {
+      showErrorMessage("Please enter valid time");
+      return;
+    }
+    time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    if (untilCheckbox.checked) {
+      let endHour = parseInt(eventEndHourInput.value);
+      const endMinute = parseInt(eventEndMinuteInput.value) || 0;
+      if (!use24Hour) {
+        if (eventEndAMPMSelect.value === "PM" && endHour < 12) endHour += 12;
+        if (eventEndAMPMSelect.value === "AM" && endHour === 12) endHour = 0;
+      }
+      if (isNaN(endHour) || isNaN(endMinute)) {
+        showErrorMessage("Please enter valid end time");
+        return;
+      }
+      endTime = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
+      if (time >= endTime && !isAllDay) {
+        showErrorMessage("End time must be after start time");
+        return;
+      }
+    }
+  }
+  const recurrence = recurrenceTypeSelect.value !== "none" ? {
+    frequency: recurrenceTypeSelect.value,
+    interval: parseInt(recurrenceIntervalInput.value) || 1,
+    until: recurrenceUntilInput.value || undefined,
+  } : null;
+  const eventData = {
+    title,
+    date,
+    time,
+    endTime,
+    isAllDay,
+    color,
+    details: eventDetailsInput.value,
+    recurrence,
+  };
+  await saveEvent(eventData);
+});
+
+closeEventModal.addEventListener("click", () => {
+  eventModal.classList.remove("open");
+  eventModal.setAttribute("aria-hidden", "true");
+});
+
+closeDetailsModal.addEventListener("click", () => {
+  detailsModal.classList.remove("open");
+  detailsModal.setAttribute("aria-hidden", "true");
+});
+
+deleteEventBtn.addEventListener("click", () => {
+  if (activeEventId) deleteEvent(activeEventId);
+});
+
+editEventBtn.addEventListener("click", () => {
+  const event = events.find(e => e.id === activeEventId);
+  if (!event) return;
+  editingEvent = event;
+  eventModal.querySelector("h2").textContent = "Edit Event";
+  eventTitleInput.value = event.title;
+  eventDateInput.value = event.date;
+  eventColorPicker.value = event.color || "#4caf50";
+  eventColorPreset.value = event.color || "#4caf50";
+  allDayCheckbox.checked = event.isAllDay;
+  if (!event.isAllDay && event.time) {
+    let [hour, minute] = event.time.split(":").map(Number);
+    eventAMPMSelect.value = hour >= 12 ? "PM" : "AM";
+    if (!use24Hour) {
+      hour = hour % 12 || 12;
+    }
+    eventHourInput.value = hour;
+    eventMinuteInput.value = minute;
+  } else {
+    eventHourInput.value = "";
+    eventMinuteInput.value = "";
+  }
+  if (event.endTime && !event.isAllDay) {
+    untilCheckbox.checked = true;
+    let [endHour, endMinute] = event.endTime.split(":").map(Number);
+    eventEndAMPMSelect.value = endHour >= 12 ? "PM" : "AM";
+    if (!use24Hour) {
+      endHour = endHour % 12 || 12;
+    }
+    eventEndHourInput.value = endHour;
+    eventEndMinuteInput.value = endMinute;
+  } else {
+    untilCheckbox.checked = false;
+    eventEndHourInput.value = "";
+    eventEndMinuteInput.value = "";
+  }
+  eventDetailsInput.value = event.details || "";
+  recurrenceTypeSelect.value = event.recurrence?.frequency || "none";
+  recurrenceIntervalInput.value = event.recurrence?.interval || 1;
+  recurrenceUntilInput.value = event.recurrence?.until || "";
+  updateTimeInputs();
+  updateRecurrenceInputs();
+  detailsModal.classList.remove("open");
+  eventModal.classList.add("open");
+  eventModal.setAttribute("aria-hidden", "false");
+  eventTitleInput.focus();
+});
+
+logInButton.addEventListener("click", () => {
+  if (authToken) {
+    authToken = null;
+    try {
+      localStorage.removeItem("authToken");
+    } catch (e) {
+      console.error("Failed to remove authToken:", e);
+    }
+    logInButton.textContent = "Log In";
+    events = [];
+    updateView();
+  } else {
+    loginModal.classList.add("open");
+    loginModal.setAttribute("aria-hidden", "false");
+    usernameInput.focus();
+  }
+});
+
+authSubmit.addEventListener("click", loginOrRegister);
+
+toggleAuth.addEventListener("click", () => {
+  isLogin = !isLogin;
+  loginModal.querySelector("h2").textContent = isLogin ? "Log In" : "Register";
+  authSubmit.textContent = isLogin ? "Log In" : "Register";
+  toggleAuth.textContent = isLogin ? "Switch to Register" : "Switch to Log In";
+  authMessage.textContent = "";
+});
+
+closeLoginModal.addEventListener("click", () => {
+  loginModal.classList.remove("open");
+  loginModal.setAttribute("aria-hidden", "true");
+});
+
 settingsButton.addEventListener("click", () => {
-  miniCalendar.classList.toggle("hidden");
   settingsPanel.classList.toggle("hidden");
 });
 
-// ===== Init =====
-syncMiniCalendar();
-updateView();
-updateTimeInputs();
-updateRecurrenceInputs();
+// ===== Initialize =====
 loadButtonColor();
-loadEvents();
+renderMiniCalendar();
+updateView();

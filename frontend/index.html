@@ -11,7 +11,12 @@
     <!-- Sidebar / Mini Calendar -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <button id="settingsButton" aria-label="Settings"></button>
+        <button id="settingsButton" aria-label="Toggle settings panel">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82h.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
       </div>
       <div class="mini-calendar">
         <div class="calendar-header">
@@ -109,29 +114,37 @@
       </section>
     </main>
   </div>
-  <!-- ===== Login Modal ===== -->
+  <!-- Login Modal -->
   <div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="loginTitle">
     <div class="modal-content login-box">
-      <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close login modal">&times;</span>
       <h2 id="loginTitle">Log In</h2>
-      <form id="authForm">
-        <label>Username: <input type="text" id="username" required></label>
-        <label>Password: <input type="password" id="password" required></label>
-        <button type="submit" id="authSubmit">Log In</button>
+      <div id="authForm">
+        <label for="username">Username:
+          <input type="text" id="username" required aria-describedby="authMessage">
+        </label>
+        <label for="password">Password:
+          <input type="password" id="password" required aria-describedby="authMessage">
+        </label>
+        <button type="button" id="authSubmit">Log In</button>
         <button type="button" id="toggleAuth">Switch to Register</button>
-      </form>
-      <p id="authMessage"></p>
+        <p id="authMessage" role="alert"></p>
+      </div>
     </div>
   </div>
-  <!-- ===== Create Event Modal ===== -->
+  <!-- Create Event Modal -->
   <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
     <div class="modal-content">
-      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
-      <h2>Create Event</h2>
-      <div id="errorMessage"></div>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close event modal">&times;</span>
+      <h2 id="eventTitle">Create Event</h2>
+      <div id="errorMessage" role="alert"></div>
       <form id="eventForm">
-        <label>Title: <input type="text" id="eventTitle" required></label>
-        <label>Date: <input type="date" id="eventDate" required></label>
+        <label for="eventTitle">Title:
+          <input type="text" id="eventTitle" required aria-describedby="errorMessage">
+        </label>
+        <label for="eventDate">Date:
+          <input type="date" id="eventDate" required aria-describedby="errorMessage">
+        </label>
         <div class="color-picker-container">
           <label for="eventColorPicker">Event Color:</label>
           <div class="color-picker-wrapper">
@@ -145,11 +158,9 @@
             </select>
           </div>
         </div>
-        <!-- All Day Checkbox -->
         <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
-        <!-- Time Inputs -->
         <div id="timeInputs" class="time-inputs">
-          <label>
+          <label for="eventHour">
             Time:
             <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 50px;">
             :
@@ -160,13 +171,11 @@
             </select>
           </label>
         </div>
-        <!-- Until Checkbox -->
         <div id="untilContainer">
           <label><input type="checkbox" id="untilCheckbox"> Until</label>
         </div>
-        <!-- End Time Inputs -->
         <div id="endTimeInputs" class="time-inputs hidden">
-          <label>
+          <label for="eventEndHour">
             End Time:
             <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
             :
@@ -177,9 +186,7 @@
             </select>
           </label>
         </div>
-        <!-- Recurrence Section -->
-        <label>
-          Recurrence:
+        <label for="recurrenceType">Recurrence:
           <select id="recurrenceType">
             <option value="none">None</option>
             <option value="daily">Daily</option>
@@ -188,26 +195,27 @@
           </select>
         </label>
         <div id="recurrenceInputs" class="hidden">
-          <label>
+          <label for="recurrenceInterval">
             Every
             <input type="number" id="recurrenceInterval" min="1" value="1" disabled style="width: 50px;">
             <span id="recurrenceUnit"></span>
           </label>
-          <label>
-            Ends on:
+          <label for="recurrenceUntil">Ends on:
             <input type="date" id="recurrenceUntil" disabled>
           </label>
         </div>
-        <label>Details: <textarea id="eventDetails"></textarea></label>
+        <label for="eventDetails">Details:
+          <textarea id="eventDetails"></textarea>
+        </label>
         <button type="submit">Save Event</button>
       </form>
     </div>
   </div>
-  <!-- ===== Event Details Modal ===== -->
+  <!-- Event Details Modal -->
   <div id="detailsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="detailsTitle">
     <div class="modal-content">
-      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
-      <h2>Event Details</h2>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close details modal">&times;</span>
+      <h2 id="detailsTitle">Event Details</h2>
       <div id="detailsContent"></div>
       <button id="deleteEventButton">Delete Event</button>
       <button id="editEventButton">Edit Event</button>

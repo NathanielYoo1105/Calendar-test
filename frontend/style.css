@@ -61,18 +61,30 @@ body.dark-mode .sidebar {
   border-radius: 4px;
   cursor: pointer;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#settingsButton svg {
+  width: 20px;
+  height: 20px;
 }
 
 body.dark-mode #settingsButton {
   background-color: #555;
 }
 
-#settingsButton:hover {
+#settingsButton:hover,
+#settingsButton:focus {
   background-color: #bbb;
+  outline: 2px solid #2196f3;
 }
 
-body.dark-mode #settingsButton:hover {
+body.dark-mode #settingsButton:hover,
+body.dark-mode #settingsButton:focus {
   background-color: #666;
+  outline: 2px solid #64b5f6;
 }
 
 .calendar-header {
@@ -99,12 +111,16 @@ body.dark-mode .calendar-header button {
   color: #e0e0e0;
 }
 
-.calendar-header button:hover {
+.calendar-header button:hover,
+.calendar-header button:focus {
   background-color: #bbb;
+  outline: 2px solid #2196f3;
 }
 
-body.dark-mode .calendar-header button:hover {
+body.dark-mode .calendar-header button:hover,
+body.dark-mode .calendar-header button:focus {
   background-color: #666;
+  outline: 2px solid #64b5f6;
 }
 
 .calendar-grid {
@@ -171,6 +187,16 @@ body.dark-mode .settings-panel {
   background: none;
 }
 
+#buttonColorPicker:focus,
+#eventColorPicker:focus {
+  outline: 2px solid #2196f3;
+}
+
+body.dark-mode #buttonColorPicker:focus,
+body.dark-mode #eventColorPicker:focus {
+  outline: 2px solid #64b5f6;
+}
+
 .color-picker-container {
   display: flex;
   flex-direction: column;
@@ -198,6 +224,16 @@ body.dark-mode #eventColorPreset {
   border: 1px solid #444;
   background: #444;
   color: #e0e0e0;
+}
+
+#buttonColorPreset:focus,
+#eventColorPreset:focus {
+  outline: 2px solid #2196f3;
+}
+
+body.dark-mode #buttonColorPreset:focus,
+body.dark-mode #eventColorPreset:focus {
+  outline: 2px solid #64b5f6;
 }
 
 /* ===== Main View Layout ===== */
@@ -257,7 +293,10 @@ body.dark-mode #eventColorPreset {
   max-width: 400px;
 }
 
-/* The main bar */
+body.dark-mode .rank-bar-container {
+  background: #3c3c3c;
+}
+
 .rank-bar {
   flex: 1;
   height: 20px;
@@ -267,7 +306,10 @@ body.dark-mode #eventColorPreset {
   position: relative;
 }
 
-/* Progress inside the bar */
+body.dark-mode .rank-bar {
+  background: #555;
+}
+
 .rank-progress {
   height: 100%;
   width: 0%;
@@ -276,7 +318,6 @@ body.dark-mode #eventColorPreset {
   border-radius: 10px;
 }
 
-/* Label + Percent Text */
 .rank-label {
   font-weight: bold;
   font-size: 14px;
@@ -309,19 +350,27 @@ body.dark-mode .view-btn {
   background-color: #2a2a2a;
 }
 
-.view-btn:hover {
+.view-btn:hover,
+.view-btn:focus {
   text-decoration: underline;
-  background-color: #fff;
+  background-color: #f0f0f0;
+  outline: 2px solid #2196f3;
 }
 
-body.dark-mode .view-btn:hover {
-  background-color: #2a2a2a;
+body.dark-mode .view-btn:hover,
+body.dark-mode .view-btn:focus {
+  background-color: #3c3c3c;
+  outline: 2px solid #64b5f6;
 }
 
 .view-btn.active {
   font-weight: bold;
   color: #2196f3;
   text-decoration: underline;
+}
+
+body.dark-mode .view-btn.active {
+  color: #64b5f6;
 }
 
 /* ===== Buttons ===== */
@@ -338,19 +387,23 @@ button {
   touch-action: manipulation;
 }
 
-button:hover {
+button:hover,
+button:focus {
   background-color: var(--button-hover-bg);
+  outline: 2px solid #2196f3;
 }
 
 body.dark-mode button {
   background-color: var(--button-dark-bg);
 }
 
-body.dark-mode button:hover {
+body.dark-mode button:hover,
+body.dark-mode button:focus {
   background-color: var(--button-dark-hover-bg);
+  outline: 2px solid #64b5f6;
 }
 
-/* Exceptions for buttons that shouldn't use the custom color */
+/* Navigation and settings buttons */
 .calendar-header button,
 .month-header button,
 .week-nav button,
@@ -377,19 +430,31 @@ body.dark-mode #settingsButton {
 }
 
 .calendar-header button:hover,
+.calendar-header button:focus,
 .month-header button:hover,
+.month-header button:focus,
 .week-nav button:hover,
+.week-nav button:focus,
 .year-nav button:hover,
-#settingsButton:hover {
+.year-nav button:focus,
+#settingsButton:hover,
+#settingsButton:focus {
   background-color: #bbb;
+  outline: 2px solid #2196f3;
 }
 
 body.dark-mode .calendar-header button:hover,
+body.dark-mode .calendar-header button:focus,
 body.dark-mode .month-header button:hover,
+body.dark-mode .month-header button:focus,
 body.dark-mode .week-nav button:hover,
+body.dark-mode .week-nav button:focus,
 body.dark-mode .year-nav button:hover,
-body.dark-mode #settingsButton:hover {
+body.dark-mode .year-nav button:focus,
+body.dark-mode #settingsButton:hover,
+body.dark-mode #settingsButton:focus {
   background-color: #666;
+  outline: 2px solid #64b5f6;
 }
 
 /* ===== Navigation Arrows ===== */
@@ -449,12 +514,16 @@ body.dark-mode .big-calendar td {
   cursor: pointer;
 }
 
-.big-calendar td:hover {
+.big-calendar td:hover,
+.big-calendar td:focus {
   background-color: #f0f0f0;
+  outline: 2px solid #2196f3;
 }
 
-body.dark-mode .big-calendar td:hover {
+body.dark-mode .big-calendar td:hover,
+body.dark-mode .big-calendar td:focus {
   background-color: #3c3c3c;
+  outline: 2px solid #64b5f6;
 }
 
 .month-event {
@@ -480,6 +549,14 @@ body.dark-mode .month-event.all-day {
   background: var(--all-day-dark-bg);
 }
 
+.month-event:focus {
+  outline: 2px solid #2196f3;
+}
+
+body.dark-mode .month-event:focus {
+  outline: 2px solid #64b5f6;
+}
+
 .more-events {
   font-size: clamp(0.65rem, 1.5vw, 0.7rem);
   color: #2196f3;
@@ -488,6 +565,17 @@ body.dark-mode .month-event.all-day {
 
 body.dark-mode .more-events {
   color: #64b5f6;
+}
+
+.more-events:hover,
+.more-events:focus {
+  text-decoration: underline;
+  outline: 2px solid #2196f3;
+}
+
+body.dark-mode .more-events:hover,
+body.dark-mode .more-events:focus {
+  outline: 2px solid #64b5f6;
 }
 
 /* ===== Week View ===== */
@@ -504,6 +592,7 @@ body.dark-mode .more-events {
   display: grid;
   grid-template-columns: clamp(50px, 10vw, 60px) repeat(7, 1fr);
   flex: 1;
+  overflow-x: auto;
   overflow-y: auto;
   height: 100%;
 }
@@ -554,6 +643,7 @@ body.dark-mode .time-column div {
   border-left: 1px solid #ddd;
   position: relative;
   flex: 1;
+  min-width: 100px;
 }
 
 body.dark-mode .day-column {
@@ -593,12 +683,16 @@ body.dark-mode .hour-slot {
   border-bottom: 1px solid #444;
 }
 
-.hour-slot:hover {
+.hour-slot:hover,
+.hour-slot:focus {
   background-color: #f0f0f0;
+  outline: 2px solid #2196f3;
 }
 
-body.dark-mode .hour-slot:hover {
+body.dark-mode .hour-slot:hover,
+body.dark-mode .hour-slot:focus {
   background-color: #3c3c3c;
+  outline: 2px solid #64b5f6;
 }
 
 .all-day-container {
@@ -631,6 +725,16 @@ body.dark-mode .all-day-event {
   background: var(--all-day-dark-bg);
 }
 
+.all-day-event:hover,
+.all-day-event:focus {
+  outline: 2px solid #2196f3;
+}
+
+body.dark-mode .all-day-event:hover,
+body.dark-mode .all-day-event:focus {
+  outline: 2px solid #64b5f6;
+}
+
 .event-box {
   position: absolute;
   left: 5px;
@@ -645,6 +749,16 @@ body.dark-mode .all-day-event {
   min-height: 20px;
   box-sizing: border-box;
   color: white;
+}
+
+.event-box:hover,
+.event-box:focus {
+  outline: 2px solid #2196f3;
+}
+
+body.dark-mode .event-box:hover,
+body.dark-mode .event-box:focus {
+  outline: 2px solid #64b5f6;
 }
 
 /* ===== Year View ===== */
@@ -703,12 +817,16 @@ body.dark-mode .year-month td {
   cursor: pointer;
 }
 
-.year-month td:hover {
+.year-month td:hover,
+.year-month td:focus {
   background-color: #f0f0f0;
+  outline: 2px solid #2196f3;
 }
 
-body.dark-mode .year-month td:hover {
+body.dark-mode .year-month td:hover,
+body.dark-mode .year-month td:focus {
   background-color: #3c3c3c;
+  outline: 2px solid #64b5f6;
 }
 
 .year-month .has-events {
@@ -769,6 +887,18 @@ body.dark-mode .close-btn {
   color: #e0e0e0;
 }
 
+.close-btn:hover,
+.close-btn:focus {
+  color: #2196f3;
+  outline: 2px solid #2196f3;
+}
+
+body.dark-mode .close-btn:hover,
+body.dark-mode .close-btn:focus {
+  color: #64b5f6;
+  outline: 2px solid #64b5f6;
+}
+
 .modal-content h2 {
   margin-top: 0;
   font-size: clamp(1.2rem, 3vw, 1.5rem);
@@ -802,6 +932,18 @@ body.dark-mode .modal-content select {
   border: 1px solid #444;
   background: #444;
   color: #e0e0e0;
+}
+
+.modal-content input:focus,
+.modal-content textarea:focus,
+.modal-content select:focus {
+  outline: 2px solid #2196f3;
+}
+
+body.dark-mode .modal-content input:focus,
+body.dark-mode .modal-content textarea:focus,
+body.dark-mode .modal-content select:focus {
+  outline: 2px solid #64b5f6;
 }
 
 .modal-content button {
@@ -939,10 +1081,7 @@ body.dark-mode #errorMessage {
 
   .week-grid-container {
     grid-template-columns: clamp(40px, 8vw, 50px) repeat(7, 1fr);
-  }
-
-  .time-column div {
-    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+    overflow-x: auto;
   }
 }
 
@@ -978,13 +1117,9 @@ body.dark-mode #errorMessage {
   }
 
   .week-grid-container {
-    grid-template-columns: 40px repeat(3, 1fr);
+    grid-template-columns: clamp(40px, 8vw, 50px) repeat(7, 1fr);
     overflow-x: auto;
     height: 100%;
-  }
-
-  .day-column:nth-child(n+5) {
-    display: none;
   }
 
   .week-nav h2,
