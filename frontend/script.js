@@ -4,11 +4,13 @@ let authToken = null;
 let currentDate = new Date();
 let selectedDate = new Date();
 let use24Hour = false;
-let currentView = "week";
+let currentView = "month";
 let editingEvent = null;
 let activeEventId = null;
 let isLogin = true;
-const API_BASE_URL = window.location.origin; // Use same origin as frontend
+let currentXP = 35; // Rank bar XP
+let maxXP = 100;   // XP needed for next rank
+const API_BASE_URL = window.location.origin;
 
 // ===== Persistent Login =====
 try {
@@ -26,8 +28,14 @@ try {
 try {
   const savedDarkMode = localStorage.getItem("darkMode");
   if (savedDarkMode === "true") document.body.classList.add("dark-mode");
+  const savedButtonColor = localStorage.getItem("buttonColor");
+  if (savedButtonColor) {
+    buttonColorPicker.value = savedButtonColor;
+    buttonColorPreset.value = savedButtonColor;
+    updateButtonColor(savedButtonColor);
+  }
 } catch (e) {
-  console.error("Failed to load dark mode setting:", e);
+  console.error("Failed to load settings:", e);
 }
 
 // ===== DOM Elements =====
@@ -75,7 +83,6 @@ const recurrenceIntervalInput = document.getElementById("recurrenceInterval");
 const recurrenceUnitSpan = document.getElementById("recurrenceUnit");
 const recurrenceUntilInput = document.getElementById("recurrenceUntil");
 const timeInputs = document.getElementById("timeInputs");
-const untilContainer = document.getElementById("untilContainer");
 const endTimeInputs = document.getElementById("endTimeInputs");
 const recurrenceInputs = document.getElementById("recurrenceInputs");
 const detailsModal = document.getElementById("detailsModal");
@@ -94,10 +101,27 @@ const toggleAuth = document.getElementById("toggleAuth");
 const authMessage = document.getElementById("authMessage");
 const settingsButton = document.getElementById("settingsButton");
 const settingsPanel = document.getElementById("settingsPanel");
+const rankProgress = document.getElementById("rankProgress");
+const rankPercent = document.getElementById("rankPercent");
 
-// Note: rankProgress and rankPercent are placeholders for future gamification features
-// const rankProgress = document.getElementById("rankProgress");
-// const rankPercent = document.getElementById("rankPercent");
+// ===== Rank Bar XP System =====
+function updateRankBar() {
+  if (!rankProgress || !rankPercent) return;
+  const percent = Math.min((currentXP / maxXP) * 100, 100);
+  rankProgress.style.width = percent + "%";
+  rankPercent.textContent = Math.round(percent) + "%";
+}
+
+function addXP(amount) {
+  currentXP += amount;
+  if (currentXP > maxXP) currentXP = maxXP;
+  updateRankBar();
+}
+
+// Simulate XP gain (remove in production or tie to real events)
+setInterval(() => {
+  if (currentXP < maxXP) addXP(10);
+}, 3000);
 
 // ===== Utility Functions =====
 function parseDateOnly(dateStr) {
@@ -193,7 +217,7 @@ function updateTimeInputs() {
   const allDayDisabled = allDayCheckbox.checked;
   const untilChecked = untilCheckbox.checked;
   timeInputs.classList.toggle("hidden", allDayDisabled);
-  untilContainer.classList.toggle("hidden", allDayDisabled);
+  untilCheckbox.parentElement.classList.toggle("hidden", allDayDisabled);
   endTimeInputs.classList.toggle("hidden", allDayDisabled || !untilChecked);
   eventHourInput.disabled = allDayDisabled;
   eventMinuteInput.disabled = allDayDisabled;
@@ -236,19 +260,6 @@ function updateRecurrenceInputs() {
 }
 
 // ===== Button Color Management =====
-function loadButtonColor() {
-  try {
-    const savedColor = localStorage.getItem("buttonColor");
-    if (savedColor) {
-      buttonColorPicker.value = savedColor;
-      buttonColorPreset.value = savedColor;
-      updateButtonColor(savedColor);
-    }
-  } catch (e) {
-    console.error("Failed to load button color:", e);
-  }
-}
-
 function updateButtonColor(color) {
   const root = document.documentElement;
   const isDarkMode = document.body.classList.contains("dark-mode");
@@ -257,6 +268,8 @@ function updateButtonColor(color) {
   root.style.setProperty("--button-hover-bg", hoverColor);
   root.style.setProperty("--button-dark-bg", color);
   root.style.setProperty("--button-dark-hover-bg", hoverColor);
+  root.style.setProperty("--event-box-bg", color);
+  root.style.setProperty("--event-box-dark-bg", adjustColorBrightness(color, 0.8));
   try {
     localStorage.setItem("buttonColor", color);
   } catch (e) {
@@ -304,7 +317,7 @@ async function loadEvents() {
     updateView();
   } catch (err) {
     console.error("Error loading events:", err);
-    showErrorMessage("Failed to load events. The server may be waking up, please try again.");
+    showErrorMessage("Failed to load events. Please try again.");
   }
 }
 
@@ -333,6 +346,8 @@ async function saveEvent(eventData) {
     }
     await loadEvents();
     eventModal.classList.remove("open");
+    eventModal.setAttribute("aria-hidden", "true");
+    addXP(10); // Add XP for creating/editing event
   } catch (err) {
     console.error("Error saving event:", err);
     showErrorMessage("Failed to save event. Please try again.");
@@ -362,6 +377,8 @@ async function deleteEvent(eventId) {
     }
     await loadEvents();
     detailsModal.classList.remove("open");
+    detailsModal.setAttribute("aria-hidden", "true");
+    addXP(5); // Add XP for deleting event
   } catch (err) {
     console.error("Error deleting event:", err);
     showErrorMessage("Failed to delete event. Please try again.");
@@ -369,8 +386,8 @@ async function deleteEvent(eventId) {
 }
 
 async function loginOrRegister() {
-  const username = usernameInput.value;
-  const password = passwordInput.value;
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value.trim();
   if (!username || !password) {
     authMessage.textContent = "Please fill in all fields";
     return;
@@ -395,6 +412,7 @@ async function loginOrRegister() {
     }
     logInButton.textContent = "Log Out";
     loginModal.classList.remove("open");
+    loginModal.setAttribute("aria-hidden", "true");
     await loadEvents();
   } catch (err) {
     console.error(`Error ${isLogin ? "logging in" : "registering"}:`, err);
@@ -484,7 +502,6 @@ function renderMonthView() {
       div.tabIndex = 0;
       if (event.isAllDay) div.classList.add("all-day");
       else if (event.color) div.style.backgroundColor = event.color;
-      else div.style.backgroundColor = document.body.classList.contains("dark-mode") ? "var(--event-box-dark-bg)" : "var(--event-box-bg)";
       div.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
       div.setAttribute("aria-label", `Event: ${event.title} on ${event.date} at ${formatTimeForDisplay(event)}`);
       const handleEventClick = ev => {
@@ -638,7 +655,6 @@ function renderWeekView() {
       evBox.classList.add("event-box");
       evBox.tabIndex = 0;
       if (event.color) evBox.style.backgroundColor = event.color;
-      else evBox.style.backgroundColor = document.body.classList.contains("dark-mode") ? "var(--event-box-dark-bg)" : "var(--event-box-bg)";
       evBox.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
       const startMin = getTimeInMinutes(event.time || "00:00");
       const endMin = getTimeInMinutes(event.endTime || (event.time ? `${parseInt(event.time.split(":")[0]) + 1}:00` : "01:00"));
@@ -883,7 +899,7 @@ eventForm.addEventListener("submit", async e => {
     loginModal.classList.add("open");
     return;
   }
-  const title = eventTitleInput.value;
+  const title = eventTitleInput.value.trim();
   const date = eventDateInput.value;
   const color = eventColorPicker.value;
   const isAllDay = allDayCheckbox.checked;
@@ -897,7 +913,7 @@ eventForm.addEventListener("submit", async e => {
       if (eventAMPMSelect.value === "AM" && hour === 12) hour = 0;
     }
     if (isNaN(hour) || isNaN(minute)) {
-      showErrorMessage("Please enter valid time");
+      showErrorMessage("Please enter valid time values");
       return;
     }
     time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
@@ -909,31 +925,34 @@ eventForm.addEventListener("submit", async e => {
         if (eventEndAMPMSelect.value === "AM" && endHour === 12) endHour = 0;
       }
       if (isNaN(endHour) || isNaN(endMinute)) {
-        showErrorMessage("Please enter valid end time");
+        showErrorMessage("Please enter valid end time values");
         return;
       }
       endTime = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
-      if (time >= endTime && !isAllDay) {
+      if (getTimeInMinutes(time) >= getTimeInMinutes(endTime)) {
         showErrorMessage("End time must be after start time");
         return;
       }
     }
   }
-  const recurrence = recurrenceTypeSelect.value !== "none" ? {
-    frequency: recurrenceTypeSelect.value,
-    interval: parseInt(recurrenceIntervalInput.value) || 1,
-    until: recurrenceUntilInput.value || undefined,
-  } : null;
+  const details = eventDetailsInput.value.trim();
+  const recurrenceType = recurrenceTypeSelect.value;
   const eventData = {
     title,
     date,
+    color,
+    isAllDay,
     time,
     endTime,
-    isAllDay,
-    color,
-    details: eventDetailsInput.value,
-    recurrence,
+    details,
   };
+  if (recurrenceType !== "none") {
+    eventData.recurrence = {
+      frequency: recurrenceType,
+      interval: parseInt(recurrenceIntervalInput.value) || 1,
+      until: recurrenceUntilInput.value || undefined,
+    };
+  }
   await saveEvent(eventData);
 });
 
@@ -947,10 +966,6 @@ closeDetailsModal.addEventListener("click", () => {
   detailsModal.setAttribute("aria-hidden", "true");
 });
 
-deleteEventBtn.addEventListener("click", () => {
-  if (activeEventId) deleteEvent(activeEventId);
-});
-
 editEventBtn.addEventListener("click", () => {
   const event = events.find(e => e.id === activeEventId);
   if (!event) return;
@@ -961,42 +976,46 @@ editEventBtn.addEventListener("click", () => {
   eventColorPicker.value = event.color || "#4caf50";
   eventColorPreset.value = event.color || "#4caf50";
   allDayCheckbox.checked = event.isAllDay;
+  eventDetailsInput.value = event.details || "";
+  recurrenceTypeSelect.value = event.recurrence ? event.recurrence.frequency : "none";
+  recurrenceIntervalInput.value = event.recurrence ? event.recurrence.interval : "1";
+  recurrenceUntilInput.value = event.recurrence && event.recurrence.until ? event.recurrence.until : "";
   if (!event.isAllDay && event.time) {
     let [hour, minute] = event.time.split(":").map(Number);
-    eventAMPMSelect.value = hour >= 12 ? "PM" : "AM";
     if (!use24Hour) {
+      eventAMPMSelect.value = hour >= 12 ? "PM" : "AM";
       hour = hour % 12 || 12;
     }
     eventHourInput.value = hour;
     eventMinuteInput.value = minute;
+    untilCheckbox.checked = !!event.endTime;
+    if (event.endTime) {
+      [hour, minute] = event.endTime.split(":").map(Number);
+      if (!use24Hour) {
+        eventEndAMPMSelect.value = hour >= 12 ? "PM" : "AM";
+        hour = hour % 12 || 12;
+      }
+      eventEndHourInput.value = hour;
+      eventEndMinuteInput.value = minute;
+    }
   } else {
     eventHourInput.value = "";
     eventMinuteInput.value = "";
-  }
-  if (event.endTime && !event.isAllDay) {
-    untilCheckbox.checked = true;
-    let [endHour, endMinute] = event.endTime.split(":").map(Number);
-    eventEndAMPMSelect.value = endHour >= 12 ? "PM" : "AM";
-    if (!use24Hour) {
-      endHour = endHour % 12 || 12;
-    }
-    eventEndHourInput.value = endHour;
-    eventEndMinuteInput.value = endMinute;
-  } else {
-    untilCheckbox.checked = false;
+    eventAMPMSelect.value = "AM";
     eventEndHourInput.value = "";
     eventEndMinuteInput.value = "";
+    eventEndAMPMSelect.value = "AM";
+    untilCheckbox.checked = false;
   }
-  eventDetailsInput.value = event.details || "";
-  recurrenceTypeSelect.value = event.recurrence?.frequency || "none";
-  recurrenceIntervalInput.value = event.recurrence?.interval || 1;
-  recurrenceUntilInput.value = event.recurrence?.until || "";
   updateTimeInputs();
   updateRecurrenceInputs();
-  detailsModal.classList.remove("open");
   eventModal.classList.add("open");
   eventModal.setAttribute("aria-hidden", "false");
   eventTitleInput.focus();
+});
+
+deleteEventBtn.addEventListener("click", () => {
+  if (activeEventId) deleteEvent(activeEventId);
 });
 
 logInButton.addEventListener("click", () => {
@@ -1010,21 +1029,17 @@ logInButton.addEventListener("click", () => {
     logInButton.textContent = "Log In";
     events = [];
     updateView();
+    showErrorMessage("You have been logged out.");
   } else {
+    isLogin = true;
+    authForm.reset();
+    authSubmit.textContent = "Log In";
+    toggleAuth.textContent = "Switch to Register";
+    authMessage.textContent = "";
     loginModal.classList.add("open");
     loginModal.setAttribute("aria-hidden", "false");
     usernameInput.focus();
   }
-});
-
-authSubmit.addEventListener("click", loginOrRegister);
-
-toggleAuth.addEventListener("click", () => {
-  isLogin = !isLogin;
-  loginModal.querySelector("h2").textContent = isLogin ? "Log In" : "Register";
-  authSubmit.textContent = isLogin ? "Log In" : "Register";
-  toggleAuth.textContent = isLogin ? "Switch to Register" : "Switch to Log In";
-  authMessage.textContent = "";
 });
 
 closeLoginModal.addEventListener("click", () => {
@@ -1032,11 +1047,25 @@ closeLoginModal.addEventListener("click", () => {
   loginModal.setAttribute("aria-hidden", "true");
 });
 
+authForm.addEventListener("submit", async e => {
+  e.preventDefault();
+  await loginOrRegister();
+});
+
+toggleAuth.addEventListener("click", () => {
+  isLogin = !isLogin;
+  authSubmit.textContent = isLogin ? "Log In" : "Register";
+  toggleAuth.textContent = isLogin ? "Switch to Register" : "Switch to Log In";
+  authMessage.textContent = "";
+});
+
 settingsButton.addEventListener("click", () => {
   settingsPanel.classList.toggle("hidden");
 });
 
 // ===== Initialize =====
-loadButtonColor();
-renderMiniCalendar();
-updateView();
+document.addEventListener("DOMContentLoaded", () => {
+  updateRankBar();
+  updateView();
+  updateTimeInputs();
+});

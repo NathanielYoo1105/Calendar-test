@@ -1,57 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Calendar Project</title>
-  <link rel="stylesheet" href="style.css"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar App</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-layout">
     <!-- Sidebar / Mini Calendar -->
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <button id="settingsButton" aria-label="Toggle settings panel">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82h.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </button>
+      <h1 class="logo">Calendar App</h1>
+      <div class="calendar-header">
+        <button id="prevMonth">&lt;</button>
+        <h2 id="monthYear"></h2>
+        <button id="nextMonth">&gt;</button>
       </div>
-      <div class="mini-calendar">
-        <div class="calendar-header">
-          <button id="prevMonth" aria-label="Previous Month">‹</button>
-          <h2 id="monthYear"></h2>
-          <button id="nextMonth" aria-label="Next Month">›</button>
-        </div>
-        <table class="calendar-grid">
-          <thead>
-            <tr>
-              <th>Su</th><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th>
-            </tr>
-          </thead>
-          <tbody id="calendarBody"></tbody>
-        </table>
-      </div>
+      <table class="calendar-grid">
+        <thead>
+          <tr>
+            <th>Su</th><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th>
+          </tr>
+        </thead>
+        <tbody id="calendarBody"></tbody>
+      </table>
+      <button id="settingsButton">Settings</button>
       <div id="settingsPanel" class="settings-panel hidden">
-        <h2>Settings</h2>
-        <button id="timeFormatToggle">Switch to 24-Hour</button>
+        <label>Button Color: 
+          <input type="color" id="buttonColorPicker" value="#4caf50">
+          <select id="buttonColorPreset">
+            <option value="#4caf50">Green</option>
+            <option value="#2196f3">Blue</option>
+            <option value="#f44336">Red</option>
+            <option value="#ff9800">Orange</option>
+          </select>
+        </label>
         <button id="darkModeToggle">Toggle Dark Mode</button>
-        <div class="color-picker-container">
-          <label for="buttonColorPicker">Button Color:</label>
-          <div class="color-picker-wrapper">
-            <input type="color" id="buttonColorPicker" value="#008000">
-            <select id="buttonColorPreset">
-              <option value="#008000">Green</option>
-              <option value="#2196f3">Blue</option>
-              <option value="#f44336">Red</option>
-              <option value="#9c27b0">Purple</option>
-              <option value="#ff9800">Orange</option>
-            </select>
-          </div>
-        </div>
       </div>
     </aside>
+
     <!-- Main Content -->
     <main class="main-view">
       <header class="topbar">
@@ -70,123 +57,113 @@
             <button class="view-btn" data-view="year">Year</button>
           </div>
           <button id="createEventButton">Create Event</button>
-        </div>
-        <div class="title-center">
-          <h1 class="logo">My Calendar</h1>
+          <button id="timeFormatToggle">Switch to 24-Hour</button>
         </div>
         <div class="auth-buttons">
           <button id="logInButton">Log In</button>
         </div>
       </header>
+
       <!-- Month View -->
       <section id="monthView" class="month-view">
-        <div class="month-header">
-          <button id="prevMonthMain" aria-label="Previous Month">‹</button>
+        <div class="month-nav">
+          <button id="prevMonthMain">&lt;</button>
           <h2 id="monthTitle"></h2>
-          <button id="nextMonthMain" aria-label="Next Month">›</button>
+          <button id="nextMonthMain">&gt;</button>
         </div>
         <table class="calendar-grid big-calendar">
           <thead>
             <tr>
-              <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+              <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sa</th>
             </tr>
           </thead>
           <tbody id="bigCalendarBody"></tbody>
         </table>
       </section>
+
       <!-- Week View -->
       <section id="weekView" class="event-grid hidden">
         <div class="week-nav">
-          <button id="prevWeek" aria-label="Previous Week">‹</button>
+          <button id="prevWeek">&lt;</button>
           <h2 id="weekTitle"></h2>
-          <button id="nextWeek" aria-label="Next Week">›</button>
+          <button id="nextWeek">&gt;</button>
         </div>
-        <!-- Time column + 7 day columns generated in JS -->
+        <!-- Week grid generated in JS -->
       </section>
+
       <!-- Year View -->
       <section id="yearView" class="year-view hidden">
         <div class="year-nav">
-          <button id="prevYear" aria-label="Previous Year">‹</button>
+          <button id="prevYear">&lt;</button>
           <h2 id="yearTitle"></h2>
-          <button id="nextYear" aria-label="Next Year">›</button>
+          <button id="nextYear">&gt;</button>
         </div>
         <div id="yearGrid"></div>
       </section>
     </main>
   </div>
+
   <!-- Login Modal -->
   <div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="loginTitle">
     <div class="modal-content login-box">
-      <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close login modal">&times;</span>
+      <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="loginTitle">Log In</h2>
-      <div id="authForm">
-        <label for="username">Username:
-          <input type="text" id="username" required aria-describedby="authMessage">
-        </label>
-        <label for="password">Password:
-          <input type="password" id="password" required aria-describedby="authMessage">
-        </label>
-        <button type="button" id="authSubmit">Log In</button>
+      <form id="authForm">
+        <label>Username: <input type="text" id="username" required></label>
+        <label>Password: <input type="password" id="password" required></label>
+        <button type="submit" id="authSubmit">Log In</button>
         <button type="button" id="toggleAuth">Switch to Register</button>
-        <p id="authMessage" role="alert"></p>
-      </div>
+        <p id="authMessage"></p>
+      </form>
     </div>
   </div>
+
   <!-- Create Event Modal -->
-  <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
+  <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventModalTitle">
     <div class="modal-content">
-      <span class="close-btn" role="button" tabindex="0" aria-label="Close event modal">&times;</span>
-      <h2 id="eventTitle">Create Event</h2>
-      <div id="errorMessage" role="alert"></div>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2 id="eventModalTitle">Create Event</h2>
       <form id="eventForm">
-        <label for="eventTitle">Title:
-          <input type="text" id="eventTitle" required aria-describedby="errorMessage">
+        <label>Title: <input type="text" id="eventTitle" required></label>
+        <label>Date: <input type="date" id="eventDate" required></label>
+        <label>Event Color: 
+          <input type="color" id="eventColorPicker" value="#4caf50">
+          <select id="eventColorPreset">
+            <option value="#4caf50">Green</option>
+            <option value="#2196f3">Blue</option>
+            <option value="#f44336">Red</option>
+            <option value="#ff9800">Orange</option>
+          </select>
         </label>
-        <label for="eventDate">Date:
-          <input type="date" id="eventDate" required aria-describedby="errorMessage">
-        </label>
-        <div class="color-picker-container">
-          <label for="eventColorPicker">Event Color:</label>
-          <div class="color-picker-wrapper">
-            <input type="color" id="eventColorPicker" value="#4caf50">
-            <select id="eventColorPreset">
-              <option value="#4caf50">Green</option>
-              <option value="#2196f3">Blue</option>
-              <option value="#f44336">Red</option>
-              <option value="#9c27b0">Purple</option>
-              <option value="#ff9800">Orange</option>
-            </select>
-          </div>
-        </div>
         <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
         <div id="timeInputs" class="time-inputs">
-          <label for="eventHour">
+          <label>
             Time:
-            <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 50px;">
+            <input type="number" id="eventHour" min="1" max="12" placeholder="HH" style="width: 50px;">
             :
-            <input type="number" id="eventMinute" min="0" max="59" placeholder="MM" required style="width: 50px;">
+            <input type="number" id="eventMinute" min="0" max="59" placeholder="MM" style="width: 50px;">
             <select id="eventAMPM">
               <option value="AM">AM</option>
               <option value="PM">PM</option>
             </select>
           </label>
-        </div>
-        <div id="untilContainer">
           <label><input type="checkbox" id="untilCheckbox"> Until</label>
+          <div id="endTimeInputs" class="time-inputs hidden">
+            <label>
+              End Time:
+              <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
+              :
+              <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 50px;" disabled>
+              <select id="eventEndAMPM" disabled>
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </label>
+          </div>
         </div>
-        <div id="endTimeInputs" class="time-inputs hidden">
-          <label for="eventEndHour">
-            End Time:
-            <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
-            :
-            <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 50px;" disabled>
-            <select id="eventEndAMPM" disabled>
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </label>
-        </div>
-        <label for="recurrenceType">Recurrence:
+        <label>Details: <textarea id="eventDetails"></textarea></label>
+        <label>
+          Recurrence:
           <select id="recurrenceType">
             <option value="none">None</option>
             <option value="daily">Daily</option>
@@ -195,32 +172,31 @@
           </select>
         </label>
         <div id="recurrenceInputs" class="hidden">
-          <label for="recurrenceInterval">
+          <label>
             Every
-            <input type="number" id="recurrenceInterval" min="1" value="1" disabled style="width: 50px;">
+            <input type="number" id="recurrenceInterval" min="1" value="1" style="width: 50px;">
             <span id="recurrenceUnit"></span>
           </label>
-          <label for="recurrenceUntil">Ends on:
-            <input type="date" id="recurrenceUntil" disabled>
-          </label>
+          <label>Until: <input type="date" id="recurrenceUntil"></label>
         </div>
-        <label for="eventDetails">Details:
-          <textarea id="eventDetails"></textarea>
-        </label>
         <button type="submit">Save Event</button>
       </form>
     </div>
   </div>
+
   <!-- Event Details Modal -->
   <div id="detailsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="detailsTitle">
     <div class="modal-content">
-      <span class="close-btn" role="button" tabindex="0" aria-label="Close details modal">&times;</span>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="detailsTitle">Event Details</h2>
       <div id="detailsContent"></div>
-      <button id="deleteEventButton">Delete Event</button>
-      <button id="editEventButton">Edit Event</button>
+      <div class="modal-buttons">
+        <button id="editEventButton">Edit Event</button>
+        <button id="deleteEventButton">Delete Event</button>
+      </div>
     </div>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>

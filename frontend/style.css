@@ -1,13 +1,11 @@
 /* ===== Global Styles ===== */
 :root {
-  --button-bg: #008000; /* Default green */
-  --button-hover-bg: #006400; /* Default dark green */
-  --button-dark-bg: #388e3c; /* Default dark mode green */
-  --button-dark-hover-bg: #2e7d32; /* Default dark mode hover green */
-  --event-box-bg: #4caf50; /* Default event box green */
-  --event-box-dark-bg: #66bb6a; /* Default dark mode event box green */
-  --all-day-bg: #ff9800; /* Default all-day event orange */
-  --all-day-dark-bg: #ffb74d; /* Default dark mode all-day event orange */
+  --button-bg: #4caf50;
+  --button-hover-bg: #388e3c;
+  --button-dark-bg: #4caf50;
+  --button-dark-hover-bg: #66bb6a;
+  --event-box-bg: #4caf50;
+  --event-box-dark-bg: #388e3c;
 }
 
 body {
@@ -17,11 +15,10 @@ body {
   height: 100vh;
   background-color: #fff;
   color: #333;
-  transition: background-color 0.3s, color 0.3s;
 }
 
 body.dark-mode {
-  background-color: #2a2a2a;
+  background-color: #121212;
   color: #e0e0e0;
 }
 
@@ -38,53 +35,18 @@ body.dark-mode {
   flex-direction: column;
   padding: 10px;
   background-color: #f7f7f7;
-  transition: width 0.3s ease, background-color 0.3s, border-color 0.3s;
+  transition: width 0.3s ease;
 }
 
 body.dark-mode .sidebar {
-  background-color: #333333;
+  background-color: #1e1e1e;
   border-right: 1px solid #444;
 }
 
-.sidebar-header {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
+.logo {
+  text-align: center;
   margin-bottom: 10px;
-}
-
-#settingsButton {
-  width: 30px;
-  height: 30px;
-  background-color: #ccc;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-#settingsButton svg {
-  width: 20px;
-  height: 20px;
-}
-
-body.dark-mode #settingsButton {
-  background-color: #555;
-}
-
-#settingsButton:hover,
-#settingsButton:focus {
-  background-color: #bbb;
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode #settingsButton:hover,
-body.dark-mode #settingsButton:focus {
-  background-color: #666;
-  outline: 2px solid #64b5f6;
+  font-size: clamp(1rem, 3vw, 1.5rem);
 }
 
 .calendar-header {
@@ -95,8 +57,8 @@ body.dark-mode #settingsButton:focus {
 
 .calendar-header button {
   padding: 4px 8px;
-  background-color: #ccc;
-  color: #333;
+  background-color: var(--button-bg);
+  color: white;
   font-weight: bold;
   border-radius: 4px;
   font-size: clamp(0.8rem, 2vw, 1rem);
@@ -107,20 +69,15 @@ body.dark-mode #settingsButton:focus {
 }
 
 body.dark-mode .calendar-header button {
-  background-color: #555;
-  color: #e0e0e0;
+  background-color: var(--button-dark-bg);
 }
 
-.calendar-header button:hover,
-.calendar-header button:focus {
-  background-color: #bbb;
-  outline: 2px solid #2196f3;
+.calendar-header button:hover {
+  background-color: var(--button-hover-bg);
 }
 
-body.dark-mode .calendar-header button:hover,
-body.dark-mode .calendar-header button:focus {
-  background-color: #666;
-  outline: 2px solid #64b5f6;
+body.dark-mode .calendar-header button:hover {
+  background-color: var(--button-dark-hover-bg);
 }
 
 .calendar-grid {
@@ -147,7 +104,7 @@ body.dark-mode .calendar-grid td {
 }
 
 body.dark-mode .today {
-  background-color: #004d40;
+  background-color: #263238;
 }
 
 .selected {
@@ -157,83 +114,35 @@ body.dark-mode .today {
 }
 
 body.dark-mode .selected {
-  background-color: #388e3c;
+  background-color: #4caf50;
 }
 
+/* ===== Settings Panel ===== */
 .settings-panel {
-  flex: 1;
-  padding: 10px;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-body.dark-mode .settings-panel {
-  background-color: #3c3c3c;
-  border: 1px solid #555;
-}
-
-/* Color picker styling */
-#buttonColorPicker,
-#eventColorPicker {
-  padding: 0;
-  width: 40px;
-  height: 30px;
-  border: none;
-  cursor: pointer;
-  background: none;
-}
-
-#buttonColorPicker:focus,
-#eventColorPicker:focus {
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode #buttonColorPicker:focus,
-body.dark-mode #eventColorPicker:focus {
-  outline: 2px solid #64b5f6;
-}
-
-.color-picker-container {
+.settings-panel label {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 5px;
 }
 
-.color-picker-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-#buttonColorPreset,
-#eventColorPreset {
-  padding: 5px;
+.settings-panel input[type="color"],
+.settings-panel select {
+  padding: 2px;
   border-radius: 4px;
   border: 1px solid #ccc;
-  font-size: clamp(0.8rem, 2vw, 0.9rem);
-  background: #fff;
-  color: #333;
 }
 
-body.dark-mode #buttonColorPreset,
-body.dark-mode #eventColorPreset {
+body.dark-mode .settings-panel input[type="color"],
+body.dark-mode .settings-panel select {
   border: 1px solid #444;
-  background: #444;
+  background-color: #2a2a2a;
   color: #e0e0e0;
-}
-
-#buttonColorPreset:focus,
-#eventColorPreset:focus {
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode #buttonColorPreset:focus,
-body.dark-mode #eventColorPreset:focus {
-  outline: 2px solid #64b5f6;
 }
 
 /* ===== Main View Layout ===== */
@@ -251,28 +160,12 @@ body.dark-mode #eventColorPreset:focus {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  position: relative;
 }
 
 .left-buttons {
   display: flex;
   gap: 10px;
-  align-items: center;
-}
-
-.title-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  margin: 0;
-}
-
-.logo {
-  margin: 0;
-  font-size: clamp(1rem, 3vw, 1.5rem);
+  flex-wrap: wrap;
 }
 
 .auth-buttons {
@@ -280,12 +173,11 @@ body.dark-mode #eventColorPreset:focus {
   gap: 10px;
 }
 
-/* Rank Bar Container */
+/* ===== Rank Bar Container ===== */
 .rank-bar-container {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 15px;
   padding: 10px;
   background: #f5f5f5;
   border-radius: 12px;
@@ -294,7 +186,8 @@ body.dark-mode #eventColorPreset:focus {
 }
 
 body.dark-mode .rank-bar-container {
-  background: #3c3c3c;
+  background: #2a2a2a;
+  box-shadow: 0 2px 5px rgba(255, 255, 255, 0.1);
 }
 
 .rank-bar {
@@ -307,7 +200,7 @@ body.dark-mode .rank-bar-container {
 }
 
 body.dark-mode .rank-bar {
-  background: #555;
+  background: #444;
 }
 
 .rank-progress {
@@ -318,7 +211,8 @@ body.dark-mode .rank-bar {
   border-radius: 10px;
 }
 
-.rank-label {
+.rank-label,
+.rank-percent {
   font-weight: bold;
   font-size: 14px;
 }
@@ -326,7 +220,6 @@ body.dark-mode .rank-bar {
 .rank-percent {
   min-width: 40px;
   text-align: right;
-  font-weight: bold;
 }
 
 /* ===== View Selector ===== */
@@ -347,20 +240,10 @@ body.dark-mode .rank-bar {
 
 body.dark-mode .view-btn {
   color: #e0e0e0;
-  background-color: #2a2a2a;
 }
 
-.view-btn:hover,
-.view-btn:focus {
+.view-btn:hover {
   text-decoration: underline;
-  background-color: #f0f0f0;
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode .view-btn:hover,
-body.dark-mode .view-btn:focus {
-  background-color: #3c3c3c;
-  outline: 2px solid #64b5f6;
 }
 
 .view-btn.active {
@@ -370,7 +253,50 @@ body.dark-mode .view-btn:focus {
 }
 
 body.dark-mode .view-btn.active {
-  color: #64b5f6;
+  color: #4fc3f7;
+}
+
+/* ===== Navigation Buttons ===== */
+.month-nav,
+.week-nav,
+.year-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.month-nav button,
+.week-nav button,
+.year-nav button {
+  padding: 4px 8px;
+  background-color: var(--button-bg);
+  color: white;
+  font-weight: bold;
+  border-radius: 4px;
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  border: none;
+  cursor: pointer;
+  min-width: 30px;
+}
+
+body.dark-mode .month-nav button,
+body.dark-mode .week-nav button,
+body.dark-mode .year-nav button {
+  background-color: var(--button-dark-bg);
+}
+
+.month-nav button:hover,
+.week-nav button:hover,
+.year-nav button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+body.dark-mode .month-nav button:hover,
+body.dark-mode .week-nav button:hover,
+body.dark-mode .year-nav button:hover {
+  background-color: var(--button-dark-hover-bg);
 }
 
 /* ===== Buttons ===== */
@@ -387,92 +313,16 @@ button {
   touch-action: manipulation;
 }
 
-button:hover,
-button:focus {
-  background-color: var(--button-hover-bg);
-  outline: 2px solid #2196f3;
-}
-
 body.dark-mode button {
   background-color: var(--button-dark-bg);
 }
 
-body.dark-mode button:hover,
-body.dark-mode button:focus {
+button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+body.dark-mode button:hover {
   background-color: var(--button-dark-hover-bg);
-  outline: 2px solid #64b5f6;
-}
-
-/* Navigation and settings buttons */
-.calendar-header button,
-.month-header button,
-.week-nav button,
-.year-nav button,
-#settingsButton {
-  padding: 4px 8px;
-  background-color: #ccc;
-  color: #333;
-  font-weight: bold;
-  border-radius: 4px;
-  font-size: clamp(0.8rem, 2vw, 1rem);
-  border: none;
-  cursor: pointer;
-  min-width: 30px;
-}
-
-body.dark-mode .calendar-header button,
-body.dark-mode .month-header button,
-body.dark-mode .week-nav button,
-body.dark-mode .year-nav button,
-body.dark-mode #settingsButton {
-  background-color: #555;
-  color: #e0e0e0;
-}
-
-.calendar-header button:hover,
-.calendar-header button:focus,
-.month-header button:hover,
-.month-header button:focus,
-.week-nav button:hover,
-.week-nav button:focus,
-.year-nav button:hover,
-.year-nav button:focus,
-#settingsButton:hover,
-#settingsButton:focus {
-  background-color: #bbb;
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode .calendar-header button:hover,
-body.dark-mode .calendar-header button:focus,
-body.dark-mode .month-header button:hover,
-body.dark-mode .month-header button:focus,
-body.dark-mode .week-nav button:hover,
-body.dark-mode .week-nav button:focus,
-body.dark-mode .year-nav button:hover,
-body.dark-mode .year-nav button:focus,
-body.dark-mode #settingsButton:hover,
-body.dark-mode #settingsButton:focus {
-  background-color: #666;
-  outline: 2px solid #64b5f6;
-}
-
-/* ===== Navigation Arrows ===== */
-.month-header,
-.week-nav,
-.year-nav {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.month-header h2,
-.week-nav h2,
-.year-nav h2 {
-  margin: 0;
-  font-size: clamp(1rem, 2.5vw, 1.2rem);
 }
 
 /* ===== Month View ===== */
@@ -481,6 +331,27 @@ body.dark-mode #settingsButton:focus {
   overflow-y: auto;
   margin-top: 10px;
   min-height: 0;
+}
+
+.month-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.month-header h2,
+.week-nav h2,
+.year-nav h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  color: #333;
+}
+
+body.dark-mode .month-header h2,
+body.dark-mode .week-nav h2,
+body.dark-mode .year-nav h2 {
+  color: #e0e0e0;
 }
 
 .big-calendar {
@@ -508,25 +379,28 @@ body.dark-mode .big-calendar td {
 
 .big-calendar th {
   width: 14.28%;
+  background: #f7f7f7;
+}
+
+body.dark-mode .big-calendar th {
+  background: #1e1e1e;
 }
 
 .big-calendar td {
   cursor: pointer;
 }
 
-.big-calendar td:hover,
-.big-calendar td:focus {
+.big-calendar td:hover {
   background-color: #f0f0f0;
-  outline: 2px solid #2196f3;
 }
 
-body.dark-mode .big-calendar td:hover,
-body.dark-mode .big-calendar td:focus {
-  background-color: #3c3c3c;
-  outline: 2px solid #64b5f6;
+body.dark-mode .big-calendar td:hover {
+  background-color: #2a2a2a;
 }
 
 .month-event {
+  background: var(--event-box-bg);
+  color: white;
   border-radius: 4px;
   padding: 2px 4px;
   margin-top: 2px;
@@ -537,24 +411,15 @@ body.dark-mode .big-calendar td:focus {
   cursor: pointer;
   display: block;
   max-width: calc(100% - 8px);
-  color: white;
+}
+
+body.dark-mode .month-event {
+  background: var(--event-box-dark-bg);
 }
 
 .month-event.all-day {
-  background: var(--all-day-bg);
+  background: #ff9800;
   font-weight: bold;
-}
-
-body.dark-mode .month-event.all-day {
-  background: var(--all-day-dark-bg);
-}
-
-.month-event:focus {
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode .month-event:focus {
-  outline: 2px solid #64b5f6;
 }
 
 .more-events {
@@ -564,18 +429,7 @@ body.dark-mode .month-event:focus {
 }
 
 body.dark-mode .more-events {
-  color: #64b5f6;
-}
-
-.more-events:hover,
-.more-events:focus {
-  text-decoration: underline;
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode .more-events:hover,
-body.dark-mode .more-events:focus {
-  outline: 2px solid #64b5f6;
+  color: #4fc3f7;
 }
 
 /* ===== Week View ===== */
@@ -592,7 +446,6 @@ body.dark-mode .more-events:focus {
   display: grid;
   grid-template-columns: clamp(50px, 10vw, 60px) repeat(7, 1fr);
   flex: 1;
-  overflow-x: auto;
   overflow-y: auto;
   height: 100%;
 }
@@ -615,12 +468,11 @@ body.dark-mode .more-events:focus {
   text-align: right;
   padding-right: 8px;
   box-sizing: border-box;
-  padding-top: 30px;
 }
 
 body.dark-mode .time-column {
-  background: #2a2a2a;
-  color: #9e9e9e;
+  background: #1e1e1e;
+  color: #b0bec5;
 }
 
 .time-column div {
@@ -643,7 +495,6 @@ body.dark-mode .time-column div {
   border-left: 1px solid #ddd;
   position: relative;
   flex: 1;
-  min-width: 100px;
 }
 
 body.dark-mode .day-column {
@@ -663,36 +514,8 @@ body.dark-mode .day-column {
 }
 
 body.dark-mode .day-header {
-  background: #333333;
+  background: #1e1e1e;
   border-bottom: 1px solid #444;
-}
-
-.day-slots {
-  flex: 1;
-  display: block;
-}
-
-.hour-slot {
-  border-bottom: 1px solid #f1f3f4;
-  height: 60px;
-  box-sizing: border-box;
-  cursor: pointer;
-}
-
-body.dark-mode .hour-slot {
-  border-bottom: 1px solid #444;
-}
-
-.hour-slot:hover,
-.hour-slot:focus {
-  background-color: #f0f0f0;
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode .hour-slot:hover,
-body.dark-mode .hour-slot:focus {
-  background-color: #3c3c3c;
-  outline: 2px solid #64b5f6;
 }
 
 .all-day-container {
@@ -706,12 +529,12 @@ body.dark-mode .hour-slot:focus {
 }
 
 body.dark-mode .all-day-container {
-  background: #333333;
+  background: #1e1e1e;
   border-bottom: 1px solid #444;
 }
 
 .all-day-event {
-  background: var(--all-day-bg);
+  background: #ff9800;
   color: white;
   border-radius: 4px;
   padding: 2px 4px;
@@ -721,24 +544,12 @@ body.dark-mode .all-day-container {
   display: inline-block;
 }
 
-body.dark-mode .all-day-event {
-  background: var(--all-day-dark-bg);
-}
-
-.all-day-event:hover,
-.all-day-event:focus {
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode .all-day-event:hover,
-body.dark-mode .all-day-event:focus {
-  outline: 2px solid #64b5f6;
-}
-
 .event-box {
   position: absolute;
   left: 5px;
   right: 5px;
+  background: var(--event-box-bg);
+  color: white;
   border-radius: 4px;
   padding: 2px 4px;
   font-size: clamp(0.7rem, 1.5vw, 0.8rem);
@@ -748,17 +559,10 @@ body.dark-mode .all-day-event:focus {
   text-overflow: ellipsis;
   min-height: 20px;
   box-sizing: border-box;
-  color: white;
 }
 
-.event-box:hover,
-.event-box:focus {
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode .event-box:hover,
-body.dark-mode .event-box:focus {
-  outline: 2px solid #64b5f6;
+body.dark-mode .event-box {
+  background: var(--event-box-dark-bg);
 }
 
 /* ===== Year View ===== */
@@ -769,6 +573,12 @@ body.dark-mode .event-box:focus {
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+#yearTitle {
+  text-align: center;
+  margin: 0 0 10px 0;
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
 }
 
 #yearGrid {
@@ -785,7 +595,7 @@ body.dark-mode .event-box:focus {
 }
 
 body.dark-mode .year-month {
-  background: #3c3c3c;
+  background: #1e1e1e;
   border: 1px solid #444;
 }
 
@@ -817,16 +627,12 @@ body.dark-mode .year-month td {
   cursor: pointer;
 }
 
-.year-month td:hover,
-.year-month td:focus {
+.year-month td:hover {
   background-color: #f0f0f0;
-  outline: 2px solid #2196f3;
 }
 
-body.dark-mode .year-month td:hover,
-body.dark-mode .year-month td:focus {
-  background-color: #3c3c3c;
-  outline: 2px solid #64b5f6;
+body.dark-mode .year-month td:hover {
+  background-color: #2a2a2a;
 }
 
 .year-month .has-events {
@@ -834,7 +640,7 @@ body.dark-mode .year-month td:focus {
 }
 
 body.dark-mode .year-month .has-events {
-  background-color: #37474f;
+  background-color: #263238;
 }
 
 /* ===== Modals ===== */
@@ -848,7 +654,7 @@ body.dark-mode .year-month .has-events {
   top: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0,0,0,0.5);
+  background-color: rgba(0, 0, 0, 0.5);
   justify-content: center;
   align-items: center;
   display: flex;
@@ -870,7 +676,7 @@ body.dark-mode .year-month .has-events {
 }
 
 body.dark-mode .modal-content {
-  background: #3c3c3c;
+  background: #1e1e1e;
 }
 
 .close-btn {
@@ -887,26 +693,9 @@ body.dark-mode .close-btn {
   color: #e0e0e0;
 }
 
-.close-btn:hover,
-.close-btn:focus {
-  color: #2196f3;
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode .close-btn:hover,
-body.dark-mode .close-btn:focus {
-  color: #64b5f6;
-  outline: 2px solid #64b5f6;
-}
-
 .modal-content h2 {
   margin-top: 0;
   font-size: clamp(1.2rem, 3vw, 1.5rem);
-  color: #333;
-}
-
-body.dark-mode .modal-content h2 {
-  color: #e0e0e0;
 }
 
 .modal-content form {
@@ -922,70 +711,25 @@ body.dark-mode .modal-content h2 {
   border-radius: 4px;
   border: 1px solid #ccc;
   font-size: clamp(0.9rem, 2vw, 1rem);
-  background: #fff;
-  color: #333;
 }
 
 body.dark-mode .modal-content input,
 body.dark-mode .modal-content textarea,
 body.dark-mode .modal-content select {
   border: 1px solid #444;
-  background: #444;
+  background: #2a2a2a;
   color: #e0e0e0;
-}
-
-.modal-content input:focus,
-.modal-content textarea:focus,
-.modal-content select:focus {
-  outline: 2px solid #2196f3;
-}
-
-body.dark-mode .modal-content input:focus,
-body.dark-mode .modal-content textarea:focus,
-body.dark-mode .modal-content select:focus {
-  outline: 2px solid #64b5f6;
 }
 
 .modal-content button {
   align-self: flex-start;
 }
 
-/* ===== Login Form Styling ===== */
-#authForm {
+.modal-buttons {
   display: flex;
-  flex-direction: column;
   gap: 10px;
-}
-
-#authForm label {
-  display: flex;
-  flex-direction: column;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-}
-
-#authForm input {
-  margin-top: 5px;
-  padding: clamp(6px, 2vw, 8px);
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-}
-
-body.dark-mode #authForm input {
-  border: 1px solid #444;
-  background: #444;
-  color: #e0e0e0;
-}
-
-#authMessage {
-  color: #c62828;
-  font-size: clamp(0.8rem, 1.8vw, 0.9rem);
-  text-align: center;
+  justify-content: flex-start;
   margin-top: 10px;
-}
-
-body.dark-mode #authMessage {
-  color: #ffcdd2;
 }
 
 /* ===== Error Message in Event Modal ===== */
@@ -998,12 +742,12 @@ body.dark-mode #authMessage {
   margin-bottom: 10px;
   font-size: clamp(0.8rem, 1.8vw, 0.9rem);
   text-align: center;
-  animation: fadeOut 2s ease-in-out;
+  animation: fadeOut 3s ease-in-out;
 }
 
 body.dark-mode #errorMessage {
-  background-color: #5c2e2e;
-  color: #ffcdd2;
+  background-color: #d32f2f;
+  color: #ffebee;
 }
 
 @keyframes fadeOut {
@@ -1012,33 +756,24 @@ body.dark-mode #errorMessage {
   100% { opacity: 0; }
 }
 
-/* ===== All Day / Until Styling ===== */
+/* ===== Time and Recurrence Inputs ===== */
+.time-inputs,
+#recurrenceInputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 #allDayCheckbox,
 #untilCheckbox {
   margin-right: 5px;
 }
 
-.time-inputs {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-#endTimeInputs {
+.time-inputs label,
+#recurrenceInputs label {
   display: flex;
   align-items: center;
   gap: 5px;
-}
-
-/* ===== Details Textarea ===== */
-#eventDetails {
-  height: 60px;
-  resize: vertical;
-}
-
-/* ===== Hide Section Utility ===== */
-.hidden {
-  display: none;
 }
 
 /* ===== Responsive Adjustments ===== */
@@ -1048,40 +783,36 @@ body.dark-mode #errorMessage {
     overflow-x: hidden;
     transition: width 0.3s ease;
   }
-
   .sidebar:hover {
     width: 280px;
   }
-
-  .sidebar:not(:hover) .calendar-header h2 {
+  .sidebar:not(:hover) .logo,
+  .sidebar:not(:hover) .calendar-header h2,
+  .sidebar:not(:hover) .settings-panel {
     display: none;
   }
-
   .sidebar:not(:hover) .calendar-grid th {
     font-size: 0.7rem;
   }
-
   .main-view {
     margin-left: 60px;
   }
-
   #yearGrid {
     grid-template-columns: repeat(2, 1fr);
   }
-
   .big-calendar th,
   .big-calendar td {
     font-size: clamp(0.7rem, 1.5vw, 0.8rem);
     height: clamp(50px, 10vw, 60px);
   }
-
   .month-event {
     font-size: clamp(0.65rem, 1.5vw, 0.75rem);
   }
-
   .week-grid-container {
     grid-template-columns: clamp(40px, 8vw, 50px) repeat(7, 1fr);
-    overflow-x: auto;
+  }
+  .time-column div {
+    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
   }
 }
 
@@ -1089,7 +820,6 @@ body.dark-mode #errorMessage {
   .app-layout {
     flex-direction: column;
   }
-
   .sidebar {
     width: 100%;
     height: auto;
@@ -1098,58 +828,41 @@ body.dark-mode #errorMessage {
     border-right: none;
     border-bottom: 1px solid #ddd;
   }
-
   body.dark-mode .sidebar {
     border-bottom: 1px solid #444;
   }
-
   .sidebar:hover {
     max-height: 300px;
   }
-
   .main-view {
     margin-left: 0;
     flex: 1;
   }
-
   #yearGrid {
     grid-template-columns: 1fr;
   }
-
   .week-grid-container {
-    grid-template-columns: clamp(40px, 8vw, 50px) repeat(7, 1fr);
+    grid-template-columns: 40px repeat(3, 1fr);
     overflow-x: auto;
-    height: 100%;
   }
-
-  .week-nav h2,
-  .month-header h2,
-  .year-nav h2 {
+  .day-column:nth-child(n+5) {
+    display: none;
+  }
+  .week-nav h2 {
     font-size: clamp(0.9rem, 2vw, 1rem);
   }
-
   .view-selector {
     flex-direction: column;
     gap: 5px;
   }
-
   .topbar {
     flex-direction: column;
     align-items: flex-start;
   }
-
-  .title-center {
-    width: 100%;
-    position: static;
-    transform: none;
-    text-align: center;
-  }
-
   .modal-content {
     width: clamp(250px, 95vw, 320px);
     padding: clamp(10px, 2vw, 15px);
   }
-
   .hour-slot,
   .time-column div {
     height: 50px;
