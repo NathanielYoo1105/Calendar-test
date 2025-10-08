@@ -1,11 +1,13 @@
 /* ===== Global Styles ===== */
 :root {
-  --button-bg: #4caf50;
-  --button-hover-bg: #388e3c;
-  --button-dark-bg: #4caf50;
-  --button-dark-hover-bg: #66bb6a;
-  --event-box-bg: #4caf50;
-  --event-box-dark-bg: #388e3c;
+  --button-bg: #008000; /* Default green */
+  --button-hover-bg: #006400; /* Default dark green */
+  --button-dark-bg: #388e3c; /* Default dark mode green */
+  --button-dark-hover-bg: #2e7d32; /* Default dark mode hover green */
+  --event-box-bg: #4caf50; /* Default event box green */
+  --event-box-dark-bg: #66bb6a; /* Default dark mode event box green */
+  --all-day-bg: #ff9800; /* Default all-day event orange */
+  --all-day-dark-bg: #ffb74d; /* Default dark mode all-day event orange */
 }
 
 body {
@@ -15,10 +17,11 @@ body {
   height: 100vh;
   background-color: #fff;
   color: #333;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 body.dark-mode {
-  background-color: #121212;
+  background-color: #2a2a2a;
   color: #e0e0e0;
 }
 
@@ -35,18 +38,41 @@ body.dark-mode {
   flex-direction: column;
   padding: 10px;
   background-color: #f7f7f7;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background-color 0.3s, border-color 0.3s;
 }
 
 body.dark-mode .sidebar {
-  background-color: #1e1e1e;
+  background-color: #333333;
   border-right: 1px solid #444;
 }
 
-.logo {
-  text-align: center;
+.sidebar-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
   margin-bottom: 10px;
-  font-size: clamp(1rem, 3vw, 1.5rem);
+}
+
+#settingsButton {
+  width: 30px;
+  height: 30px;
+  background-color: #ccc;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+}
+
+body.dark-mode #settingsButton {
+  background-color: #555;
+}
+
+#settingsButton:hover {
+  background-color: #bbb;
+}
+
+body.dark-mode #settingsButton:hover {
+  background-color: #666;
 }
 
 .calendar-header {
@@ -57,8 +83,8 @@ body.dark-mode .sidebar {
 
 .calendar-header button {
   padding: 4px 8px;
-  background-color: var(--button-bg);
-  color: white;
+  background-color: #ccc;
+  color: #333;
   font-weight: bold;
   border-radius: 4px;
   font-size: clamp(0.8rem, 2vw, 1rem);
@@ -69,15 +95,16 @@ body.dark-mode .sidebar {
 }
 
 body.dark-mode .calendar-header button {
-  background-color: var(--button-dark-bg);
+  background-color: #555;
+  color: #e0e0e0;
 }
 
 .calendar-header button:hover {
-  background-color: var(--button-hover-bg);
+  background-color: #bbb;
 }
 
 body.dark-mode .calendar-header button:hover {
-  background-color: var(--button-dark-hover-bg);
+  background-color: #666;
 }
 
 .calendar-grid {
@@ -104,7 +131,7 @@ body.dark-mode .calendar-grid td {
 }
 
 body.dark-mode .today {
-  background-color: #263238;
+  background-color: #004d40;
 }
 
 .selected {
@@ -114,34 +141,62 @@ body.dark-mode .today {
 }
 
 body.dark-mode .selected {
-  background-color: #4caf50;
+  background-color: #388e3c;
 }
 
-/* ===== Settings Panel ===== */
 .settings-panel {
-  margin-top: 10px;
+  flex: 1;
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.settings-panel label {
+body.dark-mode .settings-panel {
+  background-color: #3c3c3c;
+  border: 1px solid #555;
+}
+
+/* Color picker styling */
+#buttonColorPicker,
+#eventColorPicker {
+  padding: 0;
+  width: 40px;
+  height: 30px;
+  border: none;
+  cursor: pointer;
+  background: none;
+}
+
+.color-picker-container {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 5px;
 }
 
-.settings-panel input[type="color"],
-.settings-panel select {
-  padding: 2px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+.color-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-body.dark-mode .settings-panel input[type="color"],
-body.dark-mode .settings-panel select {
+#buttonColorPreset,
+#eventColorPreset {
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
+  background: #fff;
+  color: #333;
+}
+
+body.dark-mode #buttonColorPreset,
+body.dark-mode #eventColorPreset {
   border: 1px solid #444;
-  background-color: #2a2a2a;
+  background: #444;
   color: #e0e0e0;
 }
 
@@ -160,66 +215,33 @@ body.dark-mode .settings-panel select {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
+  position: relative;
 }
 
 .left-buttons {
   display: flex;
   gap: 10px;
-  flex-wrap: wrap;
+  align-items: center;
+}
+
+.title-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  margin: 0;
+}
+
+.logo {
+  margin: 0;
+  font-size: clamp(1rem, 3vw, 1.5rem);
 }
 
 .auth-buttons {
   display: flex;
   gap: 10px;
-}
-
-/* ===== Rank Bar Container ===== */
-.rank-bar-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  background: #f5f5f5;
-  border-radius: 12px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
-}
-
-body.dark-mode .rank-bar-container {
-  background: #2a2a2a;
-  box-shadow: 0 2px 5px rgba(255, 255, 255, 0.1);
-}
-
-.rank-bar {
-  flex: 1;
-  height: 20px;
-  background: #ddd;
-  border-radius: 10px;
-  overflow: hidden;
-  position: relative;
-}
-
-body.dark-mode .rank-bar {
-  background: #444;
-}
-
-.rank-progress {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #ffd700, #ffa500);
-  transition: width 0.4s ease-in-out;
-  border-radius: 10px;
-}
-
-.rank-label,
-.rank-percent {
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.rank-percent {
-  min-width: 40px;
-  text-align: right;
 }
 
 /* ===== View Selector ===== */
@@ -240,63 +262,22 @@ body.dark-mode .rank-bar {
 
 body.dark-mode .view-btn {
   color: #e0e0e0;
+  background-color: #2a2a2a;
 }
 
 .view-btn:hover {
   text-decoration: underline;
+  background-color: #f0f0f0;
+}
+
+body.dark-mode .view-btn:hover {
+  background-color: #3c3c3c;
 }
 
 .view-btn.active {
   font-weight: bold;
   color: #2196f3;
   text-decoration: underline;
-}
-
-body.dark-mode .view-btn.active {
-  color: #4fc3f7;
-}
-
-/* ===== Navigation Buttons ===== */
-.month-nav,
-.week-nav,
-.year-nav {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.month-nav button,
-.week-nav button,
-.year-nav button {
-  padding: 4px 8px;
-  background-color: var(--button-bg);
-  color: white;
-  font-weight: bold;
-  border-radius: 4px;
-  font-size: clamp(0.8rem, 2vw, 1rem);
-  border: none;
-  cursor: pointer;
-  min-width: 30px;
-}
-
-body.dark-mode .month-nav button,
-body.dark-mode .week-nav button,
-body.dark-mode .year-nav button {
-  background-color: var(--button-dark-bg);
-}
-
-.month-nav button:hover,
-.week-nav button:hover,
-.year-nav button:hover {
-  background-color: var(--button-hover-bg);
-}
-
-body.dark-mode .month-nav button:hover,
-body.dark-mode .week-nav button:hover,
-body.dark-mode .year-nav button:hover {
-  background-color: var(--button-dark-hover-bg);
 }
 
 /* ===== Buttons ===== */
@@ -313,16 +294,76 @@ button {
   touch-action: manipulation;
 }
 
-body.dark-mode button {
-  background-color: var(--button-dark-bg);
-}
-
 button:hover {
   background-color: var(--button-hover-bg);
 }
 
+body.dark-mode button {
+  background-color: var(--button-dark-bg);
+}
+
 body.dark-mode button:hover {
   background-color: var(--button-dark-hover-bg);
+}
+
+/* Exceptions for buttons that shouldn't use the custom color */
+.calendar-header button,
+.month-header button,
+.week-nav button,
+.year-nav button,
+#settingsButton {
+  padding: 4px 8px;
+  background-color: #ccc;
+  color: #333;
+  font-weight: bold;
+  border-radius: 4px;
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  border: none;
+  cursor: pointer;
+  min-width: 30px;
+}
+
+body.dark-mode .calendar-header button,
+body.dark-mode .month-header button,
+body.dark-mode .week-nav button,
+body.dark-mode .year-nav button,
+body.dark-mode #settingsButton {
+  background-color: #555;
+  color: #e0e0e0;
+}
+
+.calendar-header button:hover,
+.month-header button:hover,
+.week-nav button:hover,
+.year-nav button:hover,
+#settingsButton:hover {
+  background-color: #bbb;
+}
+
+body.dark-mode .calendar-header button:hover,
+body.dark-mode .month-header button:hover,
+body.dark-mode .week-nav button:hover,
+body.dark-mode .year-nav button:hover,
+body.dark-mode #settingsButton:hover {
+  background-color: #666;
+}
+
+/* ===== Navigation Arrows ===== */
+.month-header,
+.week-nav,
+.year-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.month-header h2,
+.week-nav h2,
+.year-nav h2 {
+  margin: 0;
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
 }
 
 /* ===== Month View ===== */
@@ -331,27 +372,6 @@ body.dark-mode button:hover {
   overflow-y: auto;
   margin-top: 10px;
   min-height: 0;
-}
-
-.month-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.month-header h2,
-.week-nav h2,
-.year-nav h2 {
-  margin: 0;
-  font-size: clamp(1.2rem, 3vw, 1.5rem);
-  color: #333;
-}
-
-body.dark-mode .month-header h2,
-body.dark-mode .week-nav h2,
-body.dark-mode .year-nav h2 {
-  color: #e0e0e0;
 }
 
 .big-calendar {
@@ -379,11 +399,6 @@ body.dark-mode .big-calendar td {
 
 .big-calendar th {
   width: 14.28%;
-  background: #f7f7f7;
-}
-
-body.dark-mode .big-calendar th {
-  background: #1e1e1e;
 }
 
 .big-calendar td {
@@ -395,12 +410,10 @@ body.dark-mode .big-calendar th {
 }
 
 body.dark-mode .big-calendar td:hover {
-  background-color: #2a2a2a;
+  background-color: #3c3c3c;
 }
 
 .month-event {
-  background: var(--event-box-bg);
-  color: white;
   border-radius: 4px;
   padding: 2px 4px;
   margin-top: 2px;
@@ -411,15 +424,16 @@ body.dark-mode .big-calendar td:hover {
   cursor: pointer;
   display: block;
   max-width: calc(100% - 8px);
-}
-
-body.dark-mode .month-event {
-  background: var(--event-box-dark-bg);
+  color: white;
 }
 
 .month-event.all-day {
-  background: #ff9800;
+  background: var(--all-day-bg);
   font-weight: bold;
+}
+
+body.dark-mode .month-event.all-day {
+  background: var(--all-day-dark-bg);
 }
 
 .more-events {
@@ -429,7 +443,7 @@ body.dark-mode .month-event {
 }
 
 body.dark-mode .more-events {
-  color: #4fc3f7;
+  color: #64b5f6;
 }
 
 /* ===== Week View ===== */
@@ -468,11 +482,12 @@ body.dark-mode .more-events {
   text-align: right;
   padding-right: 8px;
   box-sizing: border-box;
+  padding-top: 30px;
 }
 
 body.dark-mode .time-column {
-  background: #1e1e1e;
-  color: #b0bec5;
+  background: #2a2a2a;
+  color: #9e9e9e;
 }
 
 .time-column div {
@@ -514,8 +529,32 @@ body.dark-mode .day-column {
 }
 
 body.dark-mode .day-header {
-  background: #1e1e1e;
+  background: #333333;
   border-bottom: 1px solid #444;
+}
+
+.day-slots {
+  flex: 1;
+  display: block;
+}
+
+.hour-slot {
+  border-bottom: 1px solid #f1f3f4;
+  height: 60px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+body.dark-mode .hour-slot {
+  border-bottom: 1px solid #444;
+}
+
+.hour-slot:hover {
+  background-color: #f0f0f0;
+}
+
+body.dark-mode .hour-slot:hover {
+  background-color: #3c3c3c;
 }
 
 .all-day-container {
@@ -529,12 +568,12 @@ body.dark-mode .day-header {
 }
 
 body.dark-mode .all-day-container {
-  background: #1e1e1e;
+  background: #333333;
   border-bottom: 1px solid #444;
 }
 
 .all-day-event {
-  background: #ff9800;
+  background: var(--all-day-bg);
   color: white;
   border-radius: 4px;
   padding: 2px 4px;
@@ -544,12 +583,14 @@ body.dark-mode .all-day-container {
   display: inline-block;
 }
 
+body.dark-mode .all-day-event {
+  background: var(--all-day-dark-bg);
+}
+
 .event-box {
   position: absolute;
   left: 5px;
   right: 5px;
-  background: var(--event-box-bg);
-  color: white;
   border-radius: 4px;
   padding: 2px 4px;
   font-size: clamp(0.7rem, 1.5vw, 0.8rem);
@@ -559,10 +600,7 @@ body.dark-mode .all-day-container {
   text-overflow: ellipsis;
   min-height: 20px;
   box-sizing: border-box;
-}
-
-body.dark-mode .event-box {
-  background: var(--event-box-dark-bg);
+  color: white;
 }
 
 /* ===== Year View ===== */
@@ -573,12 +611,6 @@ body.dark-mode .event-box {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-#yearTitle {
-  text-align: center;
-  margin: 0 0 10px 0;
-  font-size: clamp(1.2rem, 3vw, 1.5rem);
 }
 
 #yearGrid {
@@ -595,7 +627,7 @@ body.dark-mode .event-box {
 }
 
 body.dark-mode .year-month {
-  background: #1e1e1e;
+  background: #3c3c3c;
   border: 1px solid #444;
 }
 
@@ -632,7 +664,7 @@ body.dark-mode .year-month td {
 }
 
 body.dark-mode .year-month td:hover {
-  background-color: #2a2a2a;
+  background-color: #3c3c3c;
 }
 
 .year-month .has-events {
@@ -640,7 +672,7 @@ body.dark-mode .year-month td:hover {
 }
 
 body.dark-mode .year-month .has-events {
-  background-color: #263238;
+  background-color: #37474f;
 }
 
 /* ===== Modals ===== */
@@ -654,7 +686,7 @@ body.dark-mode .year-month .has-events {
   top: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0,0,0,0.5);
   justify-content: center;
   align-items: center;
   display: flex;
@@ -676,7 +708,7 @@ body.dark-mode .year-month .has-events {
 }
 
 body.dark-mode .modal-content {
-  background: #1e1e1e;
+  background: #3c3c3c;
 }
 
 .close-btn {
@@ -696,6 +728,11 @@ body.dark-mode .close-btn {
 .modal-content h2 {
   margin-top: 0;
   font-size: clamp(1.2rem, 3vw, 1.5rem);
+  color: #333;
+}
+
+body.dark-mode .modal-content h2 {
+  color: #e0e0e0;
 }
 
 .modal-content form {
@@ -711,13 +748,15 @@ body.dark-mode .close-btn {
   border-radius: 4px;
   border: 1px solid #ccc;
   font-size: clamp(0.9rem, 2vw, 1rem);
+  background: #fff;
+  color: #333;
 }
 
 body.dark-mode .modal-content input,
 body.dark-mode .modal-content textarea,
 body.dark-mode .modal-content select {
   border: 1px solid #444;
-  background: #2a2a2a;
+  background: #444;
   color: #e0e0e0;
 }
 
@@ -725,11 +764,9 @@ body.dark-mode .modal-content select {
   align-self: flex-start;
 }
 
-.modal-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-start;
-  margin-top: 10px;
+/* ===== Login Form Styling ===== */
+.login-box {
+  text-align: center;
 }
 
 /* ===== Error Message in Event Modal ===== */
@@ -742,12 +779,12 @@ body.dark-mode .modal-content select {
   margin-bottom: 10px;
   font-size: clamp(0.8rem, 1.8vw, 0.9rem);
   text-align: center;
-  animation: fadeOut 3s ease-in-out;
+  animation: fadeOut 2s ease-in-out;
 }
 
 body.dark-mode #errorMessage {
-  background-color: #d32f2f;
-  color: #ffebee;
+  background-color: #5c2e2e;
+  color: #ffcdd2;
 }
 
 @keyframes fadeOut {
@@ -756,24 +793,33 @@ body.dark-mode #errorMessage {
   100% { opacity: 0; }
 }
 
-/* ===== Time and Recurrence Inputs ===== */
-.time-inputs,
-#recurrenceInputs {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
+/* ===== All Day / Until Styling ===== */
 #allDayCheckbox,
 #untilCheckbox {
   margin-right: 5px;
 }
 
-.time-inputs label,
-#recurrenceInputs label {
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#endTimeInputs {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+/* ===== Details Textarea ===== */
+#eventDetails {
+  height: 60px;
+  resize: vertical;
+}
+
+/* ===== Hide Section Utility ===== */
+.hidden {
+  display: none;
 }
 
 /* ===== Responsive Adjustments ===== */
@@ -786,9 +832,7 @@ body.dark-mode #errorMessage {
   .sidebar:hover {
     width: 280px;
   }
-  .sidebar:not(:hover) .logo,
-  .sidebar:not(:hover) .calendar-header h2,
-  .sidebar:not(:hover) .settings-panel {
+  .sidebar:not(:hover) .calendar-header h2 {
     display: none;
   }
   .sidebar:not(:hover) .calendar-grid th {
@@ -844,11 +888,14 @@ body.dark-mode #errorMessage {
   .week-grid-container {
     grid-template-columns: 40px repeat(3, 1fr);
     overflow-x: auto;
+    height: 100%;
   }
   .day-column:nth-child(n+5) {
     display: none;
   }
-  .week-nav h2 {
+  .week-nav h2,
+  .month-header h2,
+  .year-nav h2 {
     font-size: clamp(0.9rem, 2vw, 1rem);
   }
   .view-selector {
@@ -858,6 +905,12 @@ body.dark-mode #errorMessage {
   .topbar {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .title-center {
+    width: 100%;
+    position: static;
+    transform: none;
+    text-align: center;
   }
   .modal-content {
     width: clamp(250px, 95vw, 320px);
