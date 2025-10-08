@@ -899,7 +899,7 @@ eventForm.onsubmit = e => {
     addXP(10);
   }
   try {
-    localStorage.setItem Zab(`calendarEvents_${currentUser || 'guest'}`, JSON.stringify(events));
+    localStorage.setItem(`calendarEvents_${currentUser || 'guest'}`, JSON.stringify(events));
   } catch (e) {
     console.error("Failed to save events:", e);
     showErrorMessage("Error saving event");
