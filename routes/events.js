@@ -1,13 +1,14 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
-const Event = require('../models/Event');
+const Event = require('../models/Event'); // Path to models folder
 
 const router = express.Router();
 
 // Middleware to verify JWT
 const authMiddleware = (req, res, next) => {
-  const token = req.header('Authorization')?.split(' ')[1]; // Expect 'Bearer <token>'
+  const authHeader = req.header('Authorization');
+  const token = authHeader && authHeader.split(' ')[1]; // Expect 'Bearer <token>'
   if (!token) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }

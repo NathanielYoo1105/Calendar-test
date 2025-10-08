@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../models/User'); // Path to models folder
 
 const router = express.Router();
 
@@ -23,12 +23,16 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    const existingUser = await User.findOne({ username });
+    const existingUser = await User.findOne({ username: username.trim() });
     if (existingUser) {
       return res.status(400).json({ message: 'Username already taken' });
     }
 
-    const user = new User({ username: username.trim(), password, email: email ? email.trim() : undefined });
+    const user = new User({ 
+      username: username.trim(), 
+      password, 
+      email: email ? email.trim() : undefined 
+    });
     await user.save();
 
     if (!process.env.JWT_SECRET) {

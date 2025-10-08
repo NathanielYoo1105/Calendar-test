@@ -14,7 +14,7 @@ const eventSchema = new mongoose.Schema({
   },
   time: {
     type: String,
-    match: [/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Time must be in HH:MM format'], // e.g., "14:30"
+    match: [/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Time must be in HH:MM format'],
   },
   endTime: {
     type: String,
@@ -50,16 +50,17 @@ const eventSchema = new mongoose.Schema({
   color: {
     type: String,
     match: [/^#[0-9A-Fa-f]{6}$/, 'Color must be a valid hex code (e.g., #FF0000)'],
-    default: '#000000', // Default to black
+    default: '#000000',
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'User ID is required'],
-    index: true, // Improve query performance
+    index: true,
   },
 }, {
-  timestamps: true, // Adds createdAt, updatedAt
+  timestamps: true,
+  validateModifiedOnly: false, // For Mongoose 8.x compatibility
 });
 
 // Index for efficient queries by user and date

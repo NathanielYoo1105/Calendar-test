@@ -23,7 +23,8 @@ const userSchema = new mongoose.Schema({
     sparse: true, // Allows null/undefined but enforces uniqueness if provided
   },
 }, {
-  timestamps: true, // Adds createdAt, updatedAt
+  timestamps: true,
+  validateModifiedOnly: false, // For Mongoose 8.x compatibility
 });
 
 // Index for faster username lookups
