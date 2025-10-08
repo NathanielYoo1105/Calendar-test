@@ -11,7 +11,7 @@
     <!-- Sidebar / Mini Calendar -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <button id="settingsButton" aria-label="Settings"></button>
+        <button id="settingsButton" aria-label="Settings">⚙</button>
       </div>
       <div class="mini-calendar">
         <div class="calendar-header">
@@ -71,7 +71,9 @@
           <h1 class="logo">My Calendar</h1>
         </div>
         <div class="auth-buttons">
+          <span id="userStatus" class="hidden"></span>
           <button id="logInButton">Log In</button>
+          <button id="logOutButton" class="hidden">Log Out</button>
         </div>
       </header>
 
@@ -99,7 +101,7 @@
           <h2 id="weekTitle"></h2>
           <button id="nextWeek" aria-label="Next Week">›</button>
         </div>
-        <!-- Time column + 7 day columns generated in JS -->
+        <div class="week-grid-container"></div>
       </section>
 
       <!-- Year View -->
@@ -114,11 +116,11 @@
     </main>
   </div>
 
-  <!-- ===== Login Modal ===== -->
-  <div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="loginTitle">
+  <!-- Login Modal -->
+  <div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="authTitle">
     <div class="modal-content login-box">
       <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close">&times;</span>
-      <h2 id="loginTitle">Log In</h2>
+      <h2 id="authTitle">Log In</h2>
       <form id="authForm">
         <label>Username: <input type="text" id="username" required></label>
         <label>Password: <input type="password" id="password" required></label>
@@ -129,7 +131,7 @@
     </div>
   </div>
 
-  <!-- ===== Create Event Modal ===== -->
+  <!-- Create Event Modal -->
   <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
     <div class="modal-content">
       <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
@@ -153,7 +155,7 @@
         <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
         <div id="timeInputs" class="time-inputs">
           <label>
-            Time: 
+            Time:
             <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 50px;">
             :
             <input type="number" id="eventMinute" min="0" max="59" placeholder="MM" required style="width: 50px;">
@@ -168,7 +170,7 @@
         </div>
         <div id="endTimeInputs" class="time-inputs hidden">
           <label>
-            End Time: 
+            End Time:
             <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
             :
             <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 50px;" disabled>
@@ -204,11 +206,11 @@
     </div>
   </div>
 
-  <!-- ===== Event Details Modal ===== -->
+  <!-- Event Details Modal -->
   <div id="detailsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="detailsTitle">
     <div class="modal-content">
       <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
-      <h2>Event Details</h2>
+      <h2 id="detailsTitle">Event Details</h2>
       <div id="detailsContent"></div>
       <button id="deleteEventButton">Delete Event</button>
       <button id="editEventButton">Edit Event</button>

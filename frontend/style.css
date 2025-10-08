@@ -1,13 +1,13 @@
 /* ===== Global Styles ===== */
 :root {
-  --button-bg: #008000; /* Default green */
-  --button-hover-bg: #006400; /* Default dark green */
-  --button-dark-bg: #388e3c; /* Default dark mode green */
-  --button-dark-hover-bg: #2e7d32; /* Default dark mode hover green */
-  --event-box-bg: #4caf50; /* Default event box green */
-  --event-box-dark-bg: #66bb6a; /* Default dark mode event box green */
-  --all-day-bg: #ff9800; /* Default all-day event orange */
-  --all-day-dark-bg: #ffb74d; /* Default dark mode all-day event orange */
+  --button-bg: #008000;
+  --button-hover-bg: #006400;
+  --button-dark-bg: #388e3c;
+  --button-dark-hover-bg: #2e7d32;
+  --event-box-bg: #4caf50;
+  --event-box-dark-bg: #66bb6a;
+  --all-day-bg: #ff9800;
+  --all-day-dark-bg: #ffb74d;
 }
 
 body {
@@ -38,7 +38,7 @@ body.dark-mode {
   flex-direction: column;
   padding: 10px;
   background-color: #f7f7f7;
-  transition: width 0.3s ease, background-color 0.3s, border-color 0.3s;
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 body.dark-mode .sidebar {
@@ -60,7 +60,7 @@ body.dark-mode .sidebar {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  position: relative;
+  font-size: 16px;
 }
 
 body.dark-mode #settingsButton {
@@ -82,7 +82,6 @@ body.dark-mode #settingsButton:hover {
 }
 
 .calendar-header button {
-  padding: 4px 8px;
   background-color: #ccc;
   color: #333;
   font-weight: bold;
@@ -91,7 +90,7 @@ body.dark-mode #settingsButton:hover {
   border: none;
   cursor: pointer;
   min-width: 30px;
-  touch-action: manipulation;
+  padding: 4px 8px;
 }
 
 body.dark-mode .calendar-header button {
@@ -210,7 +209,6 @@ body.dark-mode #eventColorPreset {
   background: #f5f5f5;
   border-radius: 12px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
 }
 
 body.dark-mode .rank-bar-container {
@@ -224,7 +222,6 @@ body.dark-mode .rank-bar-container {
   background: #ddd;
   border-radius: 10px;
   overflow: hidden;
-  position: relative;
 }
 
 body.dark-mode .rank-bar {
@@ -239,15 +236,9 @@ body.dark-mode .rank-bar {
   border-radius: 10px;
 }
 
-.rank-label {
+.rank-label, .rank-percent {
   font-weight: bold;
   font-size: 14px;
-}
-
-.rank-percent {
-  min-width: 40px;
-  text-align: right;
-  font-weight: bold;
 }
 
 /* ===== Main View Layout ===== */
@@ -261,27 +252,22 @@ body.dark-mode .rank-bar {
 
 .topbar {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  position: relative;
+  padding: 10px;
 }
 
 .left-buttons {
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 10px;
 }
 
 .title-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: 50%;
-  transform: translate(-50%, -50%);
+  flex-grow: 1;
   text-align: center;
-  margin: 0;
 }
 
 .logo {
@@ -291,6 +277,7 @@ body.dark-mode .rank-bar {
 
 .auth-buttons {
   display: flex;
+  align-items: center;
   gap: 10px;
 }
 
@@ -307,12 +294,10 @@ body.dark-mode .rank-bar {
   font-size: clamp(1rem, 2.5vw, 1.2rem);
   color: #333;
   padding: 8px;
-  touch-action: manipulation;
 }
 
 body.dark-mode .view-btn {
   color: #e0e0e0;
-  background-color: #2a2a2a;
 }
 
 .view-btn:hover {
@@ -340,8 +325,6 @@ button {
   cursor: pointer;
   font-size: clamp(0.8rem, 2vw, 1rem);
   transition: background-color 0.3s;
-  min-width: 60px;
-  touch-action: manipulation;
 }
 
 button:hover {
@@ -356,13 +339,12 @@ body.dark-mode button:hover {
   background-color: var(--button-dark-hover-bg);
 }
 
-/* Exceptions for buttons that shouldn't use the custom color */
+/* Navigation buttons */
 .calendar-header button,
 .month-header button,
 .week-nav button,
 .year-nav button,
 #settingsButton {
-  padding: 4px 8px;
   background-color: #ccc;
   color: #333;
   font-weight: bold;
@@ -371,6 +353,7 @@ body.dark-mode button:hover {
   border: none;
   cursor: pointer;
   min-width: 30px;
+  padding: 4px 8px;
 }
 
 body.dark-mode .calendar-header button,
@@ -438,17 +421,11 @@ body.dark-mode #settingsButton:hover {
   vertical-align: top;
   padding: clamp(4px, 1vw, 6px);
   position: relative;
-  overflow: hidden;
-  max-height: clamp(60px, 12vw, 80px);
 }
 
 body.dark-mode .big-calendar th,
 body.dark-mode .big-calendar td {
   border: 1px solid #444;
-}
-
-.big-calendar th {
-  width: 14.28%;
 }
 
 .big-calendar td {
@@ -508,17 +485,10 @@ body.dark-mode .more-events {
 
 .week-grid-container {
   display: grid;
-  grid-template-columns: clamp(50px, 10vw, 60px) repeat(7, 1fr);
+  grid-template-columns: 60px repeat(7, 1fr);
   flex: 1;
   overflow-y: auto;
   height: 100%;
-}
-
-.time-column,
-.day-slots {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
 }
 
 .time-column {
@@ -531,7 +501,6 @@ body.dark-mode .more-events {
   color: #5f6368;
   text-align: right;
   padding-right: 8px;
-  box-sizing: border-box;
   padding-top: 30px;
 }
 
@@ -547,7 +516,6 @@ body.dark-mode .time-column {
   align-items: center;
   justify-content: flex-end;
   padding-right: 6px;
-  box-sizing: border-box;
 }
 
 body.dark-mode .time-column div {
@@ -555,8 +523,6 @@ body.dark-mode .time-column div {
 }
 
 .day-column {
-  display: flex;
-  flex-direction: column;
   border-left: 1px solid #ddd;
   position: relative;
   flex: 1;
@@ -585,13 +551,11 @@ body.dark-mode .day-header {
 
 .day-slots {
   flex: 1;
-  display: block;
 }
 
 .hour-slot {
   border-bottom: 1px solid #f1f3f4;
   height: 60px;
-  box-sizing: border-box;
   cursor: pointer;
 }
 
@@ -630,7 +594,7 @@ body.dark-mode .all-day-container {
   margin: 2px;
   font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   cursor: pointer;
-  display: inline-block;
+  display: block;
 }
 
 body.dark-mode .all-day-event {
@@ -639,18 +603,14 @@ body.dark-mode .all-day-event {
 
 .event-box {
   position: absolute;
-  left: 5px;
-  right: 5px;
   border-radius: 4px;
-  padding: 2px 4px;
+  padding: 4px;
   font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   cursor: pointer;
   overflow: hidden;
-  white-space: nowrap;
   text-overflow: ellipsis;
-  min-height: 20px;
-  box-sizing: border-box;
   color: white;
+  box-sizing: border-box;
 }
 
 /* ===== Year View ===== */
@@ -659,8 +619,6 @@ body.dark-mode .all-day-event {
   overflow-y: auto;
   margin-top: 10px;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 #yearGrid {
@@ -727,9 +685,7 @@ body.dark-mode .year-month .has-events {
 
 /* ===== Modals ===== */
 .modal {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s;
+  display: none;
   position: fixed;
   z-index: 1000;
   left: 0;
@@ -739,17 +695,17 @@ body.dark-mode .year-month .has-events {
   background-color: rgba(0,0,0,0.5);
   justify-content: center;
   align-items: center;
-  display: flex;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
 .modal.open {
+  display: flex;
   opacity: 1;
-  pointer-events: auto;
 }
 
 .modal-content {
   width: clamp(280px, 90vw, 400px);
-  max-width: 500px;
   padding: clamp(15px, 3vw, 20px);
   border-radius: 8px;
   background: white;
@@ -778,7 +734,6 @@ body.dark-mode .close-btn {
 .modal-content h2 {
   margin-top: 0;
   font-size: clamp(1.2rem, 3vw, 1.5rem);
-  color: #333;
 }
 
 body.dark-mode .modal-content h2 {
@@ -814,13 +769,6 @@ body.dark-mode .modal-content select {
   align-self: flex-start;
 }
 
-/* ===== Login Form Styling ===== */
-#authForm {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 #authForm label {
   display: flex;
   flex-direction: column;
@@ -829,16 +777,6 @@ body.dark-mode .modal-content select {
 
 #authForm input {
   margin-top: 5px;
-  padding: clamp(6px, 2vw, 8px);
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-}
-
-body.dark-mode #authForm input {
-  border: 1px solid #444;
-  background: #444;
-  color: #e0e0e0;
 }
 
 #authMessage {
@@ -852,7 +790,7 @@ body.dark-mode #authMessage {
   color: #ffcdd2;
 }
 
-/* ===== Error Message in Event Modal ===== */
+/* ===== Error Message ===== */
 #errorMessage {
   display: none;
   background-color: #ffebee;
@@ -862,7 +800,7 @@ body.dark-mode #authMessage {
   margin-bottom: 10px;
   font-size: clamp(0.8rem, 1.8vw, 0.9rem);
   text-align: center;
-  animation: fadeOut 2s ease-in-out;
+  animation: fadeOut 2s forwards;
 }
 
 body.dark-mode #errorMessage {
@@ -871,8 +809,7 @@ body.dark-mode #errorMessage {
 }
 
 @keyframes fadeOut {
-  0% { opacity: 1; }
-  80% { opacity: 1; }
+  0%, 80% { opacity: 1; }
   100% { opacity: 0; }
 }
 
@@ -888,38 +825,24 @@ body.dark-mode #errorMessage {
   gap: 10px;
 }
 
-#endTimeInputs {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-/* ===== Details Textarea ===== */
 #eventDetails {
   height: 60px;
   resize: vertical;
-}
-
-/* ===== Hide Section Utility ===== */
-.hidden {
-  display: none;
 }
 
 /* ===== Responsive Adjustments ===== */
 @media (max-width: 768px) {
   .sidebar {
     width: 60px;
-    overflow-x: hidden;
     transition: width 0.3s ease;
   }
   .sidebar:hover {
     width: 280px;
   }
-  .sidebar:not(:hover) .calendar-header h2 {
+  .sidebar:not(:hover) .calendar-header h2,
+  .sidebar:not(:hover) .rank-bar-container,
+  .sidebar:not(:hover) .settings-panel {
     display: none;
-  }
-  .sidebar:not(:hover) .calendar-grid th {
-    font-size: 0.7rem;
   }
   .main-view {
     margin-left: 60px;
@@ -927,19 +850,8 @@ body.dark-mode #errorMessage {
   #yearGrid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .big-calendar th,
-  .big-calendar td {
-    font-size: clamp(0.7rem, 1.5vw, 0.8rem);
-    height: clamp(50px, 10vw, 60px);
-  }
-  .month-event {
-    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
-  }
   .week-grid-container {
-    grid-template-columns: clamp(40px, 8vw, 50px) repeat(7, 1fr);
-  }
-  .time-column div {
-    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+    grid-template-columns: 50px repeat(7, 1fr);
   }
 }
 
@@ -963,7 +875,6 @@ body.dark-mode #errorMessage {
   }
   .main-view {
     margin-left: 0;
-    flex: 1;
   }
   #yearGrid {
     grid-template-columns: 1fr;
@@ -971,19 +882,9 @@ body.dark-mode #errorMessage {
   .week-grid-container {
     grid-template-columns: 40px repeat(3, 1fr);
     overflow-x: auto;
-    height: 100%;
   }
   .day-column:nth-child(n+5) {
     display: none;
-  }
-  .week-nav h2,
-  .month-header h2,
-  .year-nav h2 {
-    font-size: clamp(0.9rem, 2vw, 1rem);
-  }
-  .view-selector {
-    flex-direction: column;
-    gap: 5px;
   }
   .topbar {
     flex-direction: column;
@@ -991,9 +892,11 @@ body.dark-mode #errorMessage {
   }
   .title-center {
     width: 100%;
-    position: static;
-    transform: none;
     text-align: center;
+  }
+  .auth-buttons {
+    width: 100%;
+    justify-content: flex-end;
   }
   .modal-content {
     width: clamp(250px, 95vw, 320px);
