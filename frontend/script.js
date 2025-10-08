@@ -3,7 +3,7 @@ let events = [];
 let currentDate = new Date();
 let selectedDate = new Date();
 let use24Hour = false;
-let currentView = "month"; // Default to month view for consistency
+let currentView = "month";
 let editingEvent = null;
 let activeEventId = null;
 let userXP = 0;
@@ -15,7 +15,7 @@ const rankThresholds = [
   { rank: "Platinum", xp: 500 },
 ];
 
-// Load events and settings from localStorage
+// Load events, XP, and settings from localStorage
 try {
   const savedEvents = localStorage.getItem("calendarEvents");
   if (savedEvents) events = JSON.parse(savedEvents);
@@ -25,8 +25,8 @@ try {
   if (savedDarkMode === "true") document.body.classList.add("dark-mode");
   const savedButtonColor = localStorage.getItem("buttonColor");
   if (savedButtonColor) {
-    document.getElementById("buttonColorPicker").value = savedButtonColor;
-    document.getElementById("buttonColorPreset").value = savedButtonColor;
+    buttonColorPicker.value = savedButtonColor;
+    buttonColorPreset.value = savedButtonColor;
     updateButtonColor(savedButtonColor);
   }
 } catch (e) {
@@ -232,6 +232,20 @@ function updateRecurrenceInputs() {
   }
 }
 
+// ===== Button Color Management =====
+function loadButtonColor() {
+  try {
+    const savedColor = localStorage.getItem("buttonColor");
+    if (savedColor) {
+      buttonColorPicker.value = savedColor;
+      buttonColorPreset.value = savedColor;
+      updateButtonColor(savedColor);
+    }
+  } catch (e) {
+    console.error("Failed to load button color:", e);
+  }
+}
+
 function updateButtonColor(color) {
   const root = document.documentElement;
   const isDarkMode = document.body.classList.contains("dark-mode");
@@ -240,8 +254,6 @@ function updateButtonColor(color) {
   root.style.setProperty("--button-hover-bg", hoverColor);
   root.style.setProperty("--button-dark-bg", color);
   root.style.setProperty("--button-dark-hover-bg", hoverColor);
-  root.style.setProperty("--event-box-bg", color);
-  root.style.setProperty("--event-box-dark-bg", adjustColorBrightness(color, 1.2));
   try {
     localStorage.setItem("buttonColor", color);
   } catch (e) {
@@ -260,35 +272,26 @@ function adjustColorBrightness(hex, factor) {
   return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
 }
 
+// ===== Rank and XP System =====
 function updateRankBar() {
   let currentThreshold = rankThresholds[0];
-  let nextThreshold = rankThresholds[rankThresholds.length - 1];
-  for (let i = 0; i < rankThresholds.length; i++) {
-    if (userXP >= rankThresholds[i].xp) {
+  let nextThreshold = rankThresholds[1] ? rankThresholds[1] : rankThresholds[0];
+  for (let i = 0; i < rankThresholds.length - 1; i++) {
+    if (userXP >= rankThresholds[i].xp && userXP < rankThresholds[i + 1].xp) {
       currentThreshold = rankThresholds[i];
-      userRank = currentThreshold.rank;
-    }
-    if (i < rankThresholds.length - 1 && userXP < rankThresholds[i + 1].xp) {
       nextThreshold = rankThresholds[i + 1];
+      break;
+    } else if (userXP >= rankThresholds[rankThresholds.length - 1].xp) {
+      currentThreshold = rankThresholds[rankThresholds.length - 1];
+      nextThreshold = currentThreshold; // Max rank
       break;
     }
   }
-  const progress = nextThreshold === currentThreshold
-    ? 100
-    : ((userXP - currentThreshold.xp) / (nextThreshold.xp - currentThreshold.xp)) * 100;
+  userRank = currentThreshold.rank;
+  const progress = (userXP - currentThreshold.xp) / (nextThreshold.xp - currentThreshold.xp) * 100;
   rankProgress.style.width = `${Math.min(progress, 100)}%`;
   rankPercent.textContent = `${Math.round(progress)}%`;
   rankLabel.textContent = `Rank: ${userRank}`;
-  try {
-    localStorage.setItem("userXP", userXP.toString());
-  } catch (e) {
-    console.error("Failed to save XP:", e);
-  }
-}
-
-function addXP(amount) {
-  userXP += amount;
-  updateRankBar();
 }
 
 // ===== Mini Calendar =====
@@ -768,7 +771,7 @@ eventForm.addEventListener("submit", e => {
     if (index !== -1) events[index] = eventData;
   } else {
     events.push(eventData);
-    addXP(10); // Add 10 XP for creating a new event
+    addXP(10);
   }
   try {
     localStorage.setItem("calendarEvents", JSON.stringify(events));
@@ -789,7 +792,7 @@ function openDetailsModal(event) {
     <p><strong>Time:</strong> ${formatTimeForDisplay(event)}</p>
     <p><strong>Color:</strong> <span style="display: inline-block; width: 20px; height: 20px; background-color: ${event.color || (document.body.classList.contains("dark-mode") ? "#66bb6a" : "#4caf50")}; vertical-align: middle; border: 1px solid #000;"></span></p>
     <p>${event.details || "No details provided"}</p>
-    ${event.recurrence ? `<p><strong>Recurring:</strong> ${event.recurrence.type} every ${event.recurrence.interval} ${event.recurrence.type === "daily" ? "day(s)" : event.recurrence.type === "weekly" ? "week(s)" : "month(s)"}${event.recurrence.until ? ` until ${event.recurrence.until}` : ""}</p>` : ""}
+    ${event.recurrence ? '<p><strong>Recurring:</strong> Yes</p>' : ''}
   `;
   detailsModal.classList.add("open");
 }
@@ -921,11 +924,13 @@ buttonColorPreset.addEventListener("change", () => {
 
 // ===== Event Color Management =====
 eventColorPicker.addEventListener("input", () => {
-  eventColorPreset.value = eventColorPicker.value;
+  const color = eventColorPicker.value;
+  eventColorPreset.value = color;
 });
 
 eventColorPreset.addEventListener("change", () => {
-  eventColorPicker.value = eventColorPreset.value;
+  const color = eventColorPreset.value;
+  eventColorPicker.value = color;
 });
 
 // ===== Checkbox and Select Events =====
@@ -939,9 +944,10 @@ settingsButton.addEventListener("click", () => {
   settingsPanel.classList.toggle("hidden");
 });
 
-// ===== Initialize =====
+// ===== Init =====
 updateRankBar();
 syncMiniCalendar();
 updateView();
 updateTimeInputs();
 updateRecurrenceInputs();
+loadButtonColor();

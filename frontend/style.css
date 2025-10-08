@@ -200,6 +200,56 @@ body.dark-mode #eventColorPreset {
   color: #e0e0e0;
 }
 
+/* ===== Rank Bar Container ===== */
+.rank-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 12px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+}
+
+body.dark-mode .rank-bar-container {
+  background: #3c3c3c;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.rank-bar {
+  flex: 1;
+  height: 20px;
+  background: #ddd;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+body.dark-mode .rank-bar {
+  background: #555;
+}
+
+.rank-progress {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ffd700, #ffa500);
+  transition: width 0.4s ease-in-out;
+  border-radius: 10px;
+}
+
+.rank-label {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.rank-percent {
+  min-width: 40px;
+  text-align: right;
+  font-weight: bold;
+}
+
 /* ===== Main View Layout ===== */
 .main-view {
   flex: 1;
@@ -211,7 +261,7 @@ body.dark-mode #eventColorPreset {
 
 .topbar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
@@ -765,8 +815,41 @@ body.dark-mode .modal-content select {
 }
 
 /* ===== Login Form Styling ===== */
-.login-box {
+#authForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#authForm label {
+  display: flex;
+  flex-direction: column;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+#authForm input {
+  margin-top: 5px;
+  padding: clamp(6px, 2vw, 8px);
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+body.dark-mode #authForm input {
+  border: 1px solid #444;
+  background: #444;
+  color: #e0e0e0;
+}
+
+#authMessage {
+  color: #c62828;
+  font-size: clamp(0.8rem, 1.8vw, 0.9rem);
   text-align: center;
+  margin-top: 10px;
+}
+
+body.dark-mode #authMessage {
+  color: #ffcdd2;
 }
 
 /* ===== Error Message in Event Modal ===== */

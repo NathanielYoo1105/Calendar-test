@@ -28,6 +28,14 @@
           <tbody id="calendarBody"></tbody>
         </table>
       </div>
+      <!-- Rank Bar Moved Here -->
+      <div class="rank-bar-container">
+        <span class="rank-label">Rank: Bronze</span>
+        <div class="rank-bar">
+          <div class="rank-progress" id="rankProgress"></div>
+        </div>
+        <span class="rank-percent" id="rankPercent">0%</span>
+      </div>
       <div id="settingsPanel" class="settings-panel hidden">
         <h2>Settings</h2>
         <button id="timeFormatToggle">Switch to 24-Hour</button>
@@ -51,14 +59,6 @@
     <!-- Main Content -->
     <main class="main-view">
       <header class="topbar">
-        <!-- Rank Bar -->
-        <div class="rank-bar-container">
-          <span class="rank-label">Rank: Bronze</span>
-          <div class="rank-bar">
-            <div class="rank-progress" id="rankProgress"></div>
-          </div>
-          <span class="rank-percent" id="rankPercent">0%</span>
-        </div>
         <div class="left-buttons">
           <div class="view-selector">
             <button class="view-btn" data-view="week">Week</button>
@@ -119,7 +119,13 @@
     <div class="modal-content login-box">
       <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="loginTitle">Log In</h2>
-      <p>There is no log in function yet.</p>
+      <form id="authForm">
+        <label>Username: <input type="text" id="username" required></label>
+        <label>Password: <input type="password" id="password" required></label>
+        <button type="submit" id="authSubmit">Log In</button>
+        <button type="button" id="toggleAuth">Switch to Register</button>
+      </form>
+      <p id="authMessage"></p>
     </div>
   </div>
 
@@ -144,10 +150,7 @@
             </select>
           </div>
         </div>
-        <!-- All Day Checkbox -->
         <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
-
-        <!-- Time Inputs -->
         <div id="timeInputs" class="time-inputs">
           <label>
             Time: 
@@ -160,13 +163,9 @@
             </select>
           </label>
         </div>
-
-        <!-- Until Checkbox -->
         <div id="untilContainer">
           <label><input type="checkbox" id="untilCheckbox"> Until</label>
         </div>
-
-        <!-- End Time Inputs -->
         <div id="endTimeInputs" class="time-inputs hidden">
           <label>
             End Time: 
@@ -179,8 +178,6 @@
             </select>
           </label>
         </div>
-
-        <!-- Recurrence Section -->
         <label>
           Recurrence:
           <select id="recurrenceType">
@@ -201,7 +198,6 @@
             <input type="date" id="recurrenceUntil" disabled>
           </label>
         </div>
-
         <label>Details: <textarea id="eventDetails"></textarea></label>
         <button type="submit">Save Event</button>
       </form>
