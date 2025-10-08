@@ -364,7 +364,7 @@ function renderMonthView() {
   const month = selectedDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const totalDays = new Date(year, month + 1, 0).getDate();
-  bigCalendarBody.innerHTML = "";
+  bigCalendarBody.innerHTML = ""; // Clear previous content
   let row = document.createElement("tr");
   for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
   for (let day = 1; day <= totalDays; day++) {
@@ -442,7 +442,7 @@ function renderMonthView() {
 
 // ===== Week View =====
 function renderWeekView() {
-  weekView.innerHTML = "";
+  weekView.innerHTML = ""; // Clear previous content
   const weekNav = document.createElement("div");
   weekNav.classList.add("week-nav");
   weekNav.innerHTML = `
@@ -607,7 +607,7 @@ function renderWeekView() {
 // ===== Year View =====
 function renderYearView() {
   yearTitle.textContent = selectedDate.getFullYear();
-  yearGrid.innerHTML = "";
+  yearGrid.innerHTML = ""; // Clear previous content
   for (let m = 0; m < 12; m++) {
     const monthDiv = document.createElement("div");
     monthDiv.classList.add("year-month");
@@ -664,12 +664,19 @@ function renderYearView() {
 
 // ===== View Management =====
 function updateView() {
+  // Hide all views first
   monthView.classList.add("hidden");
   weekView.classList.add("hidden");
   yearView.classList.add("hidden");
+
+  // Remove active class from all view buttons
   document.querySelectorAll(".view-btn").forEach(btn => btn.classList.remove("active"));
+
+  // Add active class to the selected view button
   const activeBtn = document.querySelector(`.view-btn[data-view="${currentView}"]`);
   if (activeBtn) activeBtn.classList.add("active");
+
+  // Show and render the selected view
   if (currentView === "month") {
     monthView.classList.remove("hidden");
     renderMonthView();
@@ -680,6 +687,7 @@ function updateView() {
     yearView.classList.remove("hidden");
     renderYearView();
   }
+
   syncMiniCalendar();
 }
 
