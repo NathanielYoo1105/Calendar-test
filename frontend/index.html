@@ -22,7 +22,8 @@
         <table class="calendar-grid">
           <thead>
             <tr>
-              <th>Su</th><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th>
+              <th>Su</th><th>Mo</th><th>Tu</th>
+              <th>We</th><th>Th</th><th>Fr</th><th>Sa</th>
             </tr>
           </thead>
           <tbody id="calendarBody"></tbody>
@@ -87,7 +88,8 @@
         <table class="calendar-grid big-calendar">
           <thead>
             <tr>
-              <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
+              <th>Su</th><th>Mo</th><th>Tu</th>
+              <th>We</th><th>Th</th><th>Fr</th><th>Sa</th>
             </tr>
           </thead>
           <tbody id="bigCalendarBody"></tbody>
@@ -96,7 +98,12 @@
 
       <!-- Week View -->
       <section id="weekView" class="event-grid hidden">
-        <div class="week-grid-container"></div>
+        <div class="week-nav">
+          <button id="prevWeek" aria-label="Previous Week">‹</button>
+          <h2 id="weekTitle"></h2>
+          <button id="nextWeek" aria-label="Next Week">›</button>
+        </div>
+        <!-- Time column + 7 day columns generated in JS -->
       </section>
 
       <!-- Year View -->

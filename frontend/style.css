@@ -38,7 +38,7 @@ body.dark-mode {
   flex-direction: column;
   padding: 10px;
   background-color: #f7f7f7;
-  transition: background-color 0.3s, border-color 0.3s;
+  transition: width 0.3s ease, background-color 0.3s, border-color 0.3s;
 }
 
 body.dark-mode .sidebar {
@@ -298,6 +298,7 @@ body.dark-mode .rank-bar {
   font-size: clamp(1rem, 2.5vw, 1.2rem);
   color: #333;
   padding: 8px;
+  touch-action: manipulation;
 }
 
 body.dark-mode .view-btn {
@@ -329,6 +330,8 @@ button {
   cursor: pointer;
   font-size: clamp(0.8rem, 2vw, 1rem);
   transition: background-color 0.3s;
+  min-width: 60px;
+  touch-action: manipulation;
 }
 
 button:hover {
@@ -343,12 +346,13 @@ body.dark-mode button:hover {
   background-color: var(--button-dark-hover-bg);
 }
 
-/* Navigation buttons */
+/* Exceptions for buttons that shouldn't use the custom color */
 .calendar-header button,
 .month-header button,
 .week-nav button,
 .year-nav button,
 #settingsButton {
+  padding: 4px 8px;
   background-color: #ccc;
   color: #333;
   font-weight: bold;
@@ -357,7 +361,6 @@ body.dark-mode button:hover {
   border: none;
   cursor: pointer;
   min-width: 30px;
-  padding: 4px 8px;
 }
 
 body.dark-mode .calendar-header button,
@@ -386,9 +389,7 @@ body.dark-mode #settingsButton:hover {
 }
 
 /* ===== Navigation Arrows ===== */
-.month-header,
-.week-nav,
-.year-nav {
+.month-header, .week-nav, .year-nav {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -409,8 +410,6 @@ body.dark-mode #settingsButton:hover {
   overflow-y: auto;
   margin-top: 10px;
   min-height: 0;
-  width: 100%;
-  position: relative;
 }
 
 .big-calendar {
@@ -427,11 +426,17 @@ body.dark-mode #settingsButton:hover {
   vertical-align: top;
   padding: clamp(4px, 1vw, 6px);
   position: relative;
+  overflow: hidden;
+  max-height: clamp(60px, 12vw, 80px);
 }
 
 body.dark-mode .big-calendar th,
 body.dark-mode .big-calendar td {
   border: 1px solid #444;
+}
+
+.big-calendar th {
+  width: 14.28%;
 }
 
 .big-calendar td {
@@ -487,16 +492,21 @@ body.dark-mode .more-events {
   overflow: hidden;
   margin-top: 10px;
   min-height: 0;
-  width: 100%;
-  position: relative;
 }
 
 .week-grid-container {
   display: grid;
-  grid-template-columns: 60px repeat(7, 1fr);
+  grid-template-columns: clamp(50px, 10vw, 60px) repeat(7, 1fr);
   flex: 1;
   overflow-y: auto;
   height: 100%;
+}
+
+.time-column,
+.day-slots {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 .time-column {
@@ -509,6 +519,7 @@ body.dark-mode .more-events {
   color: #5f6368;
   text-align: right;
   padding-right: 8px;
+  box-sizing: border-box;
   padding-top: 30px;
 }
 
@@ -531,6 +542,8 @@ body.dark-mode .time-column div {
 }
 
 .day-column {
+  display: flex;
+  flex-direction: column;
   border-left: 1px solid #ddd;
   position: relative;
   flex: 1;
@@ -559,11 +572,13 @@ body.dark-mode .day-header {
 
 .day-slots {
   flex: 1;
+  display: block;
 }
 
 .hour-slot {
   border-bottom: 1px solid #f1f3f4;
   height: 60px;
+  box-sizing: border-box;
   cursor: pointer;
 }
 
@@ -602,7 +617,7 @@ body.dark-mode .all-day-container {
   margin: 2px;
   font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   cursor: pointer;
-  display: block;
+  display: inline-block;
 }
 
 body.dark-mode .all-day-event {
@@ -611,14 +626,18 @@ body.dark-mode .all-day-event {
 
 .event-box {
   position: absolute;
+  left: 5px;
+  right: 5px;
   border-radius: 4px;
-  padding: 4px;
+  padding: 2px 4px;
   font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   cursor: pointer;
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
-  color: white;
+  min-height: 20px;
   box-sizing: border-box;
+  color: white;
 }
 
 /* ===== Year View ===== */
@@ -627,8 +646,8 @@ body.dark-mode .all-day-event {
   overflow-y: auto;
   margin-top: 10px;
   min-height: 0;
-  width: 100%;
-  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 #yearGrid {
@@ -695,7 +714,9 @@ body.dark-mode .year-month .has-events {
 
 /* ===== Modals ===== */
 .modal {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
   position: fixed;
   z-index: 1000;
   left: 0;
@@ -705,8 +726,7 @@ body.dark-mode .year-month .has-events {
   background-color: rgba(0,0,0,0.5);
   justify-content: center;
   align-items: center;
-  opacity: 0;
-  transition: opacity 0.3s;
+  display: flex;
 }
 
 .modal.open {
@@ -716,6 +736,7 @@ body.dark-mode .year-month .has-events {
 
 .modal-content {
   width: clamp(280px, 90vw, 400px);
+  max-width: 500px;
   padding: clamp(15px, 3vw, 20px);
   border-radius: 8px;
   background: white;
@@ -744,6 +765,7 @@ body.dark-mode .close-btn {
 .modal-content h2 {
   margin-top: 0;
   font-size: clamp(1.2rem, 3vw, 1.5rem);
+  color: #333;
 }
 
 body.dark-mode .modal-content h2 {
@@ -810,7 +832,7 @@ body.dark-mode #authMessage {
   margin-bottom: 10px;
   font-size: clamp(0.8rem, 1.8vw, 0.9rem);
   text-align: center;
-  animation: fadeOut 2s forwards;
+  animation: fadeOut 2s ease-in-out;
 }
 
 body.dark-mode #errorMessage {
@@ -819,7 +841,8 @@ body.dark-mode #errorMessage {
 }
 
 @keyframes fadeOut {
-  0%, 80% { opacity: 1; }
+  0% { opacity: 1; }
+  80% { opacity: 1; }
   100% { opacity: 0; }
 }
 
@@ -835,9 +858,10 @@ body.dark-mode #errorMessage {
   gap: 10px;
 }
 
-#eventDetails {
-  height: 60px;
-  resize: vertical;
+#endTimeInputs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 /* ===== Responsive Adjustments ===== */
@@ -865,6 +889,54 @@ body.dark-mode #errorMessage {
   }
 }
 
+/* ===== Details Textarea ===== */
+#eventDetails {
+  height: 60px;
+  resize: vertical;
+}
+
+/* ===== Hide Section Utility ===== */
+.hidden {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 60px;
+    overflow-x: hidden;
+    transition: width 0.3s ease;
+  }
+  .sidebar:hover {
+    width: 280px;
+  }
+  .sidebar:not(:hover) .calendar-header h2 {
+    display: none;
+  }
+  .sidebar:not(:hover) .calendar-grid th {
+    font-size: 0.7rem;
+  }
+  .main-view {
+    margin-left: 60px;
+  }
+  #yearGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .big-calendar th,
+  .big-calendar td {
+    font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+    height: clamp(50px, 10vw, 60px);
+  }
+  .month-event {
+    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+  }
+  .week-grid-container {
+    grid-template-columns: clamp(40px, 8vw, 50px) repeat(7, 1fr);
+  }
+  .time-column div {
+    font-size: clamp(0.65rem, 1.5vw, 0.75rem);
+  }
+}
+
 @media (max-width: 480px) {
   .app-layout {
     flex-direction: column;
@@ -885,6 +957,7 @@ body.dark-mode #errorMessage {
   }
   .main-view {
     margin-left: 0;
+    flex: 1;
   }
   #yearGrid {
     grid-template-columns: 1fr;
@@ -892,9 +965,17 @@ body.dark-mode #errorMessage {
   .week-grid-container {
     grid-template-columns: 40px repeat(3, 1fr);
     overflow-x: auto;
+    height: 100%;
   }
   .day-column:nth-child(n+5) {
     display: none;
+  }
+  .week-nav h2, .month-header h2, .year-nav h2 {
+    font-size: clamp(0.9rem, 2vw, 1rem);
+  }
+  .view-selector {
+    flex-direction: column;
+    gap: 5px;
   }
   .topbar {
     flex-direction: column;
@@ -902,11 +983,9 @@ body.dark-mode #errorMessage {
   }
   .title-center {
     width: 100%;
+    position: static;
+    transform: none;
     text-align: center;
-  }
-  .auth-buttons {
-    width: 100%;
-    justify-content: flex-end;
   }
   .modal-content {
     width: clamp(250px, 95vw, 320px);
