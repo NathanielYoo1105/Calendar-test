@@ -1,62 +1,51 @@
+// server.js
 const express = require('express');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 const cors = require('cors');
-const authRoutes = require('./routes/auth'); // Fix path (relative to server.js)
-const eventRoutes = require('./routes/events'); // Fix path
 const path = require('path');
-
-dotenv.config();
+require('dotenv').config();
 
 const app = express();
 
-// CORS configuration: Allow dynamic origins or use environment variable
-const allowedOrigins = [
-  'http://localhost:3000',
-  process.env.RENDER_EXTERNAL_URL || 'https://calendar-test-1.onrender.com'
-].filter(Boolean);
+// ----- Middleware -------------------------------------------------
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
+  origin: process.env.CLIENT_URL || '*',   // adjust in Render env if you host the UI elsewhere
+  credentials: true
 }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'frontend'))); // Serve frontend folder
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI, {
-  // Removed deprecated options
-})
-  .then(() => console.log('Connected to MongoDB'))
+// Serve static frontend (HTML, CSS, JS)
+app.use(express.static(path.join(__dirname, 'frontend')));
+
+// ----- Routes ----------------------------------------------------
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/events', require('./routes/events'));
+
+// ----- Health check ------------------------------------------------
+app.get('/health', (req, res) => res.json({ status: 'OK' }));
+
+// ----- Catch-all – send index.html for SPA routing ----------------
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
+});
+
+// ----- MongoDB connection -----------------------------------------
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+if (!MONGO_URI) {
+  console.error('MONGO_URI is missing – aborting');
+  process.exit(1);
+}
+
+mongoose
+  .connect(MONGO_URI, {
+    // Mongoose 8+ no longer needs useNewUrlParser / useUnifiedTopology
+  })
+  .then(() => console.log('MongoDB connected'))
   .catch(err => {
     console.error('MongoDB connection error:', err);
     process.exit(1);
   });
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/events', eventRoutes);
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Backend API is running' });
-});
-
-// Serve frontend for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ message: 'Internal server error' });
-});
-
+// ----- Start server ------------------------------------------------
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
