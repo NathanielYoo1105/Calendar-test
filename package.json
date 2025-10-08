@@ -1,11 +1,10 @@
 {
-  "name": "backend",
+  "name": "calendar-test",
   "version": "1.0.0",
   "description": "Backend for Calendar Project with MongoDB Atlas",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["calendar", "backend", "mongodb", "express"],
