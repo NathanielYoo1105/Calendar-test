@@ -3,7 +3,7 @@ let events = [];
 let currentDate = new Date();
 let selectedDate = new Date();
 let use24Hour = false;
-let currentView = "month";
+let currentView = "week"; // Changed default view to week
 let editingEvent = null;
 let activeEventId = null;
 let userXP = 0;
@@ -899,7 +899,7 @@ eventForm.onsubmit = e => {
     addXP(10);
   }
   try {
-    localStorage.setItem(`calendarEvents_${currentUser || 'guest'}`, JSON.stringify(events));
+    localStorage.setItem Zab(`calendarEvents_${currentUser || 'guest'}`, JSON.stringify(events));
   } catch (e) {
     console.error("Failed to save events:", e);
     showErrorMessage("Error saving event");
