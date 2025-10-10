@@ -724,14 +724,14 @@ body.dark-mode .year-month .has-events {
   width: 100%;
   height: 100%;
   background-color: rgba(0,0,0,0.5);
+  display: flex;
   justify-content: center;
   align-items: center;
-  display: flex;
 }
 
 .modal.open {
-  display: flex;
   opacity: 1;
+  pointer-events: auto;
 }
 
 .modal-content {
@@ -742,6 +742,7 @@ body.dark-mode .year-month .has-events {
   background: white;
   position: relative;
   box-sizing: border-box;
+  z-index: 1001; /* Ensure modal content is above modal background */
 }
 
 body.dark-mode .modal-content {
@@ -756,6 +757,7 @@ body.dark-mode .modal-content {
   cursor: pointer;
   padding: 8px;
   color: #333;
+  z-index: 1002; /* Above modal-content */
 }
 
 body.dark-mode .close-btn {

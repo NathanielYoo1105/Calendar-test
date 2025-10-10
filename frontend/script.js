@@ -328,6 +328,29 @@ function handleRegister(username, password) {
   }
 }
 
+// ===== Focus Trap for Modals =====
+function trapFocus(modal) {
+  const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+
+  const handleKeydown = e => {
+    if (e.key === 'Tab') {
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+      }
+    }
+  };
+
+  modal.addEventListener('keydown', handleKeydown);
+  // Return cleanup function to remove the event listener
+  return () => modal.removeEventListener('keydown', handleKeydown);
+}
+
 // ===== Mini Calendar =====
 function renderMiniCalendar(date = new Date()) {
   const year = date.getFullYear();
@@ -347,6 +370,10 @@ function renderMiniCalendar(date = new Date()) {
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
     cell.setAttribute("aria-label", `Day ${day} of ${monthYear.textContent}`);
     cell.onclick = () => {
+      // Prevent click if any modal is open
+      if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+        return;
+      }
       selectedDate = cellDate;
       currentView = "month";
       updateView();
@@ -354,6 +381,10 @@ function renderMiniCalendar(date = new Date()) {
     cell.onkeydown = e => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
+        // Prevent keydown if any modal is open
+        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+          return;
+        }
         selectedDate = cellDate;
         currentView = "month";
         updateView();
@@ -385,6 +416,10 @@ function renderMonthView() {
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
     cell.setAttribute("aria-label", `Day ${day} of ${monthTitle.textContent}`);
     cell.onclick = () => {
+      // Prevent click if any modal is open
+      if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+        return;
+      }
       selectedDate = cellDate;
       syncMiniCalendar();
       openEventModal(cellDate);
@@ -392,6 +427,10 @@ function renderMonthView() {
     cell.onkeydown = e => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
+        // Prevent keydown if any modal is open
+        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+          return;
+        }
         selectedDate = cellDate;
         syncMiniCalendar();
         openEventModal(cellDate);
@@ -412,11 +451,19 @@ function renderMonthView() {
       div.setAttribute("aria-label", `Event: ${event.title} on ${event.date} at ${formatTimeForDisplay(event)}`);
       div.onclick = e => {
         e.stopPropagation();
+        // Prevent click if any modal is open
+        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+          return;
+        }
         openDetailsModal(event);
       };
       div.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          // Prevent keydown if any modal is open
+          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+            return;
+          }
           openDetailsModal(event);
         }
       };
@@ -428,6 +475,10 @@ function renderMonthView() {
       more.tabIndex = 0;
       more.textContent = `+${dayEvents.length - 3} more`;
       more.onclick = () => {
+        // Prevent click if any modal is open
+        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+          return;
+        }
         selectedDate = cellDate;
         currentView = "week";
         updateView();
@@ -435,6 +486,10 @@ function renderMonthView() {
       more.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          // Prevent keydown if any modal is open
+          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+            return;
+          }
           selectedDate = cellDate;
           currentView = "week";
           updateView();
@@ -524,6 +579,10 @@ function renderWeekView() {
       slot.classList.add("hour-slot");
       slot.tabIndex = 0;
       slot.onclick = () => {
+        // Prevent click if any modal is open
+        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+          return;
+        }
         selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
         syncMiniCalendar();
         openEventModal(selectedDate);
@@ -531,6 +590,10 @@ function renderWeekView() {
       slot.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          // Prevent keydown if any modal is open
+          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+            return;
+          }
           selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
           syncMiniCalendar();
           openEventModal(selectedDate);
@@ -552,11 +615,19 @@ function renderWeekView() {
       evBox.textContent = event.title;
       evBox.onclick = e => {
         e.stopPropagation();
+        // Prevent click if any modal is open
+        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+          return;
+        }
         openDetailsModal(event);
       };
       evBox.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          // Prevent keydown if any modal is open
+          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+            return;
+          }
           openDetailsModal(event);
         }
       };
@@ -600,11 +671,19 @@ function renderWeekView() {
       evBox.style.height = `${((endMin - startMin) / 60) * hourSlotHeight - 4}px`;
       evBox.onclick = e => {
         e.stopPropagation();
+        // Prevent click if any modal is open
+        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+          return;
+        }
         openDetailsModal(event);
       };
       evBox.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          // Prevent keydown if any modal is open
+          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+            return;
+          }
           openDetailsModal(event);
         }
       };
@@ -660,6 +739,10 @@ function renderYearView() {
       if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
       if (getEventsForDate(cellDate).length) cell.classList.add("has-events");
       cell.onclick = () => {
+        // Prevent click if any modal is open
+        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+          return;
+        }
         selectedDate = cellDate;
         currentView = "month";
         updateView();
@@ -667,6 +750,10 @@ function renderYearView() {
       cell.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          // Prevent keydown if any modal is open
+          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
+            return;
+          }
           selectedDate = cellDate;
           currentView = "month";
           updateView();
@@ -747,6 +834,15 @@ function openEventModal(date, event = null) {
   updateTimeInputs();
   updateRecurrenceInputs();
   eventModal.classList.add("open");
+  const removeTrap = trapFocus(eventModal); // Set up focus trap
+  eventTitleInput.focus(); // Focus the title input
+  // Clean up focus trap when modal closes
+  eventModal.addEventListener('transitionend', function cleanup() {
+    if (!eventModal.classList.contains('open')) {
+      removeTrap();
+      eventModal.removeEventListener('transitionend', cleanup);
+    }
+  });
 }
 
 function openDetailsModal(event) {
@@ -761,6 +857,15 @@ function openDetailsModal(event) {
     ` : ""}
   `;
   detailsModal.classList.add("open");
+  const removeTrap = trapFocus(detailsModal); // Set up focus trap
+  detailsModal.querySelector('.close-btn').focus(); // Focus the close button
+  // Clean up focus trap when modal closes
+  detailsModal.addEventListener('transitionend', function cleanup() {
+    if (!detailsModal.classList.contains('open')) {
+      removeTrap();
+      detailsModal.removeEventListener('transitionend', cleanup);
+    }
+  });
 }
 
 function closeModal(modal) {
@@ -945,152 +1050,159 @@ authForm.onsubmit = e => {
   }
 };
 
-toggleAuth.onclick = () => {
-  const isLogin = authSubmit.textContent === "Log In";
-  authSubmit.textContent = isLogin ? "Register" : "Log In";
-  toggleAuth.textContent = isLogin ? "Switch to Login" : "Switch to Register";
-  loginModal.querySelector("h2").textContent = isLogin ? "Register" : "Log In";
-  authForm.reset();
-  authMessage.textContent = "";
-};
-
-logInButton.onclick = () => {
-  loginModal.classList.add("open");
-  authSubmit.textContent = "Log In";
-  toggleAuth.textContent = "Switch to Register";
-  loginModal.querySelector("h2").textContent = "Log In";
-};
-
-logOutButton.onclick = () => {
-  currentUser = null;
-  events = [];
-  userXP = 0;
-  try {
-    localStorage.removeItem("currentUser");
-    localStorage.removeItem(`calendarEvents_${currentUser || 'guest'}`);
-    localStorage.removeItem(`userXP_${currentUser || 'guest'}`);
-  } catch (e) {
-    console.error("Failed to clear localStorage:", e);
-  }
-  updateAuthUI();
-  updateRankBar();
-  updateView();
-};
-
-deleteEventBtn.onclick = () => {
-  if (activeEventId) {
-    events = events.filter(e => e.id !== activeEventId);
-    try {
-      localStorage.setItem(`calendarEvents_${currentUser || 'guest'}`, JSON.stringify(events));
-    } catch (e) {
-      console.error("Failed to save events:", e);
-      showErrorMessage("Failed to save changes.");
-    }
-    eventCache.clear();
-    closeModal(detailsModal);
-    updateView();
-  }
-};
-
-editEventBtn.onclick = () => {
-  const event = events.find(e => e.id === activeEventId);
-  if (event) {
-    closeModal(detailsModal);
-    openEventModal(parseDateOnly(event.date), event);
-  }
-};
-
-prevMonth.onclick = () => {
-  currentDate.setMonth(currentDate.getMonth() - 1);
-  renderMiniCalendar(currentDate);
-};
-
-nextMonth.onclick = () => {
-  currentDate.setMonth(currentDate.getMonth() + 1);
-  renderMiniCalendar(currentDate);
-};
-
-prevMonthMain.onclick = () => {
-  selectedDate.setMonth(selectedDate.getMonth() - 1);
-  updateView();
-};
-
-nextMonthMain.onclick = () => {
-  selectedDate.setMonth(selectedDate.getMonth() + 1);
-  updateView();
-};
-
-prevYear.onclick = () => {
-  selectedDate.setFullYear(selectedDate.getFullYear() - 1);
-  updateView();
-};
-
-nextYear.onclick = () => {
-  selectedDate.setFullYear(selectedDate.getFullYear() + 1);
-  updateView();
-};
-
-createEventBtn.onclick = () => {
-  openEventModal(selectedDate);
-};
-
-closeEventModal.onclick = () => closeModal(eventModal);
-closeDetailsModal.onclick = () => closeModal(detailsModal);
-closeLoginModal.onclick = () => closeModal(loginModal);
-
-timeFormatToggle.onclick = () => {
-  use24Hour = !use24Hour;
-  timeFormatToggle.textContent = `Switch to ${use24Hour ? "12-Hour" : "24-Hour"}`;
-  updateTimeInputs();
-  updateView();
-};
-
-darkModeToggle.onclick = () => {
-  document.body.classList.toggle("dark-mode");
-  try {
-    localStorage.setItem("darkMode", document.body.classList.contains("dark-mode"));
-  } catch (e) {
-    console.error("Failed to save dark mode setting:", e);
-  }
-};
-
-buttonColorPicker.oninput = () => {
-  buttonColorPreset.value = buttonColorPicker.value;
-  updateButtonColor(buttonColorPicker.value);
-};
-
-buttonColorPreset.onchange = () => {
-  buttonColorPicker.value = buttonColorPreset.value;
-  updateButtonColor(buttonColorPreset.value);
-};
-
-eventColorPicker.oninput = () => {
-  eventColorPreset.value = eventColorPicker.value;
-};
-
-eventColorPreset.onchange = () => {
-  eventColorPicker.value = eventColorPreset.value;
-};
-
-allDayCheckbox.onchange = updateTimeInputs;
-untilCheckbox.onchange = updateTimeInputs;
-recurrenceTypeSelect.onchange = updateRecurrenceInputs;
-
-settingsButton.onclick = () => {
-  settingsPanel.classList.toggle("hidden");
-};
-
-document.querySelectorAll(".view-btn").forEach(btn => {
-  btn.onclick = () => {
-    currentView = btn.dataset.view;
-    updateView();
-  };
-});
-
-// ===== Initialize =====
+// ===== Event Listeners =====
 document.addEventListener("DOMContentLoaded", () => {
   settingsPanel.classList.add("hidden");
   loadData();
   updateView();
   updateRankBar();
+
+  // Stop propagation for modal content clicks
+  document.querySelectorAll('.modal-content').forEach(modalContent => {
+    modalContent.addEventListener('click', e => {
+      e.stopPropagation();
+    });
+  });
+
+  // Close modal on background click
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', e => {
+      if (e.target === modal) {
+        closeModal(modal);
+      }
+    });
+  });
+
+  // Navigation
+  prevMonth.onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderMiniCalendar(currentDate);
+  };
+  nextMonth.onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderMiniCalendar(currentDate);
+  };
+  prevMonthMain.onclick = () => {
+    selectedDate.setMonth(selectedDate.getMonth() - 1);
+    updateView();
+  };
+  nextMonthMain.onclick = () => {
+    selectedDate.setMonth(selectedDate.getMonth() + 1);
+    updateView();
+  };
+  prevYear.onclick = () => {
+    selectedDate.setFullYear(selectedDate.getFullYear() - 1);
+    updateView();
+  };
+  nextYear.onclick = () => {
+    selectedDate.setFullYear(selectedDate.getFullYear() + 1);
+    updateView();
+  };
+
+  // View switching
+  document.querySelectorAll(".view-btn").forEach(btn => {
+    btn.onclick = () => {
+      currentView = btn.dataset.view;
+      updateView();
+    };
+  });
+
+  // Modal controls
+  closeEventModal.onclick = () => closeModal(eventModal);
+  closeDetailsModal.onclick = () => closeModal(detailsModal);
+  closeLoginModal.onclick = () => closeModal(loginModal);
+
+  createEventBtn.onclick = () => openEventModal(new Date());
+  logInButton.onclick = () => {
+    loginModal.classList.add("open");
+    authSubmit.textContent = "Log In";
+    toggleAuth.textContent = "Switch to Register";
+    loginModal.querySelector("h2").textContent = "Log In";
+    const removeTrap = trapFocus(loginModal); // Set up focus trap
+    usernameInput.focus();
+    // Clean up focus trap when modal closes
+    loginModal.addEventListener('transitionend', function cleanup() {
+      if (!loginModal.classList.contains('open')) {
+        removeTrap();
+        loginModal.removeEventListener('transitionend', cleanup);
+      }
+    });
+  };
+  logOutButton.onclick = () => {
+    currentUser = null;
+    localStorage.removeItem("currentUser");
+    updateAuthUI();
+    events = [];
+    userXP = 0;
+    userRank = "Bronze";
+    localStorage.removeItem(`calendarEvents_${currentUser || 'guest'}`);
+    localStorage.removeItem(`userXP_${currentUser || 'guest'}`);
+    updateView();
+    updateRankBar();
+  };
+  toggleAuth.onclick = () => {
+    const isLogin = authSubmit.textContent === "Log In";
+    authSubmit.textContent = isLogin ? "Register" : "Log In";
+    toggleAuth.textContent = isLogin ? "Switch to Login" : "Switch to Register";
+    loginModal.querySelector("h2").textContent = isLogin ? "Register" : "Log In";
+  };
+
+  // Settings
+  settingsButton.onclick = () => settingsPanel.classList.toggle("hidden");
+  timeFormatToggle.onchange = () => {
+    use24Hour = timeFormatToggle.checked;
+    updateTimeInputs();
+    updateView();
+  };
+  darkModeToggle.onchange = () => {
+    document.body.classList.toggle("dark-mode", darkModeToggle.checked);
+    try {
+      localStorage.setItem("darkMode", darkModeToggle.checked);
+    } catch (e) {
+      console.error("Failed to save dark mode setting:", e);
+    }
+    updateButtonColor(buttonColorPicker.value);
+    updateView();
+  };
+  buttonColorPicker.oninput = () => {
+    buttonColorPreset.value = buttonColorPicker.value;
+    updateButtonColor(buttonColorPicker.value);
+  };
+  buttonColorPreset.onchange = () => {
+    buttonColorPicker.value = buttonColorPreset.value;
+    updateButtonColor(buttonColorPreset.value);
+  };
+  eventColorPicker.oninput = () => {
+    eventColorPreset.value = eventColorPicker.value;
+  };
+  eventColorPreset.onchange = () => {
+    eventColorPicker.value = eventColorPreset.value;
+  };
+  allDayCheckbox.onchange = updateTimeInputs;
+  untilCheckbox.onchange = updateTimeInputs;
+  recurrenceTypeSelect.onchange = updateRecurrenceInputs;
+
+  // Event actions
+  deleteEventBtn.onclick = () => {
+    if (activeEventId) {
+      events = events.filter(e => e.id !== activeEventId);
+      try {
+        localStorage.setItem(`calendarEvents_${currentUser || 'guest'}`, JSON.stringify(events));
+      } catch (e) {
+        console.error("Failed to save events:", e);
+        showErrorMessage("Error deleting event");
+        return;
+      }
+      eventCache.clear();
+      closeModal(detailsModal);
+      updateView();
+    }
+  };
+  editEventBtn.onclick = () => {
+    const event = events.find(e => e.id === activeEventId);
+    if (event) {
+      closeModal(detailsModal);
+      openEventModal(parseDateOnly(event.date), event);
+    }
+  };
 });
