@@ -997,4 +997,10 @@ body.dark-mode #errorMessage {
   .time-column div {
     height: 50px;
   }
+  .register-only {
+    display: none;
+  }
+  .register-only.hidden {
+    display: block;
+  }
 }

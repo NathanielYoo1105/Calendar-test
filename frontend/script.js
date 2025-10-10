@@ -3,27 +3,16 @@ let events = [];
 let currentDate = new Date();
 let selectedDate = new Date();
 let use24Hour = false;
-let currentView = "week"; // Changed default view to week
+let currentView = "week"; // Default view
 let editingEvent = null;
 let activeEventId = null;
-let userXP = 0;
-let userRank = "Bronze";
 let currentUser = null;
+let jwtToken = null;
 const eventCache = new Map();
-const rankThresholds = [
-  { rank: "Bronze", xp: 0 },
-  { rank: "Silver", xp: 100 },
-  { rank: "Gold", xp: 250 },
-  { rank: "Platinum", xp: 500 },
-];
 
-// Load data from localStorage
-function loadData() {
+// Load settings from localStorage
+function loadSettings() {
   try {
-    const savedEvents = localStorage.getItem(`calendarEvents_${currentUser || 'guest'}`);
-    if (savedEvents) events = JSON.parse(savedEvents);
-    const savedXP = localStorage.getItem(`userXP_${currentUser || 'guest'}`);
-    if (savedXP) userXP = parseInt(savedXP, 10);
     const savedDarkMode = localStorage.getItem("darkMode");
     if (savedDarkMode === "true") document.body.classList.add("dark-mode");
     const savedButtonColor = localStorage.getItem("buttonColor");
@@ -32,15 +21,61 @@ function loadData() {
       document.getElementById("buttonColorPreset").value = savedButtonColor;
       updateButtonColor(savedButtonColor);
     }
+    const savedToken = localStorage.getItem("jwtToken");
     const savedUser = localStorage.getItem("currentUser");
-    if (savedUser) {
+    if (savedToken && savedUser) {
+      jwtToken = savedToken;
       currentUser = savedUser;
       updateAuthUI();
+      fetchEvents();
     }
   } catch (e) {
-    console.error("Failed to load from localStorage:", e);
-    showErrorMessage("Error loading data. Local storage may be disabled.");
+    console.error("Failed to load settings:", e);
+    showErrorMessage("Error loading settings.");
   }
+}
+
+// Fetch events from backend
+async function fetchEvents() {
+  try {
+    const response = await fetch('/api/events', {
+      headers: { 'Authorization': `Bearer ${jwtToken}` }
+    });
+    if (response.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    if (!response.ok) throw new Error('Failed to fetch events');
+    events = await response.json();
+    // Convert MongoDB _id to id for frontend compatibility
+    events = events.map(e => ({
+      ...e,
+      id: e._id,
+      recurrence: e.recurrence ? {
+        ...e.recurrence,
+        type: e.recurrence.frequency // Map backend 'frequency' to frontend 'type'
+      } : null
+    }));
+    eventCache.clear();
+    updateView();
+  } catch (e) {
+    console.error("Failed to fetch events:", e);
+    showErrorMessage("Error fetching events.");
+  }
+}
+
+// Handle unauthorized access (e.g., token expired)
+function handleUnauthorized() {
+  jwtToken = null;
+  currentUser = null;
+  localStorage.removeItem("jwtToken");
+  localStorage.removeItem("currentUser");
+  events = [];
+  updateAuthUI();
+  updateView();
+  showErrorMessage("Session expired. Please log in again.", loginModal);
+  loginModal.classList.add("open");
+  usernameInput.focus();
 }
 
 // ===== DOM Elements =====
@@ -106,9 +141,14 @@ const logOutButton = document.getElementById("logOutButton");
 const userStatus = document.getElementById("userStatus");
 const settingsButton = document.getElementById("settingsButton");
 const settingsPanel = document.getElementById("settingsPanel");
+
+// Remove rank-related elements as they are not supported by backend
 const rankProgress = document.getElementById("rankProgress");
 const rankPercent = document.getElementById("rankPercent");
 const rankLabel = document.querySelector(".rank-label");
+if (rankProgress) rankProgress.remove();
+if (rankPercent) rankPercent.remove();
+if (rankLabel) rankLabel.remove();
 
 // ===== Utility Functions =====
 function parseDateOnly(dateStr) {
@@ -119,7 +159,7 @@ function parseDateOnly(dateStr) {
 
 function formatTimeForDisplay(event) {
   if (event.isAllDay) return "All Day";
-  let timeStr = event.time;
+  let timeStr = event.time || "00:00";
   let endStr = event.endTime ? ` - ${event.endTime}` : "";
   if (use24Hour) return timeStr + endStr;
   let [hour, minute] = timeStr.split(":").map(Number);
@@ -158,14 +198,14 @@ function monthsBetween(d1, d2) {
 }
 
 function matchesDate(ev, date) {
-  const evDate = parseDateOnly(ev.date);
-  if (!evDate) return false;
+  const evDate = new Date(ev.date);
+  if (isNaN(evDate.getTime())) return false;
   if (!ev.recurrence) {
     return evDate.toDateString() === date.toDateString();
   }
   const { type, interval = 1, until } = ev.recurrence;
   if (evDate > date) return false;
-  const untilDate = until ? parseDateOnly(until) : null;
+  const untilDate = until ? new Date(until) : null;
   if (untilDate && untilDate < date) return false;
   const diffMs = date - evDate;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -185,10 +225,10 @@ function getEventsForDate(targetDate) {
   if (eventCache.has(cacheKey)) return eventCache.get(cacheKey);
   const result = events
     .filter(ev => {
-      const evDate = parseDateOnly(ev.date);
-      if (!evDate) return false;
+      const evDate = new Date(ev.date);
+      if (isNaN(evDate.getTime())) return false;
       if (ev.recurrence && ev.recurrence.until) {
-        const untilDate = parseDateOnly(ev.recurrence.until);
+        const untilDate = new Date(ev.recurrence.until);
         if (untilDate && untilDate < targetDate) return false;
       }
       return matchesDate(ev, targetDate);
@@ -233,37 +273,6 @@ function adjustColorBrightness(hex, factor) {
   return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
 }
 
-function addXP(amount) {
-  userXP += amount;
-  updateRankBar();
-  try {
-    localStorage.setItem(`userXP_${currentUser || 'guest'}`, userXP.toString());
-  } catch (e) {
-    console.error("Failed to save XP:", e);
-  }
-}
-
-function updateRankBar() {
-  let currentThreshold = rankThresholds[0];
-  let nextThreshold = rankThresholds[rankThresholds.length - 1];
-  for (let i = 0; i < rankThresholds.length; i++) {
-    if (userXP >= rankThresholds[i].xp) {
-      currentThreshold = rankThresholds[i];
-      userRank = currentThreshold.rank;
-    }
-    if (i < rankThresholds.length - 1 && userXP < rankThresholds[i + 1].xp) {
-      nextThreshold = rankThresholds[i + 1];
-      break;
-    }
-  }
-  const progress = nextThreshold === currentThreshold
-    ? 100
-    : ((userXP - currentThreshold.xp) / (nextThreshold.xp - currentThreshold.xp)) * 100;
-  rankProgress.style.width = `${Math.min(progress, 100)}%`;
-  rankPercent.textContent = `${Math.round(progress)}%`;
-  rankLabel.textContent = `Rank: ${userRank}`;
-}
-
 // ===== Authentication =====
 function updateAuthUI() {
   if (currentUser) {
@@ -271,60 +280,74 @@ function updateAuthUI() {
     userStatus.classList.remove("hidden");
     logInButton.classList.add("hidden");
     logOutButton.classList.remove("hidden");
+    createEventBtn.classList.remove("hidden"); // Enable event creation for logged-in users
   } else {
     userStatus.classList.add("hidden");
     logInButton.classList.remove("hidden");
     logOutButton.classList.add("hidden");
+    createEventBtn.classList.add("hidden"); // Hide event creation for guests
+    events = []; // Clear events for guests
+    updateView();
   }
 }
 
-function handleLogin(username, password) {
+async function handleLogin(username, password) {
   try {
-    const users = JSON.parse(localStorage.getItem("users") || "{}");
-    if (users[username] && users[username].password === password) {
-      currentUser = username;
-      localStorage.setItem("currentUser", username);
-      authMessage.textContent = "Login successful!";
-      authMessage.style.color = "#4caf50";
-      setTimeout(() => {
-        closeModal(loginModal);
-        authMessage.textContent = "";
-        updateAuthUI();
-        loadData();
-        updateView();
-      }, 1000);
-    } else {
-      authMessage.textContent = "Invalid username or password";
-    }
-  } catch (e) {
-    console.error("Login error:", e);
-    authMessage.textContent = "Error during login";
-  }
-}
-
-function handleRegister(username, password) {
-  try {
-    const users = JSON.parse(localStorage.getItem("users") || "{}");
-    if (users[username]) {
-      authMessage.textContent = "Username already exists";
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      authMessage.textContent = data.message || 'Login failed';
       return;
     }
-    users[username] = { password, events: [], xp: 0 };
-    localStorage.setItem("users", JSON.stringify(users));
-    currentUser = username;
-    localStorage.setItem("currentUser", username);
+    jwtToken = data.token;
+    currentUser = data.user.username;
+    localStorage.setItem("jwtToken", jwtToken);
+    localStorage.setItem("currentUser", currentUser);
+    authMessage.textContent = "Login successful!";
+    authMessage.style.color = "#4caf50";
+    setTimeout(() => {
+      closeModal(loginModal);
+      authMessage.textContent = "";
+      updateAuthUI();
+      fetchEvents();
+    }, 1000);
+  } catch (e) {
+    console.error("Login error:", e);
+    authMessage.textContent = "Server error during login";
+  }
+}
+
+async function handleRegister(username, password, email) {
+  try {
+    const response = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, email })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      authMessage.textContent = data.message || 'Registration failed';
+      return;
+    }
+    jwtToken = data.token;
+    currentUser = data.user.username;
+    localStorage.setItem("jwtToken", jwtToken);
+    localStorage.setItem("currentUser", currentUser);
     authMessage.textContent = "Registration successful!";
     authMessage.style.color = "#4caf50";
     setTimeout(() => {
       closeModal(loginModal);
       authMessage.textContent = "";
       updateAuthUI();
-      loadData();
-      updateView();
+      fetchEvents();
     }, 1000);
   } catch (e) {
     console.error("Registration error:", e);
-    authMessage.textContent = "Error during registration";
+    authMessage.textContent = "Server error during registration";
   }
 }
 
@@ -347,7 +370,6 @@ function trapFocus(modal) {
   };
 
   modal.addEventListener('keydown', handleKeydown);
-  // Return cleanup function to remove the event listener
   return () => modal.removeEventListener('keydown', handleKeydown);
 }
 
@@ -370,7 +392,6 @@ function renderMiniCalendar(date = new Date()) {
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
     cell.setAttribute("aria-label", `Day ${day} of ${monthYear.textContent}`);
     cell.onclick = () => {
-      // Prevent click if any modal is open
       if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
         return;
       }
@@ -381,7 +402,6 @@ function renderMiniCalendar(date = new Date()) {
     cell.onkeydown = e => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        // Prevent keydown if any modal is open
         if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
           return;
         }
@@ -405,7 +425,7 @@ function renderMonthView() {
   const month = selectedDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const totalDays = new Date(year, month + 1, 0).getDate();
-  bigCalendarBody.innerHTML = ""; // Clear previous content
+  bigCalendarBody.innerHTML = "";
   let row = document.createElement("tr");
   for (let i = 0; i < firstDay; i++) row.appendChild(document.createElement("td"));
   for (let day = 1; day <= totalDays; day++) {
@@ -416,24 +436,32 @@ function renderMonthView() {
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
     cell.setAttribute("aria-label", `Day ${day} of ${monthTitle.textContent}`);
     cell.onclick = () => {
-      // Prevent click if any modal is open
       if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
         return;
       }
-      selectedDate = cellDate;
-      syncMiniCalendar();
-      openEventModal(cellDate);
+      if (currentUser) {
+        selectedDate = cellDate;
+        syncMiniCalendar();
+        openEventModal(cellDate);
+      } else {
+        showErrorMessage("Please log in to create events", loginModal);
+        loginModal.classList.add("open");
+      }
     };
     cell.onkeydown = e => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        // Prevent keydown if any modal is open
         if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
           return;
         }
-        selectedDate = cellDate;
-        syncMiniCalendar();
-        openEventModal(cellDate);
+        if (currentUser) {
+          selectedDate = cellDate;
+          syncMiniCalendar();
+          openEventModal(cellDate);
+        } else {
+          showErrorMessage("Please log in to create events", loginModal);
+          loginModal.classList.add("open");
+        }
       }
     };
     const dayEvents = getEventsForDate(cellDate).sort((a, b) => {
@@ -451,7 +479,6 @@ function renderMonthView() {
       div.setAttribute("aria-label", `Event: ${event.title} on ${event.date} at ${formatTimeForDisplay(event)}`);
       div.onclick = e => {
         e.stopPropagation();
-        // Prevent click if any modal is open
         if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
           return;
         }
@@ -460,7 +487,6 @@ function renderMonthView() {
       div.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          // Prevent keydown if any modal is open
           if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
             return;
           }
@@ -475,7 +501,6 @@ function renderMonthView() {
       more.tabIndex = 0;
       more.textContent = `+${dayEvents.length - 3} more`;
       more.onclick = () => {
-        // Prevent click if any modal is open
         if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
           return;
         }
@@ -486,7 +511,6 @@ function renderMonthView() {
       more.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          // Prevent keydown if any modal is open
           if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
             return;
           }
@@ -535,7 +559,7 @@ function renderWeekView() {
     gridContainer.classList.add("week-grid-container");
     weekView.appendChild(gridContainer);
   } else {
-    gridContainer.innerHTML = ""; // Clear only the grid
+    gridContainer.innerHTML = "";
   }
 
   const weekStart = new Date(selectedDate);
@@ -579,24 +603,32 @@ function renderWeekView() {
       slot.classList.add("hour-slot");
       slot.tabIndex = 0;
       slot.onclick = () => {
-        // Prevent click if any modal is open
         if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
           return;
         }
-        selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
-        syncMiniCalendar();
-        openEventModal(selectedDate);
+        if (currentUser) {
+          selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
+          syncMiniCalendar();
+          openEventModal(selectedDate);
+        } else {
+          showErrorMessage("Please log in to create events", loginModal);
+          loginModal.classList.add("open");
+        }
       };
       slot.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          // Prevent keydown if any modal is open
           if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
             return;
           }
-          selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
-          syncMiniCalendar();
-          openEventModal(selectedDate);
+          if (currentUser) {
+            selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
+            syncMiniCalendar();
+            openEventModal(selectedDate);
+          } else {
+            showErrorMessage("Please log in to create events", loginModal);
+            loginModal.classList.add("open");
+          }
         }
       };
       slots.appendChild(slot);
@@ -615,7 +647,6 @@ function renderWeekView() {
       evBox.textContent = event.title;
       evBox.onclick = e => {
         e.stopPropagation();
-        // Prevent click if any modal is open
         if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
           return;
         }
@@ -624,7 +655,6 @@ function renderWeekView() {
       evBox.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          // Prevent keydown if any modal is open
           if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
             return;
           }
@@ -671,7 +701,6 @@ function renderWeekView() {
       evBox.style.height = `${((endMin - startMin) / 60) * hourSlotHeight - 4}px`;
       evBox.onclick = e => {
         e.stopPropagation();
-        // Prevent click if any modal is open
         if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
           return;
         }
@@ -680,7 +709,6 @@ function renderWeekView() {
       evBox.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          // Prevent keydown if any modal is open
           if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
             return;
           }
@@ -708,7 +736,7 @@ function renderWeekView() {
 // ===== Year View =====
 function renderYearView() {
   yearTitle.textContent = selectedDate.getFullYear();
-  yearGrid.innerHTML = ""; // Clear previous content
+  yearGrid.innerHTML = "";
   for (let m = 0; m < 12; m++) {
     const monthDiv = document.createElement("div");
     monthDiv.classList.add("year-month");
@@ -739,7 +767,6 @@ function renderYearView() {
       if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
       if (getEventsForDate(cellDate).length) cell.classList.add("has-events");
       cell.onclick = () => {
-        // Prevent click if any modal is open
         if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
           return;
         }
@@ -750,7 +777,6 @@ function renderYearView() {
       cell.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          // Prevent keydown if any modal is open
           if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
             return;
           }
@@ -800,17 +826,22 @@ function syncMiniCalendar() {
 
 // ===== Modal Management =====
 function openEventModal(date, event = null) {
+  if (!currentUser) {
+    showErrorMessage("Please log in to create/edit events", loginModal);
+    loginModal.classList.add("open");
+    return;
+  }
   editingEvent = event;
   eventModal.querySelector("h2").textContent = event ? "Edit Event" : "Create Event";
   eventForm.reset();
   eventDateInput.value = date.toISOString().slice(0, 10);
-  eventColorPicker.value = event ? event.color : "#4caf50";
-  eventColorPreset.value = event ? event.color : "#4caf50";
+  eventColorPicker.value = event ? event.color : "#000000"; // Default to black per schema
+  eventColorPreset.value = event ? event.color : "#000000";
   allDayCheckbox.checked = event ? event.isAllDay : false;
   untilCheckbox.checked = event && event.endTime ? true : false;
   recurrenceTypeSelect.value = event && event.recurrence ? event.recurrence.type : "none";
   recurrenceIntervalInput.value = event && event.recurrence ? event.recurrence.interval : "1";
-  recurrenceUntilInput.value = event && event.recurrence && event.recurrence.until ? event.recurrence.until : "";
+  recurrenceUntilInput.value = event && event.recurrence && event.recurrence.until ? new Date(event.recurrence.until).toISOString().slice(0, 10) : "";
   eventTitleInput.value = event ? event.title : "";
   eventDetailsInput.value = event ? event.details || "" : "";
   if (event && event.time && !event.isAllDay) {
@@ -834,9 +865,8 @@ function openEventModal(date, event = null) {
   updateTimeInputs();
   updateRecurrenceInputs();
   eventModal.classList.add("open");
-  const removeTrap = trapFocus(eventModal); // Set up focus trap
-  eventTitleInput.focus(); // Focus the title input
-  // Clean up focus trap when modal closes
+  const removeTrap = trapFocus(eventModal);
+  eventTitleInput.focus();
   eventModal.addEventListener('transitionend', function cleanup() {
     if (!eventModal.classList.contains('open')) {
       removeTrap();
@@ -857,9 +887,8 @@ function openDetailsModal(event) {
     ` : ""}
   `;
   detailsModal.classList.add("open");
-  const removeTrap = trapFocus(detailsModal); // Set up focus trap
-  detailsModal.querySelector('.close-btn').focus(); // Focus the close button
-  // Clean up focus trap when modal closes
+  const removeTrap = trapFocus(detailsModal);
+  detailsModal.querySelector('.close-btn').focus();
   detailsModal.addEventListener('transitionend', function cleanup() {
     if (!detailsModal.classList.contains('open')) {
       removeTrap();
@@ -927,16 +956,13 @@ function updateRecurrenceInputs() {
 }
 
 // ===== Event Handlers =====
-function debounce(func, wait) {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}
-
-eventForm.onsubmit = e => {
+eventForm.onsubmit = async e => {
   e.preventDefault();
+  if (!currentUser) {
+    showErrorMessage("Please log in to create/edit events", loginModal);
+    loginModal.classList.add("open");
+    return;
+  }
   if (!eventTitleInput.value.trim()) {
     showErrorMessage("Event title is required");
     return;
@@ -1000,71 +1026,99 @@ eventForm.onsubmit = e => {
       return;
     }
     recurrence = {
-      type: recurrenceType,
+      frequency: recurrenceType, // Use 'frequency' to match backend schema
       interval,
       until: recurrenceUntilInput.value || null,
     };
   }
-  const newEvent = {
-    id: editingEvent ? editingEvent.id : Date.now().toString(),
+  const eventData = {
     title: eventTitleInput.value.trim(),
     date: eventDateInput.value,
     time: timeStr,
     endTime: endTimeStr,
     isAllDay,
-    color: eventColorPicker.value || "#4caf50",
+    color: eventColorPicker.value || "#000000",
     details: eventDetailsInput.value.trim(),
     recurrence,
   };
-  if (editingEvent) {
-    const index = events.findIndex(e => e.id === editingEvent.id);
-    if (index !== -1) events[index] = newEvent;
-  } else {
-    events.push(newEvent);
-    addXP(10);
-  }
+
   try {
-    localStorage.setItem(`calendarEvents_${currentUser || 'guest'}`, JSON.stringify(events));
+    let response;
+    if (editingEvent) {
+      response = await fetch(`/api/events/${editingEvent.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwtToken}`
+        },
+        body: JSON.stringify(eventData)
+      });
+    } else {
+      response = await fetch('/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwtToken}`
+        },
+        body: JSON.stringify(eventData)
+      });
+    }
+    if (response.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    if (!response.ok) {
+      const data = await response.json();
+      showErrorMessage(data.message || 'Failed to save event');
+      return;
+    }
+    const savedEvent = await response.json();
+    // Update local events array
+    if (editingEvent) {
+      const index = events.findIndex(e => e.id === editingEvent.id);
+      if (index !== -1) {
+        events[index] = { ...savedEvent, id: savedEvent._id, recurrence: savedEvent.recurrence ? { ...savedEvent.recurrence, type: savedEvent.recurrence.frequency } : null };
+      }
+    } else {
+      events.push({ ...savedEvent, id: savedEvent._id, recurrence: savedEvent.recurrence ? { ...savedEvent.recurrence, type: savedEvent.recurrence.frequency } : null });
+    }
+    eventCache.clear();
+    closeModal(eventModal);
+    updateView();
   } catch (e) {
-    console.error("Failed to save events:", e);
-    showErrorMessage("Error saving event");
-    return;
+    console.error("Failed to save event:", e);
+    showErrorMessage("Server error saving event");
   }
-  eventCache.clear();
-  closeModal(eventModal);
-  updateView();
 };
 
-authForm.onsubmit = e => {
+authForm.onsubmit = async e => {
   e.preventDefault();
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
+  const email = authSubmit.textContent === "Register" ? document.getElementById("email")?.value?.trim() : undefined;
   if (!username || !password) {
     authMessage.textContent = "Username and password are required";
     return;
   }
   if (authSubmit.textContent === "Log In") {
-    handleLogin(username, password);
+    await handleLogin(username, password);
   } else {
-    handleRegister(username, password);
+    await handleRegister(username, password, email);
   }
 };
 
 // ===== Event Listeners =====
 document.addEventListener("DOMContentLoaded", () => {
   settingsPanel.classList.add("hidden");
-  loadData();
+  loadSettings();
   updateView();
-  updateRankBar();
 
-  // Stop propagation for modal content clicks
   document.querySelectorAll('.modal-content').forEach(modalContent => {
     modalContent.addEventListener('click', e => {
       e.stopPropagation();
     });
   });
 
-  // Close modal on background click
   document.querySelectorAll('.modal').forEach(modal => {
     modal.addEventListener('click', e => {
       if (e.target === modal) {
@@ -1073,7 +1127,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Navigation
   prevMonth.onclick = () => {
     currentDate.setMonth(currentDate.getMonth() - 1);
     renderMiniCalendar(currentDate);
@@ -1099,7 +1152,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateView();
   };
 
-  // View switching
   document.querySelectorAll(".view-btn").forEach(btn => {
     btn.onclick = () => {
       currentView = btn.dataset.view;
@@ -1107,20 +1159,25 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   });
 
-  // Modal controls
   closeEventModal.onclick = () => closeModal(eventModal);
   closeDetailsModal.onclick = () => closeModal(detailsModal);
   closeLoginModal.onclick = () => closeModal(loginModal);
 
-  createEventBtn.onclick = () => openEventModal(new Date());
+  createEventBtn.onclick = () => {
+    if (currentUser) {
+      openEventModal(new Date());
+    } else {
+      showErrorMessage("Please log in to create events", loginModal);
+      loginModal.classList.add("open");
+    }
+  };
   logInButton.onclick = () => {
     loginModal.classList.add("open");
     authSubmit.textContent = "Log In";
     toggleAuth.textContent = "Switch to Register";
     loginModal.querySelector("h2").textContent = "Log In";
-    const removeTrap = trapFocus(loginModal); // Set up focus trap
+    const removeTrap = trapFocus(loginModal);
     usernameInput.focus();
-    // Clean up focus trap when modal closes
     loginModal.addEventListener('transitionend', function cleanup() {
       if (!loginModal.classList.contains('open')) {
         removeTrap();
@@ -1129,16 +1186,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
   logOutButton.onclick = () => {
+    jwtToken = null;
     currentUser = null;
+    localStorage.removeItem("jwtToken");
     localStorage.removeItem("currentUser");
-    updateAuthUI();
     events = [];
-    userXP = 0;
-    userRank = "Bronze";
-    localStorage.removeItem(`calendarEvents_${currentUser || 'guest'}`);
-    localStorage.removeItem(`userXP_${currentUser || 'guest'}`);
+    updateAuthUI();
     updateView();
-    updateRankBar();
   };
   toggleAuth.onclick = () => {
     const isLogin = authSubmit.textContent === "Log In";
@@ -1147,7 +1201,6 @@ document.addEventListener("DOMContentLoaded", () => {
     loginModal.querySelector("h2").textContent = isLogin ? "Register" : "Log In";
   };
 
-  // Settings
   settingsButton.onclick = () => settingsPanel.classList.toggle("hidden");
   timeFormatToggle.onchange = () => {
     use24Hour = timeFormatToggle.checked;
@@ -1182,27 +1235,45 @@ document.addEventListener("DOMContentLoaded", () => {
   untilCheckbox.onchange = updateTimeInputs;
   recurrenceTypeSelect.onchange = updateRecurrenceInputs;
 
-  // Event actions
-  deleteEventBtn.onclick = () => {
-    if (activeEventId) {
-      events = events.filter(e => e.id !== activeEventId);
-      try {
-        localStorage.setItem(`calendarEvents_${currentUser || 'guest'}`, JSON.stringify(events));
-      } catch (e) {
-        console.error("Failed to save events:", e);
-        showErrorMessage("Error deleting event");
+  deleteEventBtn.onclick = async () => {
+    if (!currentUser || !activeEventId) {
+      showErrorMessage("Please log in to delete events", loginModal);
+      loginModal.classList.add("open");
+      return;
+    }
+    try {
+      const response = await fetch(`/api/events/${activeEventId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${jwtToken}` }
+      });
+      if (response.status === 401) {
+        handleUnauthorized();
         return;
       }
+      if (!response.ok) {
+        const data = await response.json();
+        showErrorMessage(data.message || 'Failed to delete event');
+        return;
+      }
+      events = events.filter(e => e.id !== activeEventId);
       eventCache.clear();
       closeModal(detailsModal);
       updateView();
+    } catch (e) {
+      console.error("Failed to delete event:", e);
+      showErrorMessage("Server error deleting event");
     }
   };
   editEventBtn.onclick = () => {
+    if (!currentUser) {
+      showErrorMessage("Please log in to edit events", loginModal);
+      loginModal.classList.add("open");
+      return;
+    }
     const event = events.find(e => e.id === activeEventId);
     if (event) {
       closeModal(detailsModal);
-      openEventModal(parseDateOnly(event.date), event);
+      openEventModal(new Date(event.date), event);
     }
   };
 });

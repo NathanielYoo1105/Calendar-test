@@ -124,8 +124,13 @@
       <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="authTitle">Log In</h2>
       <form id="authForm">
-        <label>Username: <input type="text" id="username" required></label>
-        <label>Password: <input type="password" id="password" required></label>
+        <div id="authMessage"></div>
+        <label for="username">Username:</label>
+        <input type="text" id="username" required>
+        <label for="password">Password:</label>
+        <input type="password" id="password" required>
+        <label for="email" class="register-only hidden">Email (optional):</label>
+        <input type="email" id="email" class="register-only hidden">
         <button type="submit" id="authSubmit">Log In</button>
         <button type="button" id="toggleAuth">Switch to Register</button>
       </form>
