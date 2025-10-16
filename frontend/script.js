@@ -14,11 +14,14 @@ const eventCache = new Map();
 function loadSettings() {
   try {
     const savedDarkMode = localStorage.getItem("darkMode");
-    if (savedDarkMode === "true") document.body.classList.add("dark-mode");
+    if (savedDarkMode === "true") {
+      document.body.classList.add("dark-mode");
+      darkModeToggle.checked = true;
+    }
     const savedButtonColor = localStorage.getItem("buttonColor");
     if (savedButtonColor) {
-      document.getElementById("buttonColorPicker").value = savedButtonColor;
-      document.getElementById("buttonColorPreset").value = savedButtonColor;
+      buttonColorPicker.value = savedButtonColor;
+      buttonColorPreset.value = savedButtonColor;
       updateButtonColor(savedButtonColor);
     }
     const savedToken = localStorage.getItem("jwtToken");
@@ -38,22 +41,25 @@ function loadSettings() {
 // Fetch events from backend
 async function fetchEvents() {
   try {
+    console.log('Fetching events for user:', currentUser);
     const response = await fetch('/api/events', {
       headers: { 'Authorization': `Bearer ${jwtToken}` }
     });
     if (response.status === 401) {
+      console.log('Unauthorized, triggering re-login');
       handleUnauthorized();
       return;
     }
-    if (!response.ok) throw new Error('Failed to fetch events');
+    if (!response.ok) throw new Error(`Failed to fetch events: ${response.status}`);
     events = await response.json();
-    // Convert MongoDB _id to id for frontend compatibility
+    console.log('Fetched events:', events);
     events = events.map(e => ({
       ...e,
       id: e._id,
+      date: e.date.split('T')[0], // Directly normalize to YYYY-MM-DD string (assumes server sends ISO)
       recurrence: e.recurrence ? {
         ...e.recurrence,
-        type: e.recurrence.frequency // Map backend 'frequency' to frontend 'type'
+        type: e.recurrence.frequency
       } : null
     }));
     eventCache.clear();
@@ -64,7 +70,7 @@ async function fetchEvents() {
   }
 }
 
-// Handle unauthorized access (e.g., token expired)
+// Handle unauthorized access
 function handleUnauthorized() {
   jwtToken = null;
   currentUser = null;
@@ -89,6 +95,11 @@ const monthView = document.getElementById("monthView");
 const weekView = document.getElementById("weekView");
 const yearView = document.getElementById("yearView");
 const createEventBtn = document.getElementById("createEventButton");
+const viewAllEventsBtn = document.createElement("button"); // New button
+viewAllEventsBtn.id = "viewAllEventsButton";
+viewAllEventsBtn.textContent = "View All Events";
+viewAllEventsBtn.className = "view-all-events-btn";
+createEventBtn.parentNode.insertBefore(viewAllEventsBtn, createEventBtn.nextSibling); // Insert after create button
 const timeFormatToggle = document.getElementById("timeFormatToggle");
 const darkModeToggle = document.getElementById("darkModeToggle");
 const buttonColorPicker = document.getElementById("buttonColorPicker");
@@ -124,7 +135,7 @@ const untilContainer = document.getElementById("untilContainer");
 const endTimeInputs = document.getElementById("endTimeInputs");
 const recurrenceInputs = document.getElementById("recurrenceInputs");
 const detailsModal = document.getElementById("detailsModal");
-const closeDetailsModal = detailsModal.querySelector(".close-btn");
+const closeDetailsModal = document.getElementById("closeDetailsModal");
 const detailsContent = document.getElementById("detailsContent");
 const deleteEventBtn = document.getElementById("deleteEventButton");
 const editEventBtn = document.getElementById("editEventButton");
@@ -135,6 +146,7 @@ const authSubmit = document.getElementById("authSubmit");
 const toggleAuth = document.getElementById("toggleAuth");
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
+const emailInput = document.getElementById("email");
 const authMessage = document.getElementById("authMessage");
 const logInButton = document.getElementById("logInButton");
 const logOutButton = document.getElementById("logOutButton");
@@ -142,19 +154,28 @@ const userStatus = document.getElementById("userStatus");
 const settingsButton = document.getElementById("settingsButton");
 const settingsPanel = document.getElementById("settingsPanel");
 
-// Remove rank-related elements as they are not supported by backend
-const rankProgress = document.getElementById("rankProgress");
-const rankPercent = document.getElementById("rankPercent");
-const rankLabel = document.querySelector(".rank-label");
-if (rankProgress) rankProgress.remove();
-if (rankPercent) rankPercent.remove();
-if (rankLabel) rankLabel.remove();
+// New: All Events Modal
+const allEventsModal = document.createElement("div");
+allEventsModal.id = "allEventsModal";
+allEventsModal.className = "modal";
+allEventsModal.setAttribute("aria-hidden", "true");
+allEventsModal.innerHTML = `
+  <div class="modal-content">
+    <span class="close-btn">X</span>
+    <h2>All Events</h2>
+    <div id="allEventsList" class="all-events-list"></div>
+  </div>
+`;
+document.body.appendChild(allEventsModal);
+const closeAllEventsModal = allEventsModal.querySelector(".close-btn");
+const allEventsList = document.getElementById("allEventsList");
 
 // ===== Utility Functions =====
 function parseDateOnly(dateStr) {
-  const [year, month, day] = dateStr.split("-").map(Number);
+  if (!dateStr) return null;
+  const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
   if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
-  return new Date(year, month - 1, day);
+  return new Date(year, month - 1, day); // Local date components, no timezone shift
 }
 
 function formatTimeForDisplay(event) {
@@ -198,14 +219,14 @@ function monthsBetween(d1, d2) {
 }
 
 function matchesDate(ev, date) {
-  const evDate = new Date(ev.date);
-  if (isNaN(evDate.getTime())) return false;
-  if (!ev.recurrence) {
+  const evDate = parseDateOnly(ev.date);
+  if (!evDate) return false;
+  if (!ev.recurrence || ev.recurrence.type === "none") {
     return evDate.toDateString() === date.toDateString();
   }
   const { type, interval = 1, until } = ev.recurrence;
   if (evDate > date) return false;
-  const untilDate = until ? new Date(until) : null;
+  const untilDate = until ? parseDateOnly(until) : null;
   if (untilDate && untilDate < date) return false;
   const diffMs = date - evDate;
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -222,19 +243,25 @@ function matchesDate(ev, date) {
 
 function getEventsForDate(targetDate) {
   const cacheKey = targetDate.toDateString();
-  if (eventCache.has(cacheKey)) return eventCache.get(cacheKey);
+  if (eventCache.has(cacheKey)) {
+    console.log('Returning cached events for', cacheKey);
+    return eventCache.get(cacheKey);
+  }
   const result = events
     .filter(ev => {
-      const evDate = new Date(ev.date);
-      if (isNaN(evDate.getTime())) return false;
-      if (ev.recurrence && ev.recurrence.until) {
-        const untilDate = new Date(ev.recurrence.until);
+      const evDate = parseDateOnly(ev.date);
+      if (!evDate) {
+        console.warn('Invalid event date:', ev);
+        return false;
+      }
+      if (ev.recurrence && ev.recurrence.until && ev.recurrence.type !== "none") {
+        const untilDate = parseDateOnly(ev.recurrence.until);
         if (untilDate && untilDate < targetDate) return false;
       }
       return matchesDate(ev, targetDate);
     })
     .map(ev => {
-      const instance = { ...ev, instanceDate: targetDate.toISOString().slice(0, 10) };
+      const instance = { ...ev, instanceDate: targetDate.toISOString().split('T')[0] };
       if (ev.date !== instance.instanceDate) {
         instance.date = instance.instanceDate;
         instance.isInstance = true;
@@ -280,13 +307,15 @@ function updateAuthUI() {
     userStatus.classList.remove("hidden");
     logInButton.classList.add("hidden");
     logOutButton.classList.remove("hidden");
-    createEventBtn.classList.remove("hidden"); // Enable event creation for logged-in users
+    createEventBtn.classList.remove("hidden");
+    viewAllEventsBtn.classList.remove("hidden"); // Show button when logged in
   } else {
     userStatus.classList.add("hidden");
     logInButton.classList.remove("hidden");
     logOutButton.classList.add("hidden");
-    createEventBtn.classList.add("hidden"); // Hide event creation for guests
-    events = []; // Clear events for guests
+    createEventBtn.classList.add("hidden");
+    viewAllEventsBtn.classList.add("hidden"); // Hide button when logged out
+    events = [];
     updateView();
   }
 }
@@ -301,7 +330,7 @@ async function handleLogin(username, password) {
     const data = await response.json();
     if (!response.ok) {
       authMessage.textContent = data.message || 'Login failed';
-      return;
+      return false;
     }
     jwtToken = data.token;
     currentUser = data.user.username;
@@ -309,15 +338,11 @@ async function handleLogin(username, password) {
     localStorage.setItem("currentUser", currentUser);
     authMessage.textContent = "Login successful!";
     authMessage.style.color = "#4caf50";
-    setTimeout(() => {
-      closeModal(loginModal);
-      authMessage.textContent = "";
-      updateAuthUI();
-      fetchEvents();
-    }, 1000);
+    return true;
   } catch (e) {
     console.error("Login error:", e);
     authMessage.textContent = "Server error during login";
+    return false;
   }
 }
 
@@ -326,12 +351,12 @@ async function handleRegister(username, password, email) {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, email })
+      body: JSON.stringify({ username, password, email: email || undefined })
     });
     const data = await response.json();
     if (!response.ok) {
       authMessage.textContent = data.message || 'Registration failed';
-      return;
+      return false;
     }
     jwtToken = data.token;
     currentUser = data.user.username;
@@ -339,21 +364,18 @@ async function handleRegister(username, password, email) {
     localStorage.setItem("currentUser", currentUser);
     authMessage.textContent = "Registration successful!";
     authMessage.style.color = "#4caf50";
-    setTimeout(() => {
-      closeModal(loginModal);
-      authMessage.textContent = "";
-      updateAuthUI();
-      fetchEvents();
-    }, 1000);
+    return true;
   } catch (e) {
     console.error("Registration error:", e);
     authMessage.textContent = "Server error during registration";
+    return false;
   }
 }
 
 // ===== Focus Trap for Modals =====
 function trapFocus(modal) {
   const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusableElements.length === 0) return () => {};
   const firstElement = focusableElements[0];
   const lastElement = focusableElements[focusableElements.length - 1];
 
@@ -366,6 +388,8 @@ function trapFocus(modal) {
         e.preventDefault();
         firstElement.focus();
       }
+    } else if (e.key === 'Escape') {
+      closeModal(modal);
     }
   };
 
@@ -391,23 +415,17 @@ function renderMiniCalendar(date = new Date()) {
     if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
     cell.setAttribute("aria-label", `Day ${day} of ${monthYear.textContent}`);
-    cell.onclick = () => {
-      if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-        return;
-      }
+    const handleSelectDate = () => {
+      if (isModalOpen()) return;
       selectedDate = cellDate;
       currentView = "month";
       updateView();
     };
+    cell.onclick = handleSelectDate;
     cell.onkeydown = e => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-          return;
-        }
-        selectedDate = cellDate;
-        currentView = "month";
-        updateView();
+        handleSelectDate();
       }
     };
     row.appendChild(cell);
@@ -420,6 +438,7 @@ function renderMiniCalendar(date = new Date()) {
 
 // ===== Month View =====
 function renderMonthView() {
+  console.log('Rendering month view for:', selectedDate);
   monthTitle.textContent = selectedDate.toLocaleDateString("default", { month: "long", year: "numeric" });
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth();
@@ -435,10 +454,8 @@ function renderMonthView() {
     cell.textContent = day;
     if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
     cell.setAttribute("aria-label", `Day ${day} of ${monthTitle.textContent}`);
-    cell.onclick = () => {
-      if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-        return;
-      }
+    const handleCellClick = () => {
+      if (isModalOpen()) return;
       if (currentUser) {
         selectedDate = cellDate;
         syncMiniCalendar();
@@ -448,20 +465,11 @@ function renderMonthView() {
         loginModal.classList.add("open");
       }
     };
+    cell.onclick = handleCellClick;
     cell.onkeydown = e => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-          return;
-        }
-        if (currentUser) {
-          selectedDate = cellDate;
-          syncMiniCalendar();
-          openEventModal(cellDate);
-        } else {
-          showErrorMessage("Please log in to create events", loginModal);
-          loginModal.classList.add("open");
-        }
+        handleCellClick();
       }
     };
     const dayEvents = getEventsForDate(cellDate).sort((a, b) => {
@@ -477,20 +485,16 @@ function renderMonthView() {
       else if (event.color) div.style.backgroundColor = event.color;
       div.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
       div.setAttribute("aria-label", `Event: ${event.title} on ${event.date} at ${formatTimeForDisplay(event)}`);
-      div.onclick = e => {
+      const handleEventClick = e => {
         e.stopPropagation();
-        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-          return;
-        }
+        if (isModalOpen()) return;
         openDetailsModal(event);
       };
+      div.onclick = handleEventClick;
       div.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-            return;
-          }
-          openDetailsModal(event);
+          handleEventClick(e);
         }
       };
       cell.appendChild(div);
@@ -500,23 +504,17 @@ function renderMonthView() {
       more.classList.add("more-events");
       more.tabIndex = 0;
       more.textContent = `+${dayEvents.length - 3} more`;
-      more.onclick = () => {
-        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-          return;
-        }
+      const handleMoreClick = () => {
+        if (isModalOpen()) return;
         selectedDate = cellDate;
         currentView = "week";
         updateView();
       };
+      more.onclick = handleMoreClick;
       more.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-            return;
-          }
-          selectedDate = cellDate;
-          currentView = "week";
-          updateView();
+          handleMoreClick();
         }
       };
       cell.appendChild(more);
@@ -531,27 +529,30 @@ function renderMonthView() {
 
 // ===== Week View =====
 function renderWeekView() {
+  console.log('Rendering week view for:', selectedDate);
   let weekNav = weekView.querySelector(".week-nav");
   if (!weekNav) {
     weekNav = document.createElement("div");
     weekNav.classList.add("week-nav");
     weekNav.innerHTML = `
-      <button id="prevWeek" aria-label="Previous Week">‹</button>
+      <button id="prevWeek" aria-label="Previous Week">&lt;</button>
       <h2 id="weekTitle"></h2>
-      <button id="nextWeek" aria-label="Next Week">›</button>
+      <button id="nextWeek" aria-label="Next Week">&gt;</button>
     `;
     weekView.prepend(weekNav);
-    weekView.querySelector("#prevWeek").onclick = () => {
-      selectedDate.setDate(selectedDate.getDate() - 7);
-      syncMiniCalendar();
-      updateView();
-    };
-    weekView.querySelector("#nextWeek").onclick = () => {
-      selectedDate.setDate(selectedDate.getDate() + 7);
-      syncMiniCalendar();
-      updateView();
-    };
   }
+  const prevWeek = weekNav.querySelector("#prevWeek");
+  const nextWeek = weekNav.querySelector("#nextWeek");
+  prevWeek.onclick = () => {
+    selectedDate.setDate(selectedDate.getDate() - 7);
+    syncMiniCalendar();
+    updateView();
+  };
+  nextWeek.onclick = () => {
+    selectedDate.setDate(selectedDate.getDate() + 7);
+    syncMiniCalendar();
+    updateView();
+  };
   const weekTitle = weekView.querySelector("#weekTitle");
   let gridContainer = weekView.querySelector(".week-grid-container");
   if (!gridContainer) {
@@ -602,10 +603,8 @@ function renderWeekView() {
       const slot = document.createElement("div");
       slot.classList.add("hour-slot");
       slot.tabIndex = 0;
-      slot.onclick = () => {
-        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-          return;
-        }
+      const handleSlotClick = () => {
+        if (isModalOpen()) return;
         if (currentUser) {
           selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
           syncMiniCalendar();
@@ -615,20 +614,11 @@ function renderWeekView() {
           loginModal.classList.add("open");
         }
       };
+      slot.onclick = handleSlotClick;
       slot.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-            return;
-          }
-          if (currentUser) {
-            selectedDate = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate(), h);
-            syncMiniCalendar();
-            openEventModal(selectedDate);
-          } else {
-            showErrorMessage("Please log in to create events", loginModal);
-            loginModal.classList.add("open");
-          }
+          handleSlotClick();
         }
       };
       slots.appendChild(slot);
@@ -645,20 +635,16 @@ function renderWeekView() {
       evBox.tabIndex = 0;
       if (event.color) evBox.style.backgroundColor = event.color;
       evBox.textContent = event.title;
-      evBox.onclick = e => {
+      const handleEventClick = e => {
         e.stopPropagation();
-        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-          return;
-        }
+        if (isModalOpen()) return;
         openDetailsModal(event);
       };
+      evBox.onclick = handleEventClick;
       evBox.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-            return;
-          }
-          openDetailsModal(event);
+          handleEventClick(e);
         }
       };
       allDayContainer.appendChild(evBox);
@@ -699,20 +685,16 @@ function renderWeekView() {
       evBox.style.left = `calc(${laneIndex * laneWidth}% + 5px)`;
       evBox.style.top = `${headerHeight + allDayContainerHeight + (startMin / 60) * hourSlotHeight}px`;
       evBox.style.height = `${((endMin - startMin) / 60) * hourSlotHeight - 4}px`;
-      evBox.onclick = e => {
+      const handleEventClick = e => {
         e.stopPropagation();
-        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-          return;
-        }
+        if (isModalOpen()) return;
         openDetailsModal(event);
       };
+      evBox.onclick = handleEventClick;
       evBox.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-            return;
-          }
-          openDetailsModal(event);
+          handleEventClick(e);
         }
       };
       col.appendChild(evBox);
@@ -735,6 +717,7 @@ function renderWeekView() {
 
 // ===== Year View =====
 function renderYearView() {
+  console.log('Rendering year view for:', selectedDate.getFullYear());
   yearTitle.textContent = selectedDate.getFullYear();
   yearGrid.innerHTML = "";
   for (let m = 0; m < 12; m++) {
@@ -765,24 +748,19 @@ function renderYearView() {
       const cellDate = new Date(selectedDate.getFullYear(), m, day);
       if (cellDate.toDateString() === new Date().toDateString()) cell.classList.add("today");
       if (cellDate.toDateString() === selectedDate.toDateString()) cell.classList.add("selected");
-      if (getEventsForDate(cellDate).length) cell.classList.add("has-events");
-      cell.onclick = () => {
-        if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-          return;
-        }
+      const dayEvents = getEventsForDate(cellDate);
+      if (dayEvents.length) cell.classList.add("has-events");
+      const handleCellClick = () => {
+        if (isModalOpen()) return;
         selectedDate = cellDate;
         currentView = "month";
         updateView();
       };
+      cell.onclick = handleCellClick;
       cell.onkeydown = e => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          if (eventModal.classList.contains('open') || loginModal.classList.contains('open') || detailsModal.classList.contains('open')) {
-            return;
-          }
-          selectedDate = cellDate;
-          currentView = "month";
-          updateView();
+          handleCellClick();
         }
       };
       row.appendChild(cell);
@@ -800,6 +778,7 @@ function renderYearView() {
 // ===== View Management =====
 function updateView() {
   eventCache.clear();
+  console.log('Updating view:', currentView);
   monthView.classList.add("hidden");
   weekView.classList.add("hidden");
   yearView.classList.add("hidden");
@@ -825,6 +804,13 @@ function syncMiniCalendar() {
 }
 
 // ===== Modal Management =====
+function isModalOpen() {
+  return eventModal.classList.contains('open') || 
+         loginModal.classList.contains('open') || 
+         detailsModal.classList.contains('open') ||
+         allEventsModal.classList.contains('open');
+}
+
 function openEventModal(date, event = null) {
   if (!currentUser) {
     showErrorMessage("Please log in to create/edit events", loginModal);
@@ -834,14 +820,14 @@ function openEventModal(date, event = null) {
   editingEvent = event;
   eventModal.querySelector("h2").textContent = event ? "Edit Event" : "Create Event";
   eventForm.reset();
-  eventDateInput.value = date.toISOString().slice(0, 10);
-  eventColorPicker.value = event ? event.color : "#000000"; // Default to black per schema
-  eventColorPreset.value = event ? event.color : "#000000";
+  eventDateInput.value = date.toISOString().split('T')[0];
+  eventColorPicker.value = event ? event.color : "#4caf50";
+  eventColorPreset.value = event ? event.color : "#4caf50";
   allDayCheckbox.checked = event ? event.isAllDay : false;
   untilCheckbox.checked = event && event.endTime ? true : false;
-  recurrenceTypeSelect.value = event && event.recurrence ? event.recurrence.type : "none";
-  recurrenceIntervalInput.value = event && event.recurrence ? event.recurrence.interval : "1";
-  recurrenceUntilInput.value = event && event.recurrence && event.recurrence.until ? new Date(event.recurrence.until).toISOString().slice(0, 10) : "";
+  recurrenceTypeSelect.value = (event && event.recurrence && event.recurrence.type) ? event.recurrence.type : "none";
+  recurrenceIntervalInput.value = (event && event.recurrence) ? event.recurrence.interval : "1";
+  recurrenceUntilInput.value = (event && event.recurrence && event.recurrence.until) ? event.recurrence.until : "";
   eventTitleInput.value = event ? event.title : "";
   eventDetailsInput.value = event ? event.details || "" : "";
   if (event && event.time && !event.isAllDay) {
@@ -865,14 +851,16 @@ function openEventModal(date, event = null) {
   updateTimeInputs();
   updateRecurrenceInputs();
   eventModal.classList.add("open");
+  eventModal.setAttribute("aria-hidden", "false");
   const removeTrap = trapFocus(eventModal);
   eventTitleInput.focus();
   eventModal.addEventListener('transitionend', function cleanup() {
     if (!eventModal.classList.contains('open')) {
       removeTrap();
+      eventModal.setAttribute("aria-hidden", "true");
       eventModal.removeEventListener('transitionend', cleanup);
     }
-  });
+  }, { once: true });
 }
 
 function openDetailsModal(event) {
@@ -882,23 +870,110 @@ function openDetailsModal(event) {
     <p><strong>Date:</strong> ${event.date}</p>
     <p><strong>Time:</strong> ${formatTimeForDisplay(event)}</p>
     <p><strong>Details:</strong> ${event.details || "None"}</p>
-    ${event.recurrence ? `
+    ${event.recurrence && event.recurrence.type !== "none" ? `
       <p><strong>Recurrence:</strong> Every ${event.recurrence.interval} ${event.recurrence.type}(s) until ${event.recurrence.until || "indefinite"}</p>
     ` : ""}
   `;
   detailsModal.classList.add("open");
+  detailsModal.setAttribute("aria-hidden", "false");
   const removeTrap = trapFocus(detailsModal);
-  detailsModal.querySelector('.close-btn').focus();
+  closeDetailsModal.focus();
   detailsModal.addEventListener('transitionend', function cleanup() {
     if (!detailsModal.classList.contains('open')) {
       removeTrap();
+      detailsModal.setAttribute("aria-hidden", "true");
       detailsModal.removeEventListener('transitionend', cleanup);
     }
+  }, { once: true });
+}
+
+function openAllEventsModal() {
+  if (!currentUser) {
+    showErrorMessage("Please log in to view events", loginModal);
+    loginModal.classList.add("open");
+    return;
+  }
+  // Sort events by date (earliest first)
+  const sortedEvents = [...events].sort((a, b) => {
+    const dateA = parseDateOnly(a.date);
+    const dateB = parseDateOnly(b.date);
+    if (!dateA || !dateB) return 0;
+    return dateA - b.date;
   });
+
+  allEventsList.innerHTML = "";
+  if (sortedEvents.length === 0) {
+    allEventsList.innerHTML = "<p>No events found.</p>";
+  } else {
+    sortedEvents.forEach(event => {
+      const eventItem = document.createElement("div");
+      eventItem.className = "all-event-item";
+      eventItem.tabIndex = 0;
+      let recurrenceText = "None";
+      if (event.recurrence && event.recurrence.type && event.recurrence.type !== "none") {
+        recurrenceText = `Every ${event.recurrence.interval} ${event.recurrence.type}(s) until ${event.recurrence.until || "indefinite"}`;
+      }
+      eventItem.innerHTML = `
+        <div class="event-summary">
+          <strong>${event.title}</strong> - ${event.date} ${formatTimeForDisplay(event)}
+          ${event.details ? `<p>${event.details}</p>` : ""}
+          <p>Recurrence: ${recurrenceText}</p>
+        </div>
+        <div class="event-actions">
+          <button class="edit-btn small-btn">Edit</button>
+          <button class="delete-btn small-btn">Delete</button>
+        </div>
+      `;
+      eventItem.querySelector(".edit-btn").onclick = e => {
+        e.stopPropagation();
+        closeModal(allEventsModal);
+        openEventModal(parseDateOnly(event.date), event);
+      };
+      eventItem.querySelector(".delete-btn").onclick = async e => {
+        e.stopPropagation();
+        if (confirm(`Delete "${event.title}"?`)) {
+          try {
+            const response = await fetch(`/api/events/${event.id}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${jwtToken}` },
+            });
+            if (response.status === 401) {
+              handleUnauthorized();
+              return;
+            }
+            if (!response.ok) throw new Error('Failed to delete event');
+            events = events.filter(e => e.id !== event.id);
+            eventCache.clear();
+            openAllEventsModal(); // Refresh list
+            updateView(); // This ensures calendars reflect the deletion
+          } catch (err) {
+            console.error("Delete error:", err);
+            showErrorMessage("Error deleting event", allEventsModal);
+          }
+        }
+      };
+      eventItem.onclick = e => {
+        if (e.target.tagName === 'BUTTON') return;
+        openDetailsModal(event);
+      };
+      allEventsList.appendChild(eventItem);
+    });
+  }
+  allEventsModal.classList.add("open");
+  allEventsModal.setAttribute("aria-hidden", "false");
+  const removeTrap = trapFocus(allEventsModal);
+  allEventsModal.addEventListener('transitionend', function cleanup() {
+    if (!allEventsModal.classList.contains('open')) {
+      removeTrap();
+      allEventsModal.setAttribute("aria-hidden", "true");
+      allEventsModal.removeEventListener('transitionend', cleanup);
+    }
+  }, { once: true });
 }
 
 function closeModal(modal) {
   modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
   if (modal === eventModal) {
     eventForm.reset();
     editingEvent = null;
@@ -909,6 +984,9 @@ function closeModal(modal) {
   if (modal === loginModal) {
     authForm.reset();
     authMessage.textContent = "";
+  }
+  if (modal === allEventsModal) {
+    allEventsList.innerHTML = "";
   }
 }
 
@@ -921,127 +999,180 @@ function updateTimeInputs() {
   endTimeInputs.classList.toggle("hidden", allDayDisabled || !untilChecked);
   eventHourInput.disabled = allDayDisabled;
   eventMinuteInput.disabled = allDayDisabled;
-  eventAMPMSelect.disabled = allDayDisabled;
+  eventAMPMSelect.disabled = allDayDisabled || use24Hour;
   eventEndHourInput.disabled = allDayDisabled || !untilChecked;
   eventEndMinuteInput.disabled = allDayDisabled || !untilChecked;
-  eventEndAMPMSelect.disabled = allDayDisabled || !untilChecked;
-  if (use24Hour) {
-    eventHourInput.min = 0;
-    eventHourInput.max = 23;
-    eventHourInput.placeholder = "HH (0-23)";
-    eventEndHourInput.min = 0;
-    eventEndHourInput.max = 23;
-    eventEndHourInput.placeholder = "HH (0-23)";
-    eventAMPMSelect.classList.add("hidden");
-    eventEndAMPMSelect.classList.add("hidden");
-  } else {
-    eventHourInput.min = 1;
-    eventHourInput.max = 12;
-    eventHourInput.placeholder = "HH (1-12)";
-    eventEndHourInput.min = 1;
-    eventEndHourInput.max = 12;
-    eventEndHourInput.placeholder = "HH (1-12)";
-    eventAMPMSelect.classList.remove("hidden");
-    eventEndAMPMSelect.classList.toggle("hidden", allDayDisabled || !untilChecked);
-  }
+  eventEndAMPMSelect.disabled = allDayDisabled || !untilChecked || use24Hour;
 }
 
 function updateRecurrenceInputs() {
-  const type = recurrenceTypeSelect.value;
-  const isRecurring = type !== "none";
+  const recurrenceType = recurrenceTypeSelect.value;
+  const isRecurring = recurrenceType !== "none";
   recurrenceInputs.classList.toggle("hidden", !isRecurring);
   recurrenceIntervalInput.disabled = !isRecurring;
   recurrenceUntilInput.disabled = !isRecurring;
-  recurrenceUnitSpan.textContent = isRecurring ? (type === "daily" ? "day(s)" : type === "weekly" ? "week(s)" : "month(s)") : "";
+  recurrenceUnitSpan.textContent = isRecurring ? recurrenceType : "";
 }
 
 // ===== Event Handlers =====
+prevMonth.onclick = () => {
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderMiniCalendar(currentDate);
+};
+
+nextMonth.onclick = () => {
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderMiniCalendar(currentDate);
+};
+
+prevMonthMain.onclick = () => {
+  selectedDate.setMonth(selectedDate.getMonth() - 1);
+  syncMiniCalendar();
+  updateView();
+};
+
+nextMonthMain.onclick = () => {
+  selectedDate.setMonth(selectedDate.getMonth() + 1);
+  syncMiniCalendar();
+  updateView();
+};
+
+prevYear.onclick = () => {
+  selectedDate.setFullYear(selectedDate.getFullYear() - 1);
+  syncMiniCalendar();
+  updateView();
+};
+
+nextYear.onclick = () => {
+  selectedDate.setFullYear(selectedDate.getFullYear() + 1);
+  syncMiniCalendar();
+  updateView();
+};
+
+createEventBtn.onclick = () => {
+  if (isModalOpen()) return;
+  openEventModal(selectedDate);
+};
+
+viewAllEventsBtn.onclick = () => {
+  if (isModalOpen()) return;
+  openAllEventsModal();
+};
+
+closeEventModal.onclick = () => closeModal(eventModal);
+closeDetailsModal.onclick = () => closeModal(detailsModal);
+closeLoginModal.onclick = () => closeModal(loginModal);
+closeAllEventsModal.onclick = () => closeModal(allEventsModal);
+
+timeFormatToggle.onclick = () => {
+  use24Hour = !use24Hour;
+  timeFormatToggle.textContent = `Switch to ${use24Hour ? "12-Hour" : "24-Hour"}`;
+  eventAMPMSelect.disabled = use24Hour;
+  eventEndAMPMSelect.disabled = use24Hour;
+  updateView();
+};
+
+darkModeToggle.onclick = () => {
+  document.body.classList.toggle("dark-mode");
+  try {
+    localStorage.setItem("darkMode", document.body.classList.contains("dark-mode"));
+  } catch (e) {
+    console.error("Failed to save dark mode setting:", e);
+  }
+  updateButtonColor(buttonColorPicker.value);
+};
+
+buttonColorPicker.oninput = () => {
+  buttonColorPreset.value = buttonColorPicker.value;
+  updateButtonColor(buttonColorPicker.value);
+};
+
+buttonColorPreset.onchange = () => {
+  buttonColorPicker.value = buttonColorPreset.value;
+  updateButtonColor(buttonColorPreset.value);
+};
+
+eventColorPicker.oninput = () => {
+  eventColorPreset.value = eventColorPicker.value;
+};
+
+eventColorPreset.onchange = () => {
+  eventColorPicker.value = eventColorPreset.value;
+};
+
+allDayCheckbox.onchange = updateTimeInputs;
+untilCheckbox.onchange = updateTimeInputs;
+
+recurrenceTypeSelect.onchange = () => {
+  updateRecurrenceInputs();
+  if (recurrenceTypeSelect.value !== "none") {
+    recurrenceUntilInput.value = recurrenceUntilInput.value || new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).toISOString().split('T')[0];
+  }
+};
+
 eventForm.onsubmit = async e => {
   e.preventDefault();
   if (!currentUser) {
-    showErrorMessage("Please log in to create/edit events", loginModal);
-    loginModal.classList.add("open");
+    showErrorMessage("Please log in to save events");
     return;
   }
-  if (!eventTitleInput.value.trim()) {
-    showErrorMessage("Event title is required");
+  const title = eventTitleInput.value.trim();
+  if (!title) {
+    showErrorMessage("Title is required");
     return;
   }
-  const eventDate = parseDateOnly(eventDateInput.value);
-  if (!eventDate) {
-    showErrorMessage("Invalid date");
+  const date = eventDateInput.value;
+  if (!date) {
+    showErrorMessage("Date is required");
     return;
   }
-  let isAllDay = allDayCheckbox.checked;
-  let timeStr = null;
-  let endTimeStr = null;
-  if (isAllDay) {
-    timeStr = "00:00";
-    endTimeStr = "23:59";
-  } else {
-    let startHour = parseInt(eventHourInput.value, 10);
-    let startMinute = parseInt(eventMinuteInput.value, 10);
-    if (!eventHourInput.value || !eventMinuteInput.value || isNaN(startHour) || isNaN(startMinute) || startHour < 0 || startHour > 23 || startMinute < 0 || startMinute > 59) {
-      showErrorMessage("Invalid start time");
+  let time = null;
+  let endTime = null;
+  if (!allDayCheckbox.checked) {
+    let hour = parseInt(eventHourInput.value);
+    const minute = parseInt(eventMinuteInput.value) || 0;
+    if (isNaN(hour) || isNaN(minute)) {
+      showErrorMessage("Valid time is required");
       return;
     }
     if (!use24Hour) {
-      const ampm = eventAMPMSelect.value;
-      if (ampm === "PM" && startHour < 12) startHour += 12;
-      if (ampm === "AM" && startHour === 12) startHour = 0;
+      if (eventAMPMSelect.value === "PM" && hour !== 12) hour += 12;
+      if (eventAMPMSelect.value === "AM" && hour === 12) hour = 0;
     }
-    timeStr = `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}`;
+    time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
     if (untilCheckbox.checked) {
-      let endHour = parseInt(eventEndHourInput.value, 10);
-      let endMinute = parseInt(eventEndMinuteInput.value, 10);
-      if (!eventEndHourInput.value || !eventEndMinuteInput.value || isNaN(endHour) || isNaN(endMinute) || endHour < 0 || endHour > 23 || endMinute < 0 || endMinute > 59) {
-        showErrorMessage("Invalid end time");
+      let endHour = parseInt(eventEndHourInput.value);
+      const endMinute = parseInt(eventEndMinuteInput.value) || 0;
+      if (isNaN(endHour) || isNaN(endMinute)) {
+        showErrorMessage("Valid end time is required");
         return;
       }
       if (!use24Hour) {
-        const endAmpm = eventEndAMPMSelect.value;
-        if (endAmpm === "PM" && endHour < 12) endHour += 12;
-        if (endAmpm === "AM" && endHour === 12) endHour = 0;
+        if (eventEndAMPMSelect.value === "PM" && endHour !== 12) endHour += 12;
+        if (eventEndAMPMSelect.value === "AM" && endHour === 12) endHour = 0;
       }
-      endTimeStr = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
-      const startMin = getTimeInMinutes(timeStr);
-      const endMin = getTimeInMinutes(endTimeStr);
-      if (endMin <= startMin) {
+      endTime = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
+      if (getTimeInMinutes(time) >= getTimeInMinutes(endTime)) {
         showErrorMessage("End time must be after start time");
         return;
       }
     }
   }
-  let recurrence = null;
-  const recurrenceType = recurrenceTypeSelect.value;
-  if (recurrenceType !== "none") {
-    const interval = parseInt(recurrenceIntervalInput.value, 10);
-    const untilDate = recurrenceUntilInput.value ? parseDateOnly(recurrenceUntilInput.value) : null;
-    if (isNaN(interval) || interval < 1) {
-      showErrorMessage("Invalid recurrence interval");
-      return;
-    }
-    if (untilDate && untilDate < eventDate) {
-      showErrorMessage("Recurrence end date must be after the event start date");
-      return;
-    }
-    recurrence = {
-      frequency: recurrenceType, // Use 'frequency' to match backend schema
-      interval,
-      until: recurrenceUntilInput.value || null,
-    };
-  }
+  const recurrence = recurrenceTypeSelect.value !== "none" ? {
+    type: recurrenceTypeSelect.value,
+    interval: parseInt(recurrenceIntervalInput.value) || 1,
+    until: recurrenceUntilInput.value || undefined,
+  } : null;
   const eventData = {
-    title: eventTitleInput.value.trim(),
-    date: eventDateInput.value,
-    time: timeStr,
-    endTime: endTimeStr,
-    isAllDay,
-    color: eventColorPicker.value || "#000000",
-    details: eventDetailsInput.value.trim(),
+    title,
+    date,
+    isAllDay: allDayCheckbox.checked,
+    time,
+    endTime,
+    details: eventDetailsInput.value,
+    color: eventColorPicker.value,
     recurrence,
   };
-
   try {
     let response;
     if (editingEvent) {
@@ -1049,18 +1180,18 @@ eventForm.onsubmit = async e => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwtToken}`
+          'Authorization': `Bearer ${jwtToken}`,
         },
-        body: JSON.stringify(eventData)
+        body: JSON.stringify(eventData),
       });
     } else {
       response = await fetch('/api/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwtToken}`
+          'Authorization': `Bearer ${jwtToken}`,
         },
-        body: JSON.stringify(eventData)
+        body: JSON.stringify(eventData),
       });
     }
     if (response.status === 401) {
@@ -1068,212 +1199,124 @@ eventForm.onsubmit = async e => {
       return;
     }
     if (!response.ok) {
-      const data = await response.json();
-      showErrorMessage(data.message || 'Failed to save event');
-      return;
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to save event');
     }
     const savedEvent = await response.json();
-    // Update local events array
     if (editingEvent) {
       const index = events.findIndex(e => e.id === editingEvent.id);
-      if (index !== -1) {
-        events[index] = { ...savedEvent, id: savedEvent._id, recurrence: savedEvent.recurrence ? { ...savedEvent.recurrence, type: savedEvent.recurrence.frequency } : null };
-      }
+      if (index !== -1) events[index] = { ...savedEvent, id: savedEvent._id, date: savedEvent.date.split('T')[0], recurrence: savedEvent.recurrence || null };
     } else {
-      events.push({ ...savedEvent, id: savedEvent._id, recurrence: savedEvent.recurrence ? { ...savedEvent.recurrence, type: savedEvent.recurrence.frequency } : null });
+      events.push({ ...savedEvent, id: savedEvent._id, date: savedEvent.date.split('T')[0], recurrence: savedEvent.recurrence || null });
     }
     eventCache.clear();
     closeModal(eventModal);
     updateView();
   } catch (e) {
     console.error("Failed to save event:", e);
-    showErrorMessage("Server error saving event");
+    showErrorMessage(e.message || "Error saving event");
   }
+};
+
+deleteEventBtn.onclick = async () => {
+  if (!currentUser || !activeEventId) return;
+  try {
+    const response = await fetch(`/api/events/${activeEventId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${jwtToken}` },
+    });
+    if (response.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    if (!response.ok) throw new Error('Failed to delete event');
+    events = events.filter(e => e.id !== activeEventId);
+    eventCache.clear();
+    closeModal(detailsModal);
+    updateView();
+  } catch (e) {
+    console.error("Failed to delete event:", e);
+    showErrorMessage("Error deleting event", detailsModal);
+  }
+};
+
+editEventBtn.onclick = () => {
+  const event = events.find(e => e.id === activeEventId);
+  if (event) {
+    closeModal(detailsModal);
+    openEventModal(parseDateOnly(event.date), event);
+  }
+};
+
+logInButton.onclick = () => {
+  if (isModalOpen()) return;
+  loginModal.classList.add("open");
+  loginModal.setAttribute("aria-hidden", "false");
+  authSubmit.textContent = "Log In";
+  toggleAuth.textContent = "Switch to Register";
+  emailInput.classList.add("hidden");
+  emailInput.previousElementSibling.classList.add("hidden");
+  authMessage.textContent = "";
+  const removeTrap = trapFocus(loginModal);
+  usernameInput.focus();
+  loginModal.addEventListener('transitionend', function cleanup() {
+    if (!loginModal.classList.contains('open')) {
+      removeTrap();
+      loginModal.setAttribute("aria-hidden", "true");
+      loginModal.removeEventListener('transitionend', cleanup);
+    }
+  }, { once: true });
+};
+
+logOutButton.onclick = () => {
+  jwtToken = null;
+  currentUser = null;
+  localStorage.removeItem("jwtToken");
+  localStorage.removeItem("currentUser");
+  updateAuthUI();
+};
+
+toggleAuth.onclick = () => {
+  const isLogin = authSubmit.textContent === "Log In";
+  authSubmit.textContent = isLogin ? "Register" : "Log In";
+  toggleAuth.textContent = isLogin ? "Switch to Log In" : "Switch to Register";
+  emailInput.classList.toggle("hidden");
+  emailInput.previousElementSibling.classList.toggle("hidden");
+  authMessage.textContent = "";
 };
 
 authForm.onsubmit = async e => {
   e.preventDefault();
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
-  const email = authSubmit.textContent === "Register" ? document.getElementById("email")?.value?.trim() : undefined;
+  const email = emailInput.value.trim();
   if (!username || !password) {
     authMessage.textContent = "Username and password are required";
     return;
   }
-  if (authSubmit.textContent === "Log In") {
-    await handleLogin(username, password);
-  } else {
-    await handleRegister(username, password, email);
+  const isLogin = authSubmit.textContent === "Log In";
+  const success = isLogin
+    ? await handleLogin(username, password)
+    : await handleRegister(username, password, email);
+  if (success) {
+    closeModal(loginModal);
+    updateAuthUI();
+    fetchEvents();
   }
 };
 
-// ===== Event Listeners =====
-document.addEventListener("DOMContentLoaded", () => {
-  settingsPanel.classList.add("hidden");
-  loadSettings();
-  updateView();
+settingsButton.onclick = () => {
+  settingsPanel.classList.toggle("hidden");
+};
 
-  document.querySelectorAll('.modal-content').forEach(modalContent => {
-    modalContent.addEventListener('click', e => {
-      e.stopPropagation();
-    });
-  });
-
-  document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('click', e => {
-      if (e.target === modal) {
-        closeModal(modal);
-      }
-    });
-  });
-
-  prevMonth.onclick = () => {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderMiniCalendar(currentDate);
-  };
-  nextMonth.onclick = () => {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderMiniCalendar(currentDate);
-  };
-  prevMonthMain.onclick = () => {
-    selectedDate.setMonth(selectedDate.getMonth() - 1);
+document.querySelectorAll(".view-btn").forEach(btn => {
+  btn.onclick = () => {
+    if (isModalOpen()) return;
+    currentView = btn.dataset.view;
     updateView();
-  };
-  nextMonthMain.onclick = () => {
-    selectedDate.setMonth(selectedDate.getMonth() + 1);
-    updateView();
-  };
-  prevYear.onclick = () => {
-    selectedDate.setFullYear(selectedDate.getFullYear() - 1);
-    updateView();
-  };
-  nextYear.onclick = () => {
-    selectedDate.setFullYear(selectedDate.getFullYear() + 1);
-    updateView();
-  };
-
-  document.querySelectorAll(".view-btn").forEach(btn => {
-    btn.onclick = () => {
-      currentView = btn.dataset.view;
-      updateView();
-    };
-  });
-
-  closeEventModal.onclick = () => closeModal(eventModal);
-  closeDetailsModal.onclick = () => closeModal(detailsModal);
-  closeLoginModal.onclick = () => closeModal(loginModal);
-
-  createEventBtn.onclick = () => {
-    if (currentUser) {
-      openEventModal(new Date());
-    } else {
-      showErrorMessage("Please log in to create events", loginModal);
-      loginModal.classList.add("open");
-    }
-  };
-  logInButton.onclick = () => {
-    loginModal.classList.add("open");
-    authSubmit.textContent = "Log In";
-    toggleAuth.textContent = "Switch to Register";
-    loginModal.querySelector("h2").textContent = "Log In";
-    const removeTrap = trapFocus(loginModal);
-    usernameInput.focus();
-    loginModal.addEventListener('transitionend', function cleanup() {
-      if (!loginModal.classList.contains('open')) {
-        removeTrap();
-        loginModal.removeEventListener('transitionend', cleanup);
-      }
-    });
-  };
-  logOutButton.onclick = () => {
-    jwtToken = null;
-    currentUser = null;
-    localStorage.removeItem("jwtToken");
-    localStorage.removeItem("currentUser");
-    events = [];
-    updateAuthUI();
-    updateView();
-  };
-  toggleAuth.onclick = () => {
-    const isLogin = authSubmit.textContent === "Log In";
-    authSubmit.textContent = isLogin ? "Register" : "Log In";
-    toggleAuth.textContent = isLogin ? "Switch to Login" : "Switch to Register";
-    loginModal.querySelector("h2").textContent = isLogin ? "Register" : "Log In";
-  };
-
-  settingsButton.onclick = () => settingsPanel.classList.toggle("hidden");
-  timeFormatToggle.onchange = () => {
-    use24Hour = timeFormatToggle.checked;
-    updateTimeInputs();
-    updateView();
-  };
-  darkModeToggle.onchange = () => {
-    document.body.classList.toggle("dark-mode", darkModeToggle.checked);
-    try {
-      localStorage.setItem("darkMode", darkModeToggle.checked);
-    } catch (e) {
-      console.error("Failed to save dark mode setting:", e);
-    }
-    updateButtonColor(buttonColorPicker.value);
-    updateView();
-  };
-  buttonColorPicker.oninput = () => {
-    buttonColorPreset.value = buttonColorPicker.value;
-    updateButtonColor(buttonColorPicker.value);
-  };
-  buttonColorPreset.onchange = () => {
-    buttonColorPicker.value = buttonColorPreset.value;
-    updateButtonColor(buttonColorPreset.value);
-  };
-  eventColorPicker.oninput = () => {
-    eventColorPreset.value = eventColorPicker.value;
-  };
-  eventColorPreset.onchange = () => {
-    eventColorPicker.value = eventColorPreset.value;
-  };
-  allDayCheckbox.onchange = updateTimeInputs;
-  untilCheckbox.onchange = updateTimeInputs;
-  recurrenceTypeSelect.onchange = updateRecurrenceInputs;
-
-  deleteEventBtn.onclick = async () => {
-    if (!currentUser || !activeEventId) {
-      showErrorMessage("Please log in to delete events", loginModal);
-      loginModal.classList.add("open");
-      return;
-    }
-    try {
-      const response = await fetch(`/api/events/${activeEventId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${jwtToken}` }
-      });
-      if (response.status === 401) {
-        handleUnauthorized();
-        return;
-      }
-      if (!response.ok) {
-        const data = await response.json();
-        showErrorMessage(data.message || 'Failed to delete event');
-        return;
-      }
-      events = events.filter(e => e.id !== activeEventId);
-      eventCache.clear();
-      closeModal(detailsModal);
-      updateView();
-    } catch (e) {
-      console.error("Failed to delete event:", e);
-      showErrorMessage("Server error deleting event");
-    }
-  };
-  editEventBtn.onclick = () => {
-    if (!currentUser) {
-      showErrorMessage("Please log in to edit events", loginModal);
-      loginModal.classList.add("open");
-      return;
-    }
-    const event = events.find(e => e.id === activeEventId);
-    if (event) {
-      closeModal(detailsModal);
-      openEventModal(new Date(event.date), event);
-    }
   };
 });
+
+// Initialize
+loadSettings();
+updateView();

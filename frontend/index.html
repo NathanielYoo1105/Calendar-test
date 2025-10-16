@@ -29,14 +29,7 @@
           <tbody id="calendarBody"></tbody>
         </table>
       </div>
-      <!-- Rank Bar Moved Here -->
-      <div class="rank-bar-container">
-        <span class="rank-label">Rank: Bronze</span>
-        <div class="rank-bar">
-          <div class="rank-progress" id="rankProgress"></div>
-        </div>
-        <span class="rank-percent" id="rankPercent">0%</span>
-      </div>
+      <!-- Rank Bar Removed -->
       <div id="settingsPanel" class="settings-panel hidden">
         <h2>Settings</h2>
         <button id="timeFormatToggle">Switch to 24-Hour</button>
@@ -129,12 +122,11 @@
         <input type="text" id="username" required>
         <label for="password">Password:</label>
         <input type="password" id="password" required>
-        <label for="email" class="register-only hidden">Email (optional):</label>
+        <label for="email" class="register-only hidden" id="emailLabel">Email (optional):</label>
         <input type="email" id="email" class="register-only hidden">
         <button type="submit" id="authSubmit">Log In</button>
         <button type="button" id="toggleAuth">Switch to Register</button>
       </form>
-      <p id="authMessage"></p>
     </div>
   </div>
 
@@ -216,7 +208,7 @@
   <!-- Event Details Modal -->
   <div id="detailsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="detailsTitle">
     <div class="modal-content">
-      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <span class="close-btn" id="closeDetailsModal" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="detailsTitle">Event Details</h2>
       <div id="detailsContent"></div>
       <button id="deleteEventButton">Delete Event</button>
