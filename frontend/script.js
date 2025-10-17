@@ -56,11 +56,7 @@ async function fetchEvents() {
     events = events.map(e => ({
       ...e,
       id: e._id,
-      date: e.date.split('T')[0], // Directly normalize to YYYY-MM-DD string (assumes server sends ISO)
-      recurrence: e.recurrence ? {
-        ...e.recurrence,
-        type: e.recurrence.frequency
-      } : null
+      date: e.date.split('T')[0] // Directly normalize to YYYY-MM-DD string (assumes server sends ISO)
     }));
     eventCache.clear();
     updateView();
@@ -126,14 +122,9 @@ const untilCheckbox = document.getElementById("untilCheckbox");
 const eventEndHourInput = document.getElementById("eventEndHour");
 const eventEndMinuteInput = document.getElementById("eventEndMinute");
 const eventEndAMPMSelect = document.getElementById("eventEndAMPM");
-const recurrenceTypeSelect = document.getElementById("recurrenceType");
-const recurrenceIntervalInput = document.getElementById("recurrenceInterval");
-const recurrenceUnitSpan = document.getElementById("recurrenceUnit");
-const recurrenceUntilInput = document.getElementById("recurrenceUntil");
 const timeInputs = document.getElementById("timeInputs");
 const untilContainer = document.getElementById("untilContainer");
 const endTimeInputs = document.getElementById("endTimeInputs");
-const recurrenceInputs = document.getElementById("recurrenceInputs");
 const detailsModal = document.getElementById("detailsModal");
 const closeDetailsModal = document.getElementById("closeDetailsModal");
 const detailsContent = document.getElementById("detailsContent");
@@ -214,31 +205,10 @@ function showErrorMessage(message, target = eventModal) {
   setTimeout(() => errorDiv.style.display = "none", 2000);
 }
 
-function monthsBetween(d1, d2) {
-  return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-}
-
 function matchesDate(ev, date) {
   const evDate = parseDateOnly(ev.date);
   if (!evDate) return false;
-  if (!ev.recurrence || ev.recurrence.type === "none") {
-    return evDate.toDateString() === date.toDateString();
-  }
-  const { type, interval = 1, until } = ev.recurrence;
-  if (evDate > date) return false;
-  const untilDate = until ? parseDateOnly(until) : null;
-  if (untilDate && untilDate < date) return false;
-  const diffMs = date - evDate;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (type === "daily") {
-    return diffDays % interval === 0;
-  } else if (type === "weekly") {
-    return date.getDay() === evDate.getDay() && (diffDays % (7 * interval) === 0);
-  } else if (type === "monthly") {
-    const monthsDiff = monthsBetween(evDate, date);
-    return date.getDate() === evDate.getDate() && (monthsDiff % interval === 0);
-  }
-  return false;
+  return evDate.toDateString() === date.toDateString();
 }
 
 function getEventsForDate(targetDate) {
@@ -253,10 +223,6 @@ function getEventsForDate(targetDate) {
       if (!evDate) {
         console.warn('Invalid event date:', ev);
         return false;
-      }
-      if (ev.recurrence && ev.recurrence.until && ev.recurrence.type !== "none") {
-        const untilDate = parseDateOnly(ev.recurrence.until);
-        if (untilDate && untilDate < targetDate) return false;
       }
       return matchesDate(ev, targetDate);
     })
@@ -825,9 +791,6 @@ function openEventModal(date, event = null) {
   eventColorPreset.value = event ? event.color : "#4caf50";
   allDayCheckbox.checked = event ? event.isAllDay : false;
   untilCheckbox.checked = event && event.endTime ? true : false;
-  recurrenceTypeSelect.value = (event && event.recurrence && event.recurrence.type) ? event.recurrence.type : "none";
-  recurrenceIntervalInput.value = (event && event.recurrence) ? event.recurrence.interval : "1";
-  recurrenceUntilInput.value = (event && event.recurrence && event.recurrence.until) ? event.recurrence.until : "";
   eventTitleInput.value = event ? event.title : "";
   eventDetailsInput.value = event ? event.details || "" : "";
   if (event && event.time && !event.isAllDay) {
@@ -849,7 +812,6 @@ function openEventModal(date, event = null) {
     eventEndMinuteInput.value = minute;
   }
   updateTimeInputs();
-  updateRecurrenceInputs();
   eventModal.classList.add("open");
   eventModal.setAttribute("aria-hidden", "false");
   const removeTrap = trapFocus(eventModal);
@@ -870,9 +832,6 @@ function openDetailsModal(event) {
     <p><strong>Date:</strong> ${event.date}</p>
     <p><strong>Time:</strong> ${formatTimeForDisplay(event)}</p>
     <p><strong>Details:</strong> ${event.details || "None"}</p>
-    ${event.recurrence && event.recurrence.type !== "none" ? `
-      <p><strong>Recurrence:</strong> Every ${event.recurrence.interval} ${event.recurrence.type}(s) until ${event.recurrence.until || "indefinite"}</p>
-    ` : ""}
   `;
   detailsModal.classList.add("open");
   detailsModal.setAttribute("aria-hidden", "false");
@@ -909,15 +868,10 @@ function openAllEventsModal() {
       const eventItem = document.createElement("div");
       eventItem.className = "all-event-item";
       eventItem.tabIndex = 0;
-      let recurrenceText = "None";
-      if (event.recurrence && event.recurrence.type && event.recurrence.type !== "none") {
-        recurrenceText = `Every ${event.recurrence.interval} ${event.recurrence.type}(s) until ${event.recurrence.until || "indefinite"}`;
-      }
       eventItem.innerHTML = `
         <div class="event-summary">
           <strong>${event.title}</strong> - ${event.date} ${formatTimeForDisplay(event)}
           ${event.details ? `<p>${event.details}</p>` : ""}
-          <p>Recurrence: ${recurrenceText}</p>
         </div>
         <div class="event-actions">
           <button class="edit-btn small-btn">Edit</button>
@@ -990,7 +944,7 @@ function closeModal(modal) {
   }
 }
 
-// ===== Time and Recurrence Inputs =====
+// ===== Time Inputs =====
 function updateTimeInputs() {
   const allDayDisabled = allDayCheckbox.checked;
   const untilChecked = untilCheckbox.checked;
@@ -1003,15 +957,6 @@ function updateTimeInputs() {
   eventEndHourInput.disabled = allDayDisabled || !untilChecked;
   eventEndMinuteInput.disabled = allDayDisabled || !untilChecked;
   eventEndAMPMSelect.disabled = allDayDisabled || !untilChecked || use24Hour;
-}
-
-function updateRecurrenceInputs() {
-  const recurrenceType = recurrenceTypeSelect.value;
-  const isRecurring = recurrenceType !== "none";
-  recurrenceInputs.classList.toggle("hidden", !isRecurring);
-  recurrenceIntervalInput.disabled = !isRecurring;
-  recurrenceUntilInput.disabled = !isRecurring;
-  recurrenceUnitSpan.textContent = isRecurring ? recurrenceType : "";
 }
 
 // ===== Event Handlers =====
@@ -1103,13 +1048,6 @@ eventColorPreset.onchange = () => {
 allDayCheckbox.onchange = updateTimeInputs;
 untilCheckbox.onchange = updateTimeInputs;
 
-recurrenceTypeSelect.onchange = () => {
-  updateRecurrenceInputs();
-  if (recurrenceTypeSelect.value !== "none") {
-    recurrenceUntilInput.value = recurrenceUntilInput.value || new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).toISOString().split('T')[0];
-  }
-};
-
 eventForm.onsubmit = async e => {
   e.preventDefault();
   if (!currentUser) {
@@ -1158,11 +1096,6 @@ eventForm.onsubmit = async e => {
       }
     }
   }
-  const recurrence = recurrenceTypeSelect.value !== "none" ? {
-    type: recurrenceTypeSelect.value,
-    interval: parseInt(recurrenceIntervalInput.value) || 1,
-    until: recurrenceUntilInput.value || undefined,
-  } : null;
   const eventData = {
     title,
     date,
@@ -1171,7 +1104,6 @@ eventForm.onsubmit = async e => {
     endTime,
     details: eventDetailsInput.value,
     color: eventColorPicker.value,
-    recurrence,
   };
   try {
     let response;
@@ -1205,9 +1137,9 @@ eventForm.onsubmit = async e => {
     const savedEvent = await response.json();
     if (editingEvent) {
       const index = events.findIndex(e => e.id === editingEvent.id);
-      if (index !== -1) events[index] = { ...savedEvent, id: savedEvent._id, date: savedEvent.date.split('T')[0], recurrence: savedEvent.recurrence || null };
+      if (index !== -1) events[index] = { ...savedEvent, id: savedEvent._id, date: savedEvent.date.split('T')[0] };
     } else {
-      events.push({ ...savedEvent, id: savedEvent._id, date: savedEvent.date.split('T')[0], recurrence: savedEvent.recurrence || null });
+      events.push({ ...savedEvent, id: savedEvent._id, date: savedEvent.date.split('T')[0] });
     }
     eventCache.clear();
     closeModal(eventModal);

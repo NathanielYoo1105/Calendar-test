@@ -179,26 +179,6 @@
             </select>
           </label>
         </div>
-        <label>
-          Recurrence:
-          <select id="recurrenceType">
-            <option value="none">None</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </label>
-        <div id="recurrenceInputs" class="hidden">
-          <label>
-            Every
-            <input type="number" id="recurrenceInterval" min="1" value="1" disabled style="width: 50px;">
-            <span id="recurrenceUnit"></span>
-          </label>
-          <label>
-            Ends on:
-            <input type="date" id="recurrenceUntil" disabled>
-          </label>
-        </div>
         <label>Details: <textarea id="eventDetails"></textarea></label>
         <button type="submit">Save Event</button>
       </form>
