@@ -54,8 +54,10 @@ mongoose.connect(process.env.MONGO_URI)
 try {
   const authRoutes = require('./routes/auth');
   const eventRoutes = require('./routes/events');
+  const userRoutes = require('./routes/user');
   app.use('/api/auth', authRoutes);
   app.use('/api/events', eventRoutes);
+  app.use('/api/user', userRoutes);
 } catch (err) {
   console.error('Error loading routes:', err);
   process.exit(1);

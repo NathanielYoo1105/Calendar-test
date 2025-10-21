@@ -42,7 +42,14 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.status(201).json({
       token,
-      user: { id: user._id, username: user.username, email: user.email },
+      user: { 
+        id: user._id, 
+        username: user.username, 
+        email: user.email,
+        displayName: user.displayName,
+        bio: user.bio,
+        profileImage: user.profileImage 
+      },
     });
   } catch (err) {
     if (err.code === 11000) {
@@ -80,7 +87,14 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.json({
       token,
-      user: { id: user._id, username: user.username, email: user.email },
+      user: { 
+        id: user._id, 
+        username: user.username, 
+        email: user.email,
+        displayName: user.displayName,
+        bio: user.bio,
+        profileImage: user.profileImage 
+      },
     });
   } catch (err) {
     console.error('Login error:', err);

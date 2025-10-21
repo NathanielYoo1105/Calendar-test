@@ -22,6 +22,23 @@ const userSchema = new mongoose.Schema({
     match: [/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/, 'Invalid email format'],
     sparse: true, // Allows null/undefined but enforces uniqueness if provided
   },
+  displayName: {
+    type: String,
+    trim: true,
+    minlength: [1, 'Display name must be at least 1 character'],
+    maxlength: [50, 'Display name cannot exceed 50 characters'],
+    default: function() { return this.username; },
+  },
+  bio: {
+    type: String,
+    trim: true,
+    maxlength: [200, 'Bio cannot exceed 200 characters'],
+    default: '',
+  },
+  profileImage: {
+    type: String, // Base64 string (e.g., data:image/png;base64,...)
+    default: '',
+  },
 }, {
   timestamps: true,
   validateModifiedOnly: false, // For Mongoose 8.x compatibility

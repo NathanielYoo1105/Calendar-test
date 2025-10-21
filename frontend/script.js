@@ -28,7 +28,7 @@ function loadSettings() {
     const savedUser = localStorage.getItem("currentUser");
     if (savedToken && savedUser) {
       jwtToken = savedToken;
-      currentUser = savedUser;
+      currentUser = JSON.parse(savedUser);
       updateAuthUI();
       fetchEvents();
     }
@@ -41,7 +41,7 @@ function loadSettings() {
 // Fetch events from backend
 async function fetchEvents() {
   try {
-    console.log('Fetching events for user:', currentUser);
+    console.log('Fetching events for user:', currentUser?.username);
     const response = await fetch('/api/events', {
       headers: { 'Authorization': `Bearer ${jwtToken}` }
     });
@@ -56,7 +56,7 @@ async function fetchEvents() {
     events = events.map(e => ({
       ...e,
       id: e._id,
-      date: e.date.split('T')[0] // Directly normalize to YYYY-MM-DD string (assumes server sends ISO)
+      date: e.date.split('T')[0] // Directly normalize to YYYY-MM-DD string
     }));
     eventCache.clear();
     updateView();
@@ -91,11 +91,11 @@ const monthView = document.getElementById("monthView");
 const weekView = document.getElementById("weekView");
 const yearView = document.getElementById("yearView");
 const createEventBtn = document.getElementById("createEventButton");
-const viewAllEventsBtn = document.createElement("button"); // New button
+const viewAllEventsBtn = document.createElement("button");
 viewAllEventsBtn.id = "viewAllEventsButton";
 viewAllEventsBtn.textContent = "View All Events";
 viewAllEventsBtn.className = "view-all-events-btn";
-createEventBtn.parentNode.insertBefore(viewAllEventsBtn, createEventBtn.nextSibling); // Insert after create button
+createEventBtn.parentNode.insertBefore(viewAllEventsBtn, createEventBtn.nextSibling);
 const timeFormatToggle = document.getElementById("timeFormatToggle");
 const darkModeToggle = document.getElementById("darkModeToggle");
 const buttonColorPicker = document.getElementById("buttonColorPicker");
@@ -117,6 +117,7 @@ const eventHourInput = document.getElementById("eventHour");
 const eventMinuteInput = document.getElementById("eventMinute");
 const eventAMPMSelect = document.getElementById("eventAMPM");
 const eventDetailsInput = document.getElementById("eventDetails");
+const eventLocationInput = document.getElementById("eventLocation");
 const allDayCheckbox = document.getElementById("allDayCheckbox");
 const untilCheckbox = document.getElementById("untilCheckbox");
 const eventEndHourInput = document.getElementById("eventEndHour");
@@ -145,7 +146,12 @@ const userStatus = document.getElementById("userStatus");
 const settingsButton = document.getElementById("settingsButton");
 const settingsPanel = document.getElementById("settingsPanel");
 
-// New: All Events Modal
+// Recurrence elements
+const recurrenceContainer = document.getElementById("recurrenceContainer");
+const recurrenceCheckbox = document.getElementById("recurrenceCheckbox");
+const recurrenceFrequency = document.getElementById("recurrenceFrequency");
+
+// All Events Modal
 const allEventsModal = document.createElement("div");
 allEventsModal.id = "allEventsModal";
 allEventsModal.className = "modal";
@@ -161,12 +167,39 @@ document.body.appendChild(allEventsModal);
 const closeAllEventsModal = allEventsModal.querySelector(".close-btn");
 const allEventsList = document.getElementById("allEventsList");
 
+// Profile and Account Elements
+const profileContainer = document.getElementById("profileContainer");
+const profileButton = document.getElementById("profileButton");
+const profileImage = document.getElementById("profileImage");
+const profileInitials = document.getElementById("profileInitials");
+const profileMenu = document.getElementById("profileMenu");
+const menuProfileImage = document.getElementById("menuProfileImage");
+const menuProfileInitials = document.getElementById("menuProfileInitials");
+const menuUsername = document.getElementById("menuUsername");
+const menuEmail = document.getElementById("menuEmail");
+const profileSettingsBtn = document.getElementById("profileSettingsBtn");
+const accountSettingsBtn = document.getElementById("accountSettingsBtn");
+const logOutButtonMenu = document.getElementById("logOutButtonMenu");
+const profileSettingsModal = document.getElementById("profileSettingsModal");
+const closeProfileSettings = document.getElementById("closeProfileSettings");
+const profileForm = document.getElementById("profileForm");
+const profileImageInput = document.getElementById("profileImageInput");
+const currentProfileImage = document.getElementById("currentProfileImage");
+const displayName = document.getElementById("displayName");
+const profileBio = document.getElementById("profileBio");
+const accountSettingsModal = document.getElementById("accountSettingsModal");
+const closeAccountSettings = document.getElementById("closeAccountSettings");
+const accountForm = document.getElementById("accountForm");
+const accUsername = document.getElementById("accUsername");
+const accEmail = document.getElementById("accEmail");
+const accNewPassword = document.getElementById("accNewPassword");
+
 // ===== Utility Functions =====
 function parseDateOnly(dateStr) {
   if (!dateStr) return null;
   const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
   if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
-  return new Date(year, month - 1, day); // Local date components, no timezone shift
+  return new Date(year, month - 1, day);
 }
 
 function formatTimeForDisplay(event) {
@@ -211,29 +244,55 @@ function matchesDate(ev, date) {
   return evDate.toDateString() === date.toDateString();
 }
 
+// Recurrence: Get events for date with instances
 function getEventsForDate(targetDate) {
   const cacheKey = targetDate.toDateString();
-  if (eventCache.has(cacheKey)) {
-    console.log('Returning cached events for', cacheKey);
-    return eventCache.get(cacheKey);
-  }
-  const result = events
+  if (eventCache.has(cacheKey)) return eventCache.get(cacheKey);
+
+  let result = events
     .filter(ev => {
       const evDate = parseDateOnly(ev.date);
-      if (!evDate) {
-        console.warn('Invalid event date:', ev);
-        return false;
-      }
+      if (!evDate) return false;
       return matchesDate(ev, targetDate);
     })
-    .map(ev => {
-      const instance = { ...ev, instanceDate: targetDate.toISOString().split('T')[0] };
-      if (ev.date !== instance.instanceDate) {
-        instance.date = instance.instanceDate;
-        instance.isInstance = true;
+    .map(ev => ({ ...ev, instanceDate: targetDate.toISOString().split('T')[0], isInstance: false }));
+
+  // Add recurring instances
+  events.forEach(ev => {
+    if (!ev.recurrence || !ev.recurrence.frequency) return;
+    
+    const startDate = parseDateOnly(ev.date);
+    if (!startDate) return;
+    
+    let current = new Date(startDate);
+    let count = 0;
+    const maxInstances = 100;
+    
+    while (current <= targetDate && count < maxInstances) {
+      if (matchesDate(ev, targetDate) && !result.some(r => r.id === ev.id && r.instanceDate === targetDate.toISOString().split('T')[0])) {
+        result.push({
+          ...ev,
+          instanceDate: targetDate.toISOString().split('T')[0],
+          isInstance: true,
+          displayTitle: `${ev.title} (recurring)`
+        });
       }
-      return instance;
-    });
+      
+      switch (ev.recurrence.frequency) {
+        case 'daily': current.setDate(current.getDate() + 1); break;
+        case 'weekly': current.setDate(current.getDate() + 7); break;
+        case 'monthly': current.setMonth(current.getMonth() + 1); break;
+      }
+      count++;
+    }
+  });
+
+  result = result.sort((a, b) => {
+    if (a.isAllDay && !b.isAllDay) return -1;
+    if (!a.isAllDay && b.isAllDay) return 1;
+    return (a.time || "00:00").localeCompare(b.time || "00:00");
+  });
+
   eventCache.set(cacheKey, result);
   return result;
 }
@@ -266,23 +325,92 @@ function adjustColorBrightness(hex, factor) {
   return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
 }
 
+// NEW: Random pastel colors
+function getRandomPastelColor() {
+  const pastels = [
+    '#A7C7E7', '#B19CD9', '#FFAAA5', '#B5EAD7', '#CFC7FF',
+    '#FFD670', '#DAF7A6', '#FFC3A0', '#FFABAB', '#B5F7FF'
+  ];
+  return pastels[Math.floor(Math.random() * pastels.length)];
+}
+
+// NEW: Real-time validation
+function updateValidationState() {
+  const title = eventTitleInput.value.trim();
+  const date = eventDateInput.value;
+  
+  eventTitleInput.style.borderColor = title ? '#4caf50' : '#ff5722';
+  eventDateInput.style.borderColor = date ? '#4caf50' : '#ff5722';
+  
+  const submitBtn = eventForm.querySelector('button[type="submit"]');
+  submitBtn.disabled = !title || !date;
+  submitBtn.style.opacity = (title && date) ? '1' : '0.6';
+}
+
+// NEW: Smart minute suggestions
+function updateMinuteSuggestions() {
+  const minuteInput = document.activeElement;
+  if (minuteInput.id !== 'eventMinute' && minuteInput.id !== 'eventEndMinute') return;
+  
+  const suggestions = ['00', '15', '30', '45'];
+  const current = minuteInput.value;
+  
+  if (!suggestions.includes(current) && current.length === 2) {
+    const num = parseInt(current);
+    const nearest = Math.round(num / 15) * 15;
+    minuteInput.value = String(nearest).padStart(2, "0");
+  }
+}
+
+// NEW: File to base64
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
+}
+
 // ===== Authentication =====
 function updateAuthUI() {
   if (currentUser) {
-    userStatus.textContent = `Welcome, ${currentUser}`;
-    userStatus.classList.remove("hidden");
+    profileContainer.classList.remove("hidden");
     logInButton.classList.add("hidden");
-    logOutButton.classList.remove("hidden");
+    logOutButton.classList.add("hidden");
     createEventBtn.classList.remove("hidden");
-    viewAllEventsBtn.classList.remove("hidden"); // Show button when logged in
+    viewAllEventsBtn.classList.remove("hidden");
+    updateProfileUI();
   } else {
-    userStatus.classList.add("hidden");
+    profileContainer.classList.add("hidden");
     logInButton.classList.remove("hidden");
     logOutButton.classList.add("hidden");
     createEventBtn.classList.add("hidden");
-    viewAllEventsBtn.classList.add("hidden"); // Hide button when logged out
+    viewAllEventsBtn.classList.add("hidden");
     events = [];
     updateView();
+  }
+}
+
+function updateProfileUI() {
+  if (!currentUser) return;
+  menuUsername.textContent = currentUser.username;
+  menuEmail.textContent = currentUser.email || "";
+  if (currentUser.profileImage) {
+    profileImage.src = currentUser.profileImage;
+    profileImage.classList.remove("hidden");
+    profileInitials.classList.add("hidden");
+    menuProfileImage.src = currentUser.profileImage;
+    menuProfileImage.classList.remove("hidden");
+    menuProfileInitials.classList.add("hidden");
+  } else {
+    const initials = (currentUser.displayName || currentUser.username)[0].toUpperCase();
+    profileInitials.textContent = initials;
+    profileInitials.classList.remove("hidden");
+    profileImage.classList.add("hidden");
+    menuProfileInitials.textContent = initials;
+    menuProfileInitials.classList.remove("hidden");
+    menuProfileImage.classList.add("hidden");
   }
 }
 
@@ -299,9 +427,9 @@ async function handleLogin(username, password) {
       return false;
     }
     jwtToken = data.token;
-    currentUser = data.user.username;
+    currentUser = data.user;
     localStorage.setItem("jwtToken", jwtToken);
-    localStorage.setItem("currentUser", currentUser);
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
     authMessage.textContent = "Login successful!";
     authMessage.style.color = "#4caf50";
     return true;
@@ -325,9 +453,9 @@ async function handleRegister(username, password, email) {
       return false;
     }
     jwtToken = data.token;
-    currentUser = data.user.username;
+    currentUser = data.user;
     localStorage.setItem("jwtToken", jwtToken);
-    localStorage.setItem("currentUser", currentUser);
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
     authMessage.textContent = "Registration successful!";
     authMessage.style.color = "#4caf50";
     return true;
@@ -336,6 +464,14 @@ async function handleRegister(username, password, email) {
     authMessage.textContent = "Server error during registration";
     return false;
   }
+}
+
+function handleLogout() {
+  jwtToken = null;
+  currentUser = null;
+  localStorage.removeItem("jwtToken");
+  localStorage.removeItem("currentUser");
+  updateAuthUI();
 }
 
 // ===== Focus Trap for Modals =====
@@ -363,7 +499,146 @@ function trapFocus(modal) {
   return () => modal.removeEventListener('keydown', handleKeydown);
 }
 
-// ===== Mini Calendar =====
+// ===== IMPROVED: Event Modal =====
+function openEventModal(date, event = null) {
+  if (!currentUser) {
+    showErrorMessage("Please log in to create/edit events", loginModal);
+    loginModal.classList.add("open");
+    return;
+  }
+  
+  editingEvent = event;
+  eventModal.querySelector("h2").textContent = event ? "Edit Event" : "Create Event";
+  eventForm.reset();
+  
+  // 1. DATE SETUP
+  eventDateInput.value = date.toISOString().split('T')[0];
+  
+  // 2. SMART TIME SETUP
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  let defaultHour = isToday ? now.getHours() : 9;
+  let defaultMinute = isToday ? now.getMinutes() : 0;
+  
+  // Start time from event or defaults
+  if (event && event.time && !event.isAllDay) {
+    [defaultHour, defaultMinute] = event.time.split(":").map(Number);
+  }
+  
+  if (!use24Hour) {
+    eventAMPMSelect.value = defaultHour >= 12 ? "PM" : "AM";
+    defaultHour = defaultHour % 12 || 12;
+  }
+  
+  eventHourInput.value = defaultHour;
+  eventMinuteInput.value = String(defaultMinute).padStart(2, "0");
+  
+  // End time (auto +1 hour)
+  if (event && event.endTime) {
+    [defaultHour, defaultMinute] = event.endTime.split(":").map(Number);
+  } else {
+    defaultHour = parseInt(eventHourInput.value) + 1;
+    defaultMinute = 0;
+    if (!use24Hour && defaultHour > 12) {
+      defaultHour = 1;
+      eventEndAMPMSelect.value = "PM";
+    }
+  }
+  
+  if (!use24Hour) {
+    eventEndAMPMSelect.value = defaultHour >= 12 ? "PM" : "AM";
+    defaultHour = defaultHour % 12 || 12;
+  }
+  
+  eventEndHourInput.value = defaultHour;
+  eventEndMinuteInput.value = String(defaultMinute).padStart(2, "0");
+  
+  // 3. ALL-DAY & UNTIL
+  allDayCheckbox.checked = event ? event.isAllDay : false;
+  untilCheckbox.checked = event ? !!event.endTime : false;
+  
+  // 4. TITLE & DETAILS
+  eventTitleInput.value = event ? event.title : "";
+  eventDetailsInput.value = event ? (event.details || "") : "";
+  
+  // 5. LOCATION
+  if (eventLocationInput) {
+    eventLocationInput.value = event ? (event.location || "") : "";
+  }
+  
+  // 6. COLOR (Random pastel for new)
+  const defaultColor = event ? event.color : getRandomPastelColor();
+  eventColorPicker.value = defaultColor;
+  eventColorPreset.value = defaultColor;
+  
+  // 7. RECURRENCE
+  recurrenceCheckbox.checked = event ? !!event.recurrence : false;
+  recurrenceFrequency.value = event?.recurrence?.frequency || 'daily';
+  recurrenceFrequency.disabled = !recurrenceCheckbox.checked;
+  recurrenceContainer.classList.toggle("hidden", !recurrenceCheckbox.checked);
+  
+  updateTimeInputs();
+  updateValidationState(); // NEW: Validation
+  
+  eventModal.classList.add("open");
+  eventModal.setAttribute("aria-hidden", "false");
+  
+  const removeTrap = trapFocus(eventModal);
+  eventTitleInput.focus(); // Always focus title
+  
+  eventModal.addEventListener('transitionend', function cleanup() {
+    if (!eventModal.classList.contains('open')) {
+      removeTrap();
+      eventModal.setAttribute("aria-hidden", "true");
+      eventModal.removeEventListener('transitionend', cleanup);
+    }
+  }, { once: true });
+}
+
+// NEW: Profile Settings Modal
+function openProfileSettingsModal() {
+  if (!currentUser) return;
+  displayName.value = currentUser.displayName || currentUser.username;
+  profileBio.value = currentUser.bio || "";
+  if (currentUser.profileImage) {
+    currentProfileImage.src = currentUser.profileImage;
+    currentProfileImage.classList.remove("hidden");
+  } else {
+    currentProfileImage.classList.add("hidden");
+  }
+  profileSettingsModal.classList.add("open");
+  profileSettingsModal.setAttribute("aria-hidden", "false");
+  const removeTrap = trapFocus(profileSettingsModal);
+  displayName.focus();
+  profileSettingsModal.addEventListener('transitionend', function cleanup() {
+    if (!profileSettingsModal.classList.contains('open')) {
+      removeTrap();
+      profileSettingsModal.setAttribute("aria-hidden", "true");
+      profileSettingsModal.removeEventListener('transitionend', cleanup);
+    }
+  }, { once: true });
+}
+
+// NEW: Account Settings Modal
+function openAccountSettingsModal() {
+  if (!currentUser) return;
+  accUsername.value = currentUser.username;
+  accEmail.value = currentUser.email || "";
+  accNewPassword.value = "";
+  accountSettingsModal.classList.add("open");
+  accountSettingsModal.setAttribute("aria-hidden", "false");
+  const removeTrap = trapFocus(accountSettingsModal);
+  accEmail.focus();
+  accountSettingsModal.addEventListener('transitionend', function cleanup() {
+    if (!accountSettingsModal.classList.contains('open')) {
+      removeTrap();
+      accountSettingsModal.setAttribute("aria-hidden", "true");
+      accountSettingsModal.removeEventListener('transitionend', cleanup);
+    }
+  }, { once: true });
+}
+
+// ===== Views (Month, Week, Year) =====
 function renderMiniCalendar(date = new Date()) {
   const year = date.getFullYear();
   const month = date.getMonth();
@@ -402,7 +677,6 @@ function renderMiniCalendar(date = new Date()) {
   }
 }
 
-// ===== Month View =====
 function renderMonthView() {
   console.log('Rendering month view for:', selectedDate);
   monthTitle.textContent = selectedDate.toLocaleDateString("default", { month: "long", year: "numeric" });
@@ -448,8 +722,9 @@ function renderMonthView() {
       div.classList.add("month-event");
       div.tabIndex = 0;
       if (event.isAllDay) div.classList.add("all-day");
-      else if (event.color) div.style.backgroundColor = event.color;
-      div.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
+      if (event.isInstance) div.style.opacity = '0.7';
+      if (event.color) div.style.backgroundColor = event.color;
+      div.textContent = event.displayTitle || `${event.title} (${formatTimeForDisplay(event)})`;
       div.setAttribute("aria-label", `Event: ${event.title} on ${event.date} at ${formatTimeForDisplay(event)}`);
       const handleEventClick = e => {
         e.stopPropagation();
@@ -493,7 +768,6 @@ function renderMonthView() {
   }
 }
 
-// ===== Week View =====
 function renderWeekView() {
   console.log('Rendering week view for:', selectedDate);
   let weekNav = weekView.querySelector(".week-nav");
@@ -599,8 +873,9 @@ function renderWeekView() {
       const evBox = document.createElement("div");
       evBox.classList.add("all-day-event");
       evBox.tabIndex = 0;
+      if (event.isInstance) evBox.style.opacity = '0.7';
       if (event.color) evBox.style.backgroundColor = event.color;
-      evBox.textContent = event.title;
+      evBox.textContent = event.displayTitle || event.title;
       const handleEventClick = e => {
         e.stopPropagation();
         if (isModalOpen()) return;
@@ -640,9 +915,10 @@ function renderWeekView() {
       const evBox = document.createElement("div");
       evBox.classList.add("event-box");
       evBox.tabIndex = 0;
+      if (event.isInstance) evBox.style.opacity = '0.7';
       if (event.color) evBox.style.backgroundColor = event.color;
       else evBox.style.backgroundColor = document.body.classList.contains("dark-mode") ? "var(--event-box-dark-bg)" : "var(--event-box-bg)";
-      evBox.textContent = `${event.title} (${formatTimeForDisplay(event)})`;
+      evBox.textContent = event.displayTitle || `${event.title} (${formatTimeForDisplay(event)})`;
       const startMin = getTimeInMinutes(event.time || "00:00");
       const endMin = getTimeInMinutes(event.endTime || (event.time ? `${parseInt(event.time.split(":")[0]) + 1}:00` : "01:00"));
       const laneIndex = lanes.findIndex(lane => lane.some(item => item.event === event));
@@ -681,7 +957,6 @@ function renderWeekView() {
   }
 }
 
-// ===== Year View =====
 function renderYearView() {
   console.log('Rendering year view for:', selectedDate.getFullYear());
   yearTitle.textContent = selectedDate.getFullYear();
@@ -774,64 +1049,20 @@ function isModalOpen() {
   return eventModal.classList.contains('open') || 
          loginModal.classList.contains('open') || 
          detailsModal.classList.contains('open') ||
-         allEventsModal.classList.contains('open');
-}
-
-function openEventModal(date, event = null) {
-  if (!currentUser) {
-    showErrorMessage("Please log in to create/edit events", loginModal);
-    loginModal.classList.add("open");
-    return;
-  }
-  editingEvent = event;
-  eventModal.querySelector("h2").textContent = event ? "Edit Event" : "Create Event";
-  eventForm.reset();
-  eventDateInput.value = date.toISOString().split('T')[0];
-  eventColorPicker.value = event ? event.color : "#4caf50";
-  eventColorPreset.value = event ? event.color : "#4caf50";
-  allDayCheckbox.checked = event ? event.isAllDay : false;
-  untilCheckbox.checked = event && event.endTime ? true : false;
-  eventTitleInput.value = event ? event.title : "";
-  eventDetailsInput.value = event ? event.details || "" : "";
-  if (event && event.time && !event.isAllDay) {
-    let [hour, minute] = event.time.split(":").map(Number);
-    if (!use24Hour) {
-      eventAMPMSelect.value = hour >= 12 ? "PM" : "AM";
-      hour = hour % 12 || 12;
-    }
-    eventHourInput.value = hour;
-    eventMinuteInput.value = minute;
-  }
-  if (event && event.endTime) {
-    let [hour, minute] = event.endTime.split(":").map(Number);
-    if (!use24Hour) {
-      eventEndAMPMSelect.value = hour >= 12 ? "PM" : "AM";
-      hour = hour % 12 || 12;
-    }
-    eventEndHourInput.value = hour;
-    eventEndMinuteInput.value = minute;
-  }
-  updateTimeInputs();
-  eventModal.classList.add("open");
-  eventModal.setAttribute("aria-hidden", "false");
-  const removeTrap = trapFocus(eventModal);
-  eventTitleInput.focus();
-  eventModal.addEventListener('transitionend', function cleanup() {
-    if (!eventModal.classList.contains('open')) {
-      removeTrap();
-      eventModal.setAttribute("aria-hidden", "true");
-      eventModal.removeEventListener('transitionend', cleanup);
-    }
-  }, { once: true });
+         allEventsModal.classList.contains('open') ||
+         profileSettingsModal.classList.contains('open') ||
+         accountSettingsModal.classList.contains('open');
 }
 
 function openDetailsModal(event) {
   activeEventId = event.id;
   detailsContent.innerHTML = `
-    <p><strong>Title:</strong> ${event.title}</p>
+    <p><strong>Title:</strong> ${event.displayTitle || event.title}</p>
     <p><strong>Date:</strong> ${event.date}</p>
     <p><strong>Time:</strong> ${formatTimeForDisplay(event)}</p>
+    ${event.location ? `<p><strong>Location:</strong> ${event.location}</p>` : ''}
     <p><strong>Details:</strong> ${event.details || "None"}</p>
+    ${event.isInstance ? '<p><em>(Recurring instance)</em></p>' : ''}
   `;
   detailsModal.classList.add("open");
   detailsModal.setAttribute("aria-hidden", "false");
@@ -852,12 +1083,11 @@ function openAllEventsModal() {
     loginModal.classList.add("open");
     return;
   }
-  // Sort events by date (earliest first)
   const sortedEvents = [...events].sort((a, b) => {
     const dateA = parseDateOnly(a.date);
     const dateB = parseDateOnly(b.date);
     if (!dateA || !dateB) return 0;
-    return dateA - b.date;
+    return dateA - dateB;
   });
 
   allEventsList.innerHTML = "";
@@ -872,6 +1102,8 @@ function openAllEventsModal() {
         <div class="event-summary">
           <strong>${event.title}</strong> - ${event.date} ${formatTimeForDisplay(event)}
           ${event.details ? `<p>${event.details}</p>` : ""}
+          ${event.location ? `<p><strong>Location:</strong> ${event.location}</p>` : ""}
+          ${event.recurrence ? `<p><em>Repeats ${event.recurrence.frequency}</em></p>` : ""}
         </div>
         <div class="event-actions">
           <button class="edit-btn small-btn">Edit</button>
@@ -898,8 +1130,8 @@ function openAllEventsModal() {
             if (!response.ok) throw new Error('Failed to delete event');
             events = events.filter(e => e.id !== event.id);
             eventCache.clear();
-            openAllEventsModal(); // Refresh list
-            updateView(); // This ensures calendars reflect the deletion
+            openAllEventsModal();
+            updateView();
           } catch (err) {
             console.error("Delete error:", err);
             showErrorMessage("Error deleting event", allEventsModal);
@@ -941,6 +1173,12 @@ function closeModal(modal) {
   }
   if (modal === allEventsModal) {
     allEventsList.innerHTML = "";
+  }
+  if (modal === profileSettingsModal) {
+    profileForm.reset();
+  }
+  if (modal === accountSettingsModal) {
+    accountForm.reset();
   }
 }
 
@@ -1008,6 +1246,8 @@ closeEventModal.onclick = () => closeModal(eventModal);
 closeDetailsModal.onclick = () => closeModal(detailsModal);
 closeLoginModal.onclick = () => closeModal(loginModal);
 closeAllEventsModal.onclick = () => closeModal(allEventsModal);
+closeProfileSettings.onclick = () => closeModal(profileSettingsModal);
+closeAccountSettings.onclick = () => closeModal(accountSettingsModal);
 
 timeFormatToggle.onclick = () => {
   use24Hour = !use24Hour;
@@ -1043,6 +1283,27 @@ eventColorPicker.oninput = () => {
 
 eventColorPreset.onchange = () => {
   eventColorPicker.value = eventColorPreset.value;
+};
+
+// Recurrence listener
+recurrenceCheckbox.onchange = () => {
+  recurrenceFrequency.disabled = !recurrenceCheckbox.checked;
+  recurrenceContainer.classList.toggle("hidden", !recurrenceCheckbox.checked);
+};
+
+// NEW: Validation & Smart Inputs
+eventTitleInput.oninput = updateValidationState;
+eventDateInput.oninput = updateValidationState;
+eventMinuteInput.onblur = updateMinuteSuggestions;
+eventEndMinuteInput.onblur = updateMinuteSuggestions;
+
+// NEW: Auto-sync end time
+eventHourInput.onchange = () => {
+  if (!untilCheckbox.checked) return;
+  let newEndHour = parseInt(eventHourInput.value) + 1;
+  if (!use24Hour && newEndHour > 12) newEndHour = 1;
+  eventEndHourInput.value = newEndHour;
+  updateValidationState();
 };
 
 allDayCheckbox.onchange = updateTimeInputs;
@@ -1096,6 +1357,11 @@ eventForm.onsubmit = async e => {
       }
     }
   }
+  
+  const recurrence = recurrenceCheckbox.checked ? {
+    frequency: recurrenceFrequency.value
+  } : undefined;
+
   const eventData = {
     title,
     date,
@@ -1104,7 +1370,10 @@ eventForm.onsubmit = async e => {
     endTime,
     details: eventDetailsInput.value,
     color: eventColorPicker.value,
+    recurrence,
+    location: eventLocationInput?.value || ""
   };
+  
   try {
     let response;
     if (editingEvent) {
@@ -1200,14 +1469,6 @@ logInButton.onclick = () => {
   }, { once: true });
 };
 
-logOutButton.onclick = () => {
-  jwtToken = null;
-  currentUser = null;
-  localStorage.removeItem("jwtToken");
-  localStorage.removeItem("currentUser");
-  updateAuthUI();
-};
-
 toggleAuth.onclick = () => {
   const isLogin = authSubmit.textContent === "Log In";
   authSubmit.textContent = isLogin ? "Register" : "Log In";
@@ -1248,6 +1509,112 @@ document.querySelectorAll(".view-btn").forEach(btn => {
     updateView();
   };
 });
+
+// NEW: Profile Handlers
+profileButton.onclick = () => {
+  profileMenu.classList.toggle("hidden");
+};
+
+document.addEventListener("click", e => {
+  if (!profileContainer.contains(e.target)) {
+    profileMenu.classList.add("hidden");
+  }
+});
+
+profileSettingsBtn.onclick = () => {
+  profileMenu.classList.add("hidden");
+  openProfileSettingsModal();
+};
+
+accountSettingsBtn.onclick = () => {
+  profileMenu.classList.add("hidden");
+  openAccountSettingsModal();
+};
+
+logOutButtonMenu.onclick = () => {
+  profileMenu.classList.add("hidden");
+  handleLogout();
+};
+
+profileForm.onsubmit = async e => {
+  e.preventDefault();
+  if (!currentUser) return;
+  const data = {
+    displayName: displayName.value.trim() || currentUser.username,
+    bio: profileBio.value.trim(),
+  };
+  if (profileImageInput.files[0]) {
+    try {
+      data.profileImage = await fileToBase64(profileImageInput.files[0]);
+    } catch (err) {
+      showErrorMessage("Error processing image", profileSettingsModal);
+      return;
+    }
+  }
+  try {
+    const response = await fetch('/api/user/profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`
+      },
+      body: JSON.stringify(data)
+    });
+    if (response.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update profile');
+    }
+    const updated = await response.json();
+    currentUser = { ...currentUser, ...updated };
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
+    updateProfileUI();
+    closeModal(profileSettingsModal);
+  } catch (e) {
+    console.error("Profile update error:", e);
+    showErrorMessage(e.message || "Error updating profile", profileSettingsModal);
+  }
+};
+
+accountForm.onsubmit = async e => {
+  e.preventDefault();
+  if (!currentUser) return;
+  const data = {
+    email: accEmail.value.trim(),
+  };
+  if (accNewPassword.value.trim()) {
+    data.password = accNewPassword.value.trim();
+  }
+  try {
+    const response = await fetch('/api/user/account', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`
+      },
+      body: JSON.stringify(data)
+    });
+    if (response.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update account');
+    }
+    const updated = await response.json();
+    currentUser = { ...currentUser, ...updated };
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
+    updateProfileUI();
+    closeModal(accountSettingsModal);
+  } catch (e) {
+    console.error("Account update error:", e);
+    showErrorMessage(e.message || "Error updating account", accountSettingsModal);
+  }
+};
 
 // Initialize
 loadSettings();

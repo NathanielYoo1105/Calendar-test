@@ -54,20 +54,53 @@
     <main class="main-view">
       <header class="topbar">
         <div class="left-buttons">
+          <!-- VIEW SELECTOR (TOP ROW) -->
           <div class="view-selector">
             <button class="view-btn" data-view="week">Week</button>
             <button class="view-btn" data-view="month">Month</button>
             <button class="view-btn" data-view="year">Year</button>
           </div>
-          <button id="createEventButton">Create Event</button>
+          
+          <!-- ACTION BUTTONS (BOTTOM ROW) -->
+          <div class="action-buttons">
+            <button id="createEventButton">Create Event</button>
+            <button id="viewAllEventsButton" class="hidden">View All Events</button>
+          </div>
         </div>
+        
         <div class="title-center">
           <h1 class="logo">My Calendar</h1>
         </div>
-        <div class="auth-buttons">
-          <span id="userStatus" class="hidden"></span>
-          <button id="logInButton">Log In</button>
-          <button id="logOutButton" class="hidden">Log Out</button>
+        
+        <!-- UPDATED: PROFILE + AUTH BUTTONS -->
+        <div class="profile-auth-container">
+          <!-- PROFILE BUTTON (NEW) -->
+          <div id="profileContainer" class="profile-container hidden">
+            <button id="profileButton" class="profile-btn" aria-label="Profile" tabindex="0">
+              <img id="profileImage" class="profile-img hidden" alt="Profile photo" src="">
+              <span id="profileInitials" class="profile-initials hidden"></span>
+            </button>
+            <!-- PROFILE DROPDOWN MENU (NEW) -->
+            <div id="profileMenu" class="profile-menu hidden">
+              <div class="profile-menu-item">
+                <img id="menuProfileImage" class="menu-profile-img hidden" alt="Profile photo">
+                <span id="menuProfileInitials" class="menu-profile-initials hidden"></span>
+                <div class="menu-user-info">
+                  <div id="menuUsername" class="menu-username"></div>
+                  <div id="menuEmail" class="menu-email"></div>
+                </div>
+              </div>
+              <button id="profileSettingsBtn" class="profile-menu-btn">Profile Settings</button>
+              <button id="accountSettingsBtn" class="profile-menu-btn">Account Settings</button>
+              <hr class="menu-divider">
+              <button id="logOutButtonMenu" class="profile-menu-btn danger">Log Out</button>
+            </div>
+          </div>
+          
+          <!-- AUTH BUTTONS (FALLBACK) -->
+          <span id="userStatus" class="user-status hidden"></span>
+          <button id="logInButton" class="auth-btn">Log In</button>
+          <button id="logOutButton" class="auth-btn hidden">Log Out</button>
         </div>
       </header>
 
@@ -109,6 +142,53 @@
         <div id="yearGrid"></div>
       </section>
     </main>
+  </div>
+
+  <!-- NEW: PROFILE SETTINGS MODAL -->
+  <div id="profileSettingsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="profileTitle">
+    <div class="modal-content">
+      <span class="close-btn" id="closeProfileSettings" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2 id="profileTitle">Profile Settings</h2>
+      <form id="profileForm">
+        <div class="form-group">
+          <label for="profileImageInput">Profile Photo</label>
+          <input type="file" id="profileImageInput" accept="image/*">
+          <img id="currentProfileImage" class="preview-img hidden" alt="Current profile photo">
+        </div>
+        <div class="form-group">
+          <label for="displayName">Display Name</label>
+          <input type="text" id="displayName" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label for="profileBio">Bio</label>
+          <textarea id="profileBio" rows="3" maxlength="200" placeholder="Tell us about yourself..."></textarea>
+        </div>
+        <button type="submit" class="submit-btn">Save Profile</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- NEW: ACCOUNT SETTINGS MODAL -->
+  <div id="accountSettingsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="accountTitle">
+    <div class="modal-content">
+      <span class="close-btn" id="closeAccountSettings" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2 id="accountTitle">Account Settings</h2>
+      <form id="accountForm">
+        <div class="form-group">
+          <label for="accUsername">Username</label>
+          <input type="text" id="accUsername" readonly>
+        </div>
+        <div class="form-group">
+          <label for="accEmail">Email</label>
+          <input type="email" id="accEmail">
+        </div>
+        <div class="form-group">
+          <label for="accNewPassword">New Password</label>
+          <input type="password" id="accNewPassword" placeholder="Leave blank to keep current">
+        </div>
+        <button type="submit" class="submit-btn">Save Account</button>
+      </form>
+    </div>
   </div>
 
   <!-- Login Modal -->
@@ -167,6 +247,14 @@
         <div id="untilContainer">
           <label><input type="checkbox" id="untilCheckbox"> Until</label>
         </div>
+        <div id="recurrenceContainer" class="hidden">
+          <label><input type="checkbox" id="recurrenceCheckbox"> Repeat</label>
+          <select id="recurrenceFrequency">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
         <div id="endTimeInputs" class="time-inputs hidden">
           <label>
             End Time:
@@ -180,7 +268,13 @@
           </label>
         </div>
         <label>Details: <textarea id="eventDetails"></textarea></label>
-        <button type="submit">Save Event</button>
+        <!-- Location -->
+        <div class="form-group">
+          <label for="eventLocation">Location (Optional)</label>
+          <input type="text" id="eventLocation" name="location" placeholder="Office, Zoom, etc." maxlength="100">
+        </div>
+        <!-- SINGLE BUTTON (Dynamic: Create/Save) -->
+        <button type="submit" disabled class="submit-btn">Create Event</button>
       </form>
     </div>
   </div>
@@ -196,6 +290,8 @@
     </div>
   </div>
 
+  <!-- All Events Modal (DYNAMICALLY CREATED IN JS) -->
+  
   <script src="script.js"></script>
 </body>
 </html>

@@ -58,6 +58,12 @@ const eventSchema = new mongoose.Schema({
     required: [true, 'User ID is required'],
     index: true,
   },
+  location: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Location cannot exceed 100 characters'],
+    default: '',
+  },
 }, {
   timestamps: true,
   validateModifiedOnly: false, // For Mongoose 8.x compatibility
