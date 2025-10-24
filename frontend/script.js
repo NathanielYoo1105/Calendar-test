@@ -30,6 +30,7 @@ function loadSettings() {
       jwtToken = savedToken;
       currentUser = JSON.parse(savedUser);
       updateAuthUI();
+      renderFriendsList();
       fetchEvents();
     }
   } catch (e) {
@@ -150,6 +151,16 @@ const settingsPanel = document.getElementById("settingsPanel");
 const recurrenceContainer = document.getElementById("recurrenceContainer");
 const recurrenceCheckbox = document.getElementById("recurrenceCheckbox");
 const recurrenceFrequency = document.getElementById("recurrenceFrequency");
+
+// ==== Friends Modal Elements ====
+const friendsModal         = document.getElementById('friendsModal');
+const closeFriendsModal = friendsModal.querySelector('.close-btn');
+const friendSearch         = document.getElementById('friendSearch');
+const searchFriendBtn      = document.getElementById('searchFriendBtn');
+const friendSearchResults  = document.getElementById('friendSearchResults');
+const friendRequestsDiv    = document.getElementById('friendRequests');
+const friendsListDiv       = document.getElementById('friendsList');
+const manageFriendsBtn     = document.getElementById('manageFriendsBtn');
 
 // All Events Modal
 const allEventsModal = document.createElement("div");
@@ -560,6 +571,14 @@ function openEventModal(date, event = null) {
   // 4. TITLE & DETAILS
   eventTitleInput.value = event ? event.title : "";
   eventDetailsInput.value = event ? (event.details || "") : "";
+
+  // pre-select shared friends (if editing)
+  const shareSelect = document.getElementById('shareWithFriends');
+  if (shareSelect && event?.shareWith) {
+    Array.from(shareSelect.options).forEach(opt => {
+      opt.selected = event.shareWith.includes(opt.value);
+    });
+  }
   
   // 5. LOCATION
   if (eventLocationInput) {
@@ -582,6 +601,8 @@ function openEventModal(date, event = null) {
   
   eventModal.classList.add("open");
   eventModal.setAttribute("aria-hidden", "false");
+
+  renderFriendsList();
   
   const removeTrap = trapFocus(eventModal);
   eventTitleInput.focus(); // Always focus title
@@ -636,6 +657,172 @@ function openAccountSettingsModal() {
       accountSettingsModal.removeEventListener('transitionend', cleanup);
     }
   }, { once: true });
+}
+
+// ==== Friends Modal ====
+// ==== Friends Modal ====
+function openFriendsModal() {
+  if (!currentUser) return;
+  friendSearch.value = '';
+  friendSearchResults.innerHTML = '';
+  renderFriendRequests();
+  renderFriendsList();
+  friendsModal.classList.add('open');
+  friendsModal.setAttribute('aria-hidden', 'false');
+  const removeTrap = trapFocus(friendsModal);
+  friendSearch.focus();
+  friendsModal.addEventListener('transitionend', function cleanup() {
+    if (!friendsModal.classList.contains('open')) {
+      removeTrap();
+      friendsModal.setAttribute('aria-hidden', 'true');
+      friendsModal.removeEventListener('transitionend', cleanup);
+    }
+  }, { once: true });
+}
+
+// ---- search users -------------------------------------------------
+searchFriendBtn.onclick = async () => {
+  const query = friendSearch.value.trim();
+  if (!query) return;
+  try {
+    console.log('Searching for:', query); // ← ADD: Debug log
+    const res = await fetch(`/api/friends/search?q=${encodeURIComponent(query)}`, {
+      headers: { 'Authorization': `Bearer ${jwtToken}` }
+    });
+    if (res.status === 401) { 
+      handleUnauthorized(); 
+      return; 
+    }
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`); // ← ADD: Better error
+    }
+    const users = await res.json();
+    console.log('Search response:', users); // ← ADD: Debug log
+    friendSearchResults.innerHTML = '';
+    if (!users || users.length === 0) {
+      friendSearchResults.innerHTML = '<p class="no-results">No users found. Try a different search.</p>'; // ← ADD: Empty state
+      return;
+    }
+    users.forEach(u => {
+      if (u.id === currentUser.id) return;
+      const div = document.createElement('div');
+      div.className = 'friend-item';
+      div.innerHTML = `
+        <span>${u.username} ${u.displayName ? `(${u.displayName})` : ''}</span>
+        <button class="add-friend-btn small-btn">Add</button>
+      `;
+      div.querySelector('.add-friend-btn').onclick = async e => {
+        e.stopPropagation();
+        await sendFriendRequest(u.id);
+        div.remove();
+      };
+      friendSearchResults.appendChild(div);
+    });
+  } catch (e) { 
+    console.error('Search error:', e); // ← ADD: Log full error
+    friendSearchResults.innerHTML = '<p class="error">Search failed. Check console.</p>'; // ← ADD: User-friendly error
+  }
+};
+
+// ---- send request -------------------------------------------------
+async function sendFriendRequest(toId) {
+  try {
+    const res = await fetch('/api/friends/request', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`
+      },
+      body: JSON.stringify({ to: toId })
+    });
+    if (res.status === 401) { handleUnauthorized(); return; }
+    if (!res.ok) throw new Error('Request failed');
+    renderFriendRequests();
+  } catch (e) { console.error(e); }
+}
+
+// ---- render pending requests --------------------------------------
+async function renderFriendRequests() {
+  try {
+    const res = await fetch('/api/friends/requests', {
+      headers: { 'Authorization': `Bearer ${jwtToken}` }
+    });
+    if (res.status === 401) { handleUnauthorized(); return; }
+    const reqs = await res.json();
+    friendRequestsDiv.innerHTML = '';
+    reqs.forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'friend-item';
+      div.innerHTML = `
+        <span>${r.from.username}</span>
+        <button class="accept-btn small-btn">Accept</button>
+        <button class="reject-btn small-btn">Reject</button>
+      `;
+      div.querySelector('.accept-btn').onclick = () => handleFriendResponse(r._id, true);
+      div.querySelector('.reject-btn').onclick = () => handleFriendResponse(r._id, false);
+      friendRequestsDiv.appendChild(div);
+    });
+  } catch (e) { console.error(e); }
+}
+
+// ---- accept / reject ----------------------------------------------
+async function handleFriendResponse(reqId, accept) {
+  try {
+    const res = await fetch(`/api/friends/requests/${reqId}`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`
+      },
+      body: JSON.stringify({ accept })
+    });
+    if (res.status === 401) { handleUnauthorized(); return; }
+    renderFriendRequests();
+    renderFriendsList();
+  } catch (e) { console.error(e); }
+}
+
+// ---- render friends list -----------------------------------------
+async function renderFriendsList() {
+  try {
+    const res = await fetch('/api/friends', {
+      headers: { 'Authorization': `Bearer ${jwtToken}` }
+    });
+    if (res.status === 401) { handleUnauthorized(); return; }
+    const friends = await res.json();
+    friendsListDiv.innerHTML = '';
+    friends.forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'friend-item';
+      div.innerHTML = `
+        <span>${f.username} ${f.displayName ? `(${f.displayName})` : ''}</span>
+        <button class="remove-friend-btn small-btn">Remove</button>
+      `;
+      div.querySelector('.remove-friend-btn').onclick = async () => {
+        if (!confirm(`Remove ${f.username}?`)) return;
+        await fetch(`/api/friends/${f.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${jwtToken}` }
+        });
+        renderFriendsList();
+      };
+      friendsListDiv.appendChild(div);
+    });
+    populateShareSelect(friends);
+  } catch (e) { console.error(e); }
+}
+
+// ---- populate Share-With-Friends select (event modal) ------------
+function populateShareSelect(friends) {
+  const shareSelect = document.getElementById('shareWithFriends');
+  if (!shareSelect) return;
+  shareSelect.innerHTML = '';
+  friends.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = f.username;
+    shareSelect.appendChild(opt);
+  });
 }
 
 // ===== Views (Month, Week, Year) =====
@@ -1242,6 +1429,12 @@ viewAllEventsBtn.onclick = () => {
   openAllEventsModal();
 };
 
+manageFriendsBtn.onclick = () => {
+  profileMenu.classList.add('hidden');
+  openFriendsModal();
+};
+
+closeFriendsModal.onclick = () => closeModal(friendsModal);
 closeEventModal.onclick = () => closeModal(eventModal);
 closeDetailsModal.onclick = () => closeModal(detailsModal);
 closeLoginModal.onclick = () => closeModal(loginModal);
@@ -1362,6 +1555,10 @@ eventForm.onsubmit = async e => {
     frequency: recurrenceFrequency.value
   } : undefined;
 
+  // === NEW: Get selected friends from the share select ===
+  const shareWith = Array.from(document.getElementById('shareWithFriends')?.selectedOptions || [])
+                    .map(option => option.value);
+
   const eventData = {
     title,
     date,
@@ -1371,7 +1568,8 @@ eventForm.onsubmit = async e => {
     details: eventDetailsInput.value,
     color: eventColorPicker.value,
     recurrence,
-    location: eventLocationInput?.value || ""
+    location: eventLocationInput?.value || "",
+    shareWith  // ← This is the only new field
   };
   
   try {
@@ -1572,6 +1770,7 @@ profileForm.onsubmit = async e => {
     currentUser = { ...currentUser, ...updated };
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
     updateProfileUI();
+    renderFriendsList();
     closeModal(profileSettingsModal);
   } catch (e) {
     console.error("Profile update error:", e);

@@ -169,20 +169,39 @@
     </div>
   </div>
 
-  <div id="friendsModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="friendsTitle">
+  <div id="friendsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="friendsModalTitle">
     <div class="modal-content">
-      <span class="close-btn" id="closeFriendsModal" role="button" aria-label="Close">&times;</span>
-      <h2 id="friendsTitle">Manage Friends</h2>
-      <div class="form-group">
-        <label for="friendSearch">Search Users</label>
-        <input type="text" id="friendSearch" placeholder="Username or email">
-        <button id="searchFriendBtn">Search</button>
+      <div class="modal-header">
+        <h2 id="friendsModalTitle">Manage Friends</h2>
+        <button class="close-btn" aria-label="Close friends modal">X</button>
       </div>
-      <div id="friendSearchResults"></div>
-      <h3>Pending Requests</h3>
-      <div id="friendRequests"></div>
-      <h3>Your Friends</h3>
-      <div id="friendsList"></div>
+
+      <div class="modal-body">
+
+        <!-- Search -->
+        <div class="form-group">
+          <label for="friendSearch">Search users</label>
+          <div class="input-group">
+            <input type="text" id="friendSearch" placeholder="Username or display name">
+            <button id="searchFriendBtn" class="small-btn">Search</button>
+          </div>
+        </div>
+
+        <div id="friendSearchResults" class="friend-results"></div>
+
+        <!-- Pending requests -->
+        <section class="friend-section">
+          <h3>Pending Requests</h3>
+          <div id="friendRequestsDiv"></div>
+        </section>
+
+        <!-- Current friends -->
+        <section class="friend-section">
+          <h3>Your Friends</h3>
+          <div id="friendsListDiv"></div>
+        </section>
+
+      </div>
     </div>
   </div>
 
