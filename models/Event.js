@@ -64,6 +64,11 @@ const eventSchema = new mongoose.Schema({
     maxlength: [100, 'Location cannot exceed 100 characters'],
     default: '',
   },
+  sharedWith: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: []
+  }]
 }, {
   timestamps: true,
   validateModifiedOnly: false, // For Mongoose 8.x compatibility
@@ -71,5 +76,6 @@ const eventSchema = new mongoose.Schema({
 
 // Index for efficient queries by user and date
 eventSchema.index({ userId: 1, date: 1 });
+eventSchema.index({ sharedWith: 1 });
 
 module.exports = mongoose.model('Event', eventSchema);

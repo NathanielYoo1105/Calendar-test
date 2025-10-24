@@ -39,6 +39,22 @@ const userSchema = new mongoose.Schema({
     type: String, // Base64 string (e.g., data:image/png;base64,...)
     default: '',
   },
+  friends: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: []
+  }],
+  friendRequests: [{
+    senderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'rejected'],
+      default: 'pending'
+    }
+  }]
 }, {
   timestamps: true,
   validateModifiedOnly: false, // For Mongoose 8.x compatibility

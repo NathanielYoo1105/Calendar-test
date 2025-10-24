@@ -42,7 +42,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // Create event
 router.post('/', authMiddleware, async (req, res) => {
-  const { title, date, time, endTime, isAllDay, details, recurrence, color } = req.body;
+  const { title, date, time, endTime, isAllDay, details, recurrence, color, location, sharedWith } = req.body;
 
   // Input validation
   if (!title || !date) {
@@ -60,6 +60,9 @@ router.post('/', authMiddleware, async (req, res) => {
   if (color && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
     return res.status(400).json({ message: 'Color must be a valid hex code' });
   }
+  if (sharedWith && !Array.isArray(sharedWith)) {
+    return res.status(400).json({ message: 'sharedWith must be an array of user IDs' });
+  }
 
   try {
     const eventData = {
@@ -69,6 +72,8 @@ router.post('/', authMiddleware, async (req, res) => {
       endTime,
       isAllDay: !!isAllDay,
       details: details ? details.trim() : '',
+      location: location ? location.trim() : '',
+      sharedWith: sharedWith || [],
       recurrence: recurrence ? {
         frequency: recurrence.frequency,
         interval: recurrence.interval || 1,
@@ -88,11 +93,19 @@ router.post('/', authMiddleware, async (req, res) => {
     }
     res.status(500).json({ message: 'Server error creating event' });
   }
+
+  if (sharedWith) {
+    const user = await User.findById(req.user.id).populate('friends');
+    const friendIds = user.friends.map(f => f._id.toString());
+    if (sharedWith.some(id => !friendIds.includes(id))) {
+      return res.status(400).json({ message: 'Can only share with friends' });
+    }
+  }
 });
 
 // Update event
 router.put('/:id', authMiddleware, async (req, res) => {
-  const { title, date, time, endTime, isAllDay, details, recurrence, color } = req.body;
+  const { title, date, time, endTime, isAllDay, details, recurrence, color, location, sharedWith } = req.body;
 
   // Input validation
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -125,6 +138,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (endTime) updateData.endTime = endTime;
     if (typeof isAllDay === 'boolean') updateData.isAllDay = isAllDay;
     if (details) updateData.details = details.trim();
+    if (location !== undefined) updateData.location = location.trim();
+    if (sharedWith) updateData.sharedWith = sharedWith;
     if (recurrence) {
       updateData.recurrence = {
         frequency: recurrence.frequency || undefined,
@@ -150,6 +165,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
     res.status(500).json({ message: 'Server error updating event' });
   }
+
+  if (sharedWith) {
+    const user = await User.findById(req.user.id).populate('friends');
+    const friendIds = user.friends.map(f => f._id.toString());
+    if (sharedWith.some(id => !friendIds.includes(id))) {
+      return res.status(400).json({ message: 'Can only share with friends' });
+    }
+  }
 });
 
 // Delete event
@@ -167,6 +190,19 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('Delete event error:', err);
     res.status(500).json({ message: 'Server error deleting event' });
+  }
+});
+
+// Get shared events
+router.get('/shared', authMiddleware, async (req, res) => {
+  try {
+    const sharedEvents = await Event.find({ sharedWith: req.user.id })
+      .populate('userId', 'username displayName')
+      .sort({ date: 1 });
+    res.json(sharedEvents);
+  } catch (err) {
+    console.error('Get shared events error:', err);
+    res.status(500).json({ message: 'Server error fetching shared events' });
   }
 });
 

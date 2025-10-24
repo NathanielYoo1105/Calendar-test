@@ -113,4 +113,148 @@ router.put('/account', authMiddleware, async (req, res) => {
   }
 });
 
+// Search users by username or email
+router.get('/search', authMiddleware, async (req, res) => {
+  const { query } = req.query;
+  if (!query || query.trim().length < 3) {
+    return res.status(400).json({ message: 'Search query must be at least 3 characters' });
+  }
+  try {
+    const users = await User.find({
+      $or: [
+        { username: { $regex: query.trim(), $options: 'i' } },
+        { email: { $regex: query.trim(), $options: 'i' } }
+      ],
+      _id: { $ne: req.user.id } // Exclude self
+    }).select('_id username displayName profileImage').limit(10);
+    res.json(users);
+  } catch (err) {
+    console.error('User search error:', err);
+    res.status(500).json({ message: 'Server error searching users' });
+  }
+});
+
+// Send friend request
+router.post('/friend/request', authMiddleware, async (req, res) => {
+  const { recipientId } = req.body;
+  if (!mongoose.Types.ObjectId.isValid(recipientId)) {
+    return res.status(400).json({ message: 'Invalid recipient ID' });
+  }
+  if (recipientId === req.user.id) {
+    return res.status(400).json({ message: 'Cannot send request to yourself' });
+  }
+  try {
+    const recipient = await User.findById(recipientId);
+    if (!recipient) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const sender = await User.findById(req.user.id);
+    // Check if already friends
+    if (sender.friends.includes(recipientId)) {
+      return res.status(400).json({ message: 'Already friends' });
+    }
+    // Check for existing request
+    if (recipient.friendRequests.some(r => r.senderId.toString() === req.user.id && r.status === 'pending')) {
+      return res.status(400).json({ message: 'Request already sent' });
+    }
+    // Add request to recipient
+    recipient.friendRequests.push({ senderId: req.user.id });
+    await recipient.save();
+    res.status(201).json({ message: 'Friend request sent' });
+  } catch (err) {
+    console.error('Send friend request error:', err);
+    res.status(500).json({ message: 'Server error sending friend request' });
+  }
+});
+
+// Accept friend request
+router.put('/friend/accept/:requestId', authMiddleware, async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
+    return res.status(400).json({ message: 'Invalid request ID' });
+  }
+  try {
+    const user = await User.findById(req.user.id);
+    const requestIndex = user.friendRequests.findIndex(r => r._id.toString() === req.params.requestId && r.status === 'pending');
+    if (requestIndex === -1) {
+      return res.status(404).json({ message: 'Pending request not found' });
+    }
+    const senderId = user.friendRequests[requestIndex].senderId;
+    // Add to friends
+    user.friends.push(senderId);
+    const sender = await User.findById(senderId);
+    sender.friends.push(req.user.id);
+    // Remove request
+    user.friendRequests.splice(requestIndex, 1);
+    await user.save();
+    await sender.save();
+    res.json({ message: 'Friend request accepted' });
+  } catch (err) {
+    console.error('Accept friend request error:', err);
+    res.status(500).json({ message: 'Server error accepting friend request' });
+  }
+});
+
+// Reject friend request
+router.put('/friend/reject/:requestId', authMiddleware, async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.requestId)) {
+    return res.status(400).json({ message: 'Invalid request ID' });
+  }
+  try {
+    const user = await User.findById(req.user.id);
+    const requestIndex = user.friendRequests.findIndex(r => r._id.toString() === req.params.requestId && r.status === 'pending');
+    if (requestIndex === -1) {
+      return res.status(404).json({ message: 'Pending request not found' });
+    }
+    // Remove request
+    user.friendRequests.splice(requestIndex, 1);
+    await user.save();
+    res.json({ message: 'Friend request rejected' });
+  } catch (err) {
+    console.error('Reject friend request error:', err);
+    res.status(500).json({ message: 'Server error rejecting friend request' });
+  }
+});
+
+// Get friends and pending requests
+router.get('/friends', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate('friends', '_id username displayName profileImage')
+      .populate('friendRequests.senderId', '_id username displayName profileImage');
+    res.json({
+      friends: user.friends,
+      pendingRequests: user.friendRequests.filter(r => r.status === 'pending')
+    });
+  } catch (err) {
+    console.error('Get friends error:', err);
+    res.status(500).json({ message: 'Server error fetching friends' });
+  }
+});
+
+// Remove friend
+router.delete('/friend/:friendId', authMiddleware, async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.friendId)) {
+    return res.status(400).json({ message: 'Invalid friend ID' });
+  }
+  try {
+    const user = await User.findById(req.user.id);
+    const friendIndex = user.friends.findIndex(id => id.toString() === req.params.friendId);
+    if (friendIndex === -1) {
+      return res.status(404).json({ message: 'Friend not found' });
+    }
+    user.friends.splice(friendIndex, 1);
+    await user.save();
+    const friend = await User.findById(req.params.friendId);
+    const userIndex = friend.friends.findIndex(id => id.toString() === req.user.id);
+    if (userIndex !== -1) {
+      friend.friends.splice(userIndex, 1);
+      await friend.save();
+    }
+    res.json({ message: 'Friend removed' });
+  } catch (err) {
+    console.error('Remove friend error:', err);
+    res.status(500).json({ message: 'Server error removing friend' });
+  }
+});
+
 module.exports = router;

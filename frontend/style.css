@@ -154,6 +154,204 @@ body.dark-mode .selected {
   background-color: #388e3c;
 }
 
+/* Profile Button */
+.profile-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.profile-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #ccc;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.3s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--event-shadow-light);
+}
+
+body.dark-mode .profile-btn {
+  background-color: #555;
+  box-shadow: var(--event-shadow-dark);
+}
+
+.profile-btn:hover, .profile-btn:focus {
+  background-color: #bbb;
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  outline: none;
+}
+
+body.dark-mode .profile-btn:hover, body.dark-mode .profile-btn:focus {
+  background-color: #666;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.profile-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-initials {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+/* Profile Dropdown Menu */
+.profile-menu {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  width: 240px;
+  background: var(--modal-bg);
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: var(--event-shadow-light);
+  z-index: 1000;
+  padding: 10px;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.profile-menu:not(.hidden) {
+  display: flex;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+body.dark-mode .profile-menu {
+  border: 1px solid #444;
+  box-shadow: var(--event-shadow-dark);
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.profile-menu-item:hover {
+  background-color: #f7f7f7;
+}
+
+body.dark-mode .profile-menu-item:hover {
+  background-color: #333;
+}
+
+.menu-profile-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.menu-profile-initials {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+body.dark-mode .menu-profile-initials {
+  background-color: #555;
+}
+
+.menu-user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-username {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+body.dark-mode .menu-username {
+  color: #e0e0e0;
+}
+
+.menu-email {
+  font-size: 0.85rem;
+  color: #666;
+  word-break: break-all;
+}
+
+body.dark-mode .menu-email {
+  color: #bbb;
+}
+
+.profile-menu-btn {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s, transform 0.2s;
+}
+.profile-menu-btn:hover {
+  background-color: #e0e0e0;
+  transform: translateY(-1px);
+}
+
+body.dark-mode .profile-menu-btn:hover {
+  background-color: #444;
+}
+
+.profile-menu-btn.danger {
+  background-color: #f44336;
+  color: white;
+}
+
+body.dark-mode .profile-menu-btn.danger {
+  background-color: #d32f2f;
+}
+
+.profile-menu-btn.danger:hover {
+  background-color: #d32f2f;
+}
+
+body.dark-mode .profile-menu-btn.danger:hover {
+  background-color: #b71c1c;
+}
+
+.menu-divider {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 8px 0;
+}
+
+body.dark-mode .menu-divider {
+  border-top: 1px solid #444;
+}
+
 .settings-panel {
   flex: 1;
   padding: 10px;
@@ -1309,4 +1507,18 @@ body.dark-mode .delete-btn:hover {
   background-repeat: no-repeat;
   background-position: 10px center;
   padding-left: 35px;
+}
+
+.friends-modal .friend-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+}
+#shareWithFriends {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
 }

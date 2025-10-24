@@ -6,7 +6,7 @@ let use24Hour = false;
 let currentView = "week"; // Default view
 let editingEvent = null;
 let activeEventId = null;
-let currentUser = null;
+let currentUser = { id: null, username: '', displayName: '', bio: '', profileImage: '', friends: [], friendRequests: [] };
 let jwtToken = null;
 const eventCache = new Map();
 

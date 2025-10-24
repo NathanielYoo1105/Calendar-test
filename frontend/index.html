@@ -92,6 +92,7 @@
               </div>
               <button id="profileSettingsBtn" class="profile-menu-btn">Profile Settings</button>
               <button id="accountSettingsBtn" class="profile-menu-btn">Account Settings</button>
+              <button class="profile-menu-btn" id="manageFriendsBtn">Manage Friends</button>
               <hr class="menu-divider">
               <button id="logOutButtonMenu" class="profile-menu-btn danger">Log Out</button>
             </div>
@@ -168,6 +169,23 @@
     </div>
   </div>
 
+  <div id="friendsModal" class="modal hidden" aria-hidden="true" role="dialog" aria-labelledby="friendsTitle">
+    <div class="modal-content">
+      <span class="close-btn" id="closeFriendsModal" role="button" aria-label="Close">&times;</span>
+      <h2 id="friendsTitle">Manage Friends</h2>
+      <div class="form-group">
+        <label for="friendSearch">Search Users</label>
+        <input type="text" id="friendSearch" placeholder="Username or email">
+        <button id="searchFriendBtn">Search</button>
+      </div>
+      <div id="friendSearchResults"></div>
+      <h3>Pending Requests</h3>
+      <div id="friendRequests"></div>
+      <h3>Your Friends</h3>
+      <div id="friendsList"></div>
+    </div>
+  </div>
+
   <!-- NEW: ACCOUNT SETTINGS MODAL -->
   <div id="accountSettingsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="accountTitle">
     <div class="modal-content">
@@ -231,6 +249,12 @@
             </select>
           </div>
         </div>
+        <div class="form-group">
+          <label for="shareWithFriends">Share With</label>
+          <select id="shareWithFriends" multiple aria-label="Select friends to share event with">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
         <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
         <div id="timeInputs" class="time-inputs">
           <label>
@@ -268,6 +292,12 @@
           </label>
         </div>
         <label>Details: <textarea id="eventDetails"></textarea></label>
+        <div class="form-group">
+          <label for="shareWithFriends">Share With Friends (Optional)</label>
+          <select id="shareWithFriends" multiple class="color-picker-wrapper">
+            <!-- Dynamically populated with friends -->
+          </select>
+        </div>
         <!-- Location -->
         <div class="form-group">
           <label for="eventLocation">Location (Optional)</label>
