@@ -66,6 +66,10 @@
             <button id="createEventButton">Create Event</button>
             <button id="viewAllEventsButton" class="hidden">View All Events</button>
           </div>
+          <div id="calendarSelector" class="hidden">
+            <label for="calSelect">Calendar:</label>
+            <select id="calSelect"></select>
+          </div>
         </div>
         
         <div class="title-center">
@@ -321,6 +325,11 @@
         <div class="form-group">
           <label for="eventLocation">Location (Optional)</label>
           <input type="text" id="eventLocation" name="location" placeholder="Office, Zoom, etc." maxlength="100">
+        </div>
+        <div id="shareSection" class="hidden">
+          <label>Share with friends:</label>
+          <select id="shareWithFriends" multiple size="4"></select>
+          <button type="button" id="shareCalendarBtn" class="small-btn">Share Calendar</button>
         </div>
         <!-- SINGLE BUTTON (Dynamic: Create/Save) -->
         <button type="submit" disabled class="submit-btn">Create Event</button>

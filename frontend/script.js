@@ -10,6 +10,9 @@ let currentUser = { id: null, username: '', displayName: '', bio: '', profileIma
 let jwtToken = null;
 const eventCache = new Map();
 
+let allCalendars = { owned: [], shared: [] };
+let selectedCalendarId = null;
+
 // Load settings from localStorage
 function loadSettings() {
   try {
@@ -30,7 +33,7 @@ function loadSettings() {
       jwtToken = savedToken;
       currentUser = JSON.parse(savedUser);
       updateAuthUI();
-      renderFriendsList();
+      loadCalendars();
       fetchEvents();
     }
   } catch (e) {
@@ -47,17 +50,15 @@ async function fetchEvents() {
       headers: { 'Authorization': `Bearer ${jwtToken}` }
     });
     if (response.status === 401) {
-      console.log('Unauthorized, triggering re-login');
       handleUnauthorized();
       return;
     }
     if (!response.ok) throw new Error(`Failed to fetch events: ${response.status}`);
     events = await response.json();
-    console.log('Fetched events:', events);
     events = events.map(e => ({
       ...e,
       id: e._id,
-      date: e.date.split('T')[0] // Directly normalize to YYYY-MM-DD string
+      date: e.date.split('T')[0]
     }));
     eventCache.clear();
     updateView();
@@ -153,14 +154,14 @@ const recurrenceCheckbox = document.getElementById("recurrenceCheckbox");
 const recurrenceFrequency = document.getElementById("recurrenceFrequency");
 
 // ==== Friends Modal Elements ====
-const friendsModal         = document.getElementById('friendsModal');
+const friendsModal = document.getElementById('friendsModal');
 const closeFriendsModal = friendsModal.querySelector('.close-btn');
-const friendSearch         = document.getElementById('friendSearch');
-const searchFriendBtn      = document.getElementById('searchFriendBtn');
-const friendSearchResults  = document.getElementById('friendSearchResults');
-const friendRequestsDiv    = document.getElementById('friendRequests');
-const friendsListDiv       = document.getElementById('friendsList');
-const manageFriendsBtn     = document.getElementById('manageFriendsBtn');
+const friendSearch = document.getElementById('friendSearch');
+const searchFriendBtn = document.getElementById('searchFriendBtn');
+const friendSearchResults = document.getElementById('friendSearchResults');
+const friendRequestsDiv = document.getElementById('friendRequests');
+const friendsListDiv = document.getElementById('friendsList');
+const manageFriendsBtn = document.getElementById('manageFriendsBtn');
 
 // All Events Modal
 const allEventsModal = document.createElement("div");
@@ -246,7 +247,7 @@ function showErrorMessage(message, target = eventModal) {
   }
   errorDiv.textContent = message;
   errorDiv.style.display = "block";
-  setTimeout(() => errorDiv.style.display = "none", 2000);
+  setTimeout(() => errorDiv.style.display = "none", 3000);
 }
 
 function matchesDate(ev, date) {
@@ -261,34 +262,31 @@ function getEventsForDate(targetDate) {
   if (eventCache.has(cacheKey)) return eventCache.get(cacheKey);
 
   let result = events
-    .filter(ev => {
-      const evDate = parseDateOnly(ev.date);
-      if (!evDate) return false;
-      return matchesDate(ev, targetDate);
-    })
+    .filter(ev => matchesDate(ev, targetDate))
     .map(ev => ({ ...ev, instanceDate: targetDate.toISOString().split('T')[0], isInstance: false }));
 
   // Add recurring instances
   events.forEach(ev => {
-    if (!ev.recurrence || !ev.recurrence.frequency) return;
-    
+    if (!ev.recurrence?.frequency) return;
     const startDate = parseDateOnly(ev.date);
-    if (!startDate) return;
-    
+    if (!startDate || startDate > targetDate) return;
+
     let current = new Date(startDate);
     let count = 0;
-    const maxInstances = 100;
-    
+    const maxInstances = 200;
+
     while (current <= targetDate && count < maxInstances) {
-      if (matchesDate(ev, targetDate) && !result.some(r => r.id === ev.id && r.instanceDate === targetDate.toISOString().split('T')[0])) {
-        result.push({
-          ...ev,
-          instanceDate: targetDate.toISOString().split('T')[0],
-          isInstance: true,
-          displayTitle: `${ev.title} (recurring)`
-        });
+      if (matchesDate({ date: current.toISOString().split('T')[0] }, targetDate)) {
+        const instanceDateStr = targetDate.toISOString().split('T')[0];
+        if (!result.some(r => r.id === ev.id && r.instanceDate === instanceDateStr)) {
+          result.push({
+            ...ev,
+            instanceDate: instanceDateStr,
+            isInstance: true,
+            displayTitle: `${ev.title} (recurring)`
+          });
+        }
       }
-      
       switch (ev.recurrence.frequency) {
         case 'daily': current.setDate(current.getDate() + 1); break;
         case 'weekly': current.setDate(current.getDate() + 7); break;
@@ -298,7 +296,7 @@ function getEventsForDate(targetDate) {
     }
   });
 
-  result = result.sort((a, b) => {
+  result.sort((a, b) => {
     if (a.isAllDay && !b.isAllDay) return -1;
     if (!a.isAllDay && b.isAllDay) return 1;
     return (a.time || "00:00").localeCompare(b.time || "00:00");
@@ -314,15 +312,9 @@ function updateButtonColor(color) {
   const hoverColor = adjustColorBrightness(color, isDarkMode ? 1.2 : 0.8);
   root.style.setProperty("--button-bg", color);
   root.style.setProperty("--button-hover-bg", hoverColor);
-  root.style.setProperty("--button-dark-bg", color);
-  root.style.setProperty("--button-dark-hover-bg", hoverColor);
   root.style.setProperty("--event-box-bg", color);
   root.style.setProperty("--event-box-dark-bg", adjustColorBrightness(color, 1.2));
-  try {
-    localStorage.setItem("buttonColor", color);
-  } catch (e) {
-    console.error("Failed to save button color:", e);
-  }
+  localStorage.setItem("buttonColor", color);
 }
 
 function adjustColorBrightness(hex, factor) {
@@ -336,36 +328,26 @@ function adjustColorBrightness(hex, factor) {
   return `#${newR.toString(16).padStart(2, "0")}${newG.toString(16).padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
 }
 
-// NEW: Random pastel colors
 function getRandomPastelColor() {
-  const pastels = [
-    '#A7C7E7', '#B19CD9', '#FFAAA5', '#B5EAD7', '#CFC7FF',
-    '#FFD670', '#DAF7A6', '#FFC3A0', '#FFABAB', '#B5F7FF'
-  ];
+  const pastels = ['#A7C7E7', '#B19CD9', '#FFAAA5', '#B5EAD7', '#CFC7FF', '#FFD670', '#DAF7A6', '#FFC3A0', '#FFABAB', '#B5F7FF'];
   return pastels[Math.floor(Math.random() * pastels.length)];
 }
 
-// NEW: Real-time validation
 function updateValidationState() {
   const title = eventTitleInput.value.trim();
   const date = eventDateInput.value;
-  
   eventTitleInput.style.borderColor = title ? '#4caf50' : '#ff5722';
   eventDateInput.style.borderColor = date ? '#4caf50' : '#ff5722';
-  
   const submitBtn = eventForm.querySelector('button[type="submit"]');
   submitBtn.disabled = !title || !date;
   submitBtn.style.opacity = (title && date) ? '1' : '0.6';
 }
 
-// NEW: Smart minute suggestions
 function updateMinuteSuggestions() {
   const minuteInput = document.activeElement;
-  if (minuteInput.id !== 'eventMinute' && minuteInput.id !== 'eventEndMinute') return;
-  
+  if (!['eventMinute', 'eventEndMinute'].includes(minuteInput.id)) return;
   const suggestions = ['00', '15', '30', '45'];
   const current = minuteInput.value;
-  
   if (!suggestions.includes(current) && current.length === 2) {
     const num = parseInt(current);
     const nearest = Math.round(num / 15) * 15;
@@ -373,13 +355,12 @@ function updateMinuteSuggestions() {
   }
 }
 
-// NEW: File to base64
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }
 
@@ -388,14 +369,12 @@ function updateAuthUI() {
   if (currentUser) {
     profileContainer.classList.remove("hidden");
     logInButton.classList.add("hidden");
-    logOutButton.classList.add("hidden");
     createEventBtn.classList.remove("hidden");
     viewAllEventsBtn.classList.remove("hidden");
     updateProfileUI();
   } else {
     profileContainer.classList.add("hidden");
     logInButton.classList.remove("hidden");
-    logOutButton.classList.add("hidden");
     createEventBtn.classList.add("hidden");
     viewAllEventsBtn.classList.add("hidden");
     events = [];
@@ -408,35 +387,30 @@ function updateProfileUI() {
   menuUsername.textContent = currentUser.username;
   menuEmail.textContent = currentUser.email || "";
   if (currentUser.profileImage) {
-    profileImage.src = currentUser.profileImage;
-    profileImage.classList.remove("hidden");
-    profileInitials.classList.add("hidden");
-    menuProfileImage.src = currentUser.profileImage;
-    menuProfileImage.classList.remove("hidden");
-    menuProfileInitials.classList.add("hidden");
+    [profileImage, menuProfileImage].forEach(img => {
+      img.src = currentUser.profileImage;
+      img.classList.remove("hidden");
+    });
+    [profileInitials, menuProfileInitials].forEach(el => el.classList.add("hidden"));
   } else {
     const initials = (currentUser.displayName || currentUser.username)[0].toUpperCase();
-    profileInitials.textContent = initials;
-    profileInitials.classList.remove("hidden");
-    profileImage.classList.add("hidden");
-    menuProfileInitials.textContent = initials;
-    menuProfileInitials.classList.remove("hidden");
-    menuProfileImage.classList.add("hidden");
+    [profileInitials, menuProfileInitials].forEach(el => {
+      el.textContent = initials;
+      el.classList.remove("hidden");
+    });
+    [profileImage, menuProfileImage].forEach(img => img.classList.add("hidden"));
   }
 }
 
 async function handleLogin(username, password) {
   try {
-    const response = await fetch('/api/auth/login', {
+    const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
     });
-    const data = await response.json();
-    if (!response.ok) {
-      authMessage.textContent = data.message || 'Login failed';
-      return false;
-    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Login failed');
     jwtToken = data.token;
     currentUser = data.user;
     localStorage.setItem("jwtToken", jwtToken);
@@ -445,24 +419,20 @@ async function handleLogin(username, password) {
     authMessage.style.color = "#4caf50";
     return true;
   } catch (e) {
-    console.error("Login error:", e);
-    authMessage.textContent = "Server error during login";
+    authMessage.textContent = e.message;
     return false;
   }
 }
 
 async function handleRegister(username, password, email) {
   try {
-    const response = await fetch('/api/auth/register', {
+    const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, email: email || undefined })
     });
-    const data = await response.json();
-    if (!response.ok) {
-      authMessage.textContent = data.message || 'Registration failed';
-      return false;
-    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Registration failed');
     jwtToken = data.token;
     currentUser = data.user;
     localStorage.setItem("jwtToken", jwtToken);
@@ -471,8 +441,7 @@ async function handleRegister(username, password, email) {
     authMessage.style.color = "#4caf50";
     return true;
   } catch (e) {
-    console.error("Registration error:", e);
-    authMessage.textContent = "Server error during registration";
+    authMessage.textContent = e.message;
     return false;
   }
 }
@@ -487,27 +456,17 @@ function handleLogout() {
 
 // ===== Focus Trap for Modals =====
 function trapFocus(modal) {
-  const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-  if (focusableElements.length === 0) return () => {};
-  const firstElement = focusableElements[0];
-  const lastElement = focusableElements[focusableElements.length - 1];
-
-  const handleKeydown = e => {
+  const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  if (focusable.length === 0) return () => {};
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  const handler = e => {
     if (e.key === 'Tab') {
-      if (e.shiftKey && document.activeElement === firstElement) {
-        e.preventDefault();
-        lastElement.focus();
-      } else if (!e.shiftKey && document.activeElement === lastElement) {
-        e.preventDefault();
-        firstElement.focus();
-      }
-    } else if (e.key === 'Escape') {
-      closeModal(modal);
-    }
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    } else if (e.key === 'Escape') closeModal(modal);
   };
-
-  modal.addEventListener('keydown', handleKeydown);
-  return () => modal.removeEventListener('keydown', handleKeydown);
+  modal.addEventListener('keydown', handler);
+  return () => modal.removeEventListener('keydown', handler);
 }
 
 // ===== IMPROVED: Event Modal =====
@@ -517,96 +476,70 @@ function openEventModal(date, event = null) {
     loginModal.classList.add("open");
     return;
   }
-  
+
   editingEvent = event;
   eventModal.querySelector("h2").textContent = event ? "Edit Event" : "Create Event";
   eventForm.reset();
-  
-  // 1. DATE SETUP
+
   eventDateInput.value = date.toISOString().split('T')[0];
-  
-  // 2. SMART TIME SETUP
+  selectedCalendarId = selectedCalendarId || (allCalendars.owned[0]?._id);
+  if (event) selectedCalendarId = event.calendar?._id || event.calendar;
+  document.getElementById('calSelect').value = selectedCalendarId || '';
+
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
-  let defaultHour = isToday ? now.getHours() : 9;
-  let defaultMinute = isToday ? now.getMinutes() : 0;
-  
-  // Start time from event or defaults
-  if (event && event.time && !event.isAllDay) {
-    [defaultHour, defaultMinute] = event.time.split(":").map(Number);
-  }
-  
-  if (!use24Hour) {
-    eventAMPMSelect.value = defaultHour >= 12 ? "PM" : "AM";
-    defaultHour = defaultHour % 12 || 12;
-  }
-  
-  eventHourInput.value = defaultHour;
-  eventMinuteInput.value = String(defaultMinute).padStart(2, "0");
-  
-  // End time (auto +1 hour)
-  if (event && event.endTime) {
-    [defaultHour, defaultMinute] = event.endTime.split(":").map(Number);
-  } else {
-    defaultHour = parseInt(eventHourInput.value) + 1;
-    defaultMinute = 0;
-    if (!use24Hour && defaultHour > 12) {
-      defaultHour = 1;
-      eventEndAMPMSelect.value = "PM";
-    }
-  }
-  
-  if (!use24Hour) {
-    eventEndAMPMSelect.value = defaultHour >= 12 ? "PM" : "AM";
-    defaultHour = defaultHour % 12 || 12;
-  }
-  
-  eventEndHourInput.value = defaultHour;
-  eventEndMinuteInput.value = String(defaultMinute).padStart(2, "0");
-  
-  // 3. ALL-DAY & UNTIL
-  allDayCheckbox.checked = event ? event.isAllDay : false;
-  untilCheckbox.checked = event ? !!event.endTime : false;
-  
-  // 4. TITLE & DETAILS
-  eventTitleInput.value = event ? event.title : "";
-  eventDetailsInput.value = event ? (event.details || "") : "";
+  let hour = isToday ? now.getHours() : 9;
+  let minute = isToday ? now.getMinutes() : 0;
 
-  // pre-select shared friends (if editing)
-  const shareSelect = document.getElementById('shareWithFriends');
-  if (shareSelect && event?.shareWith) {
-    Array.from(shareSelect.options).forEach(opt => {
-      opt.selected = event.shareWith.includes(opt.value);
-    });
+  if (event && !event.isAllDay && event.time) {
+    [hour, minute] = event.time.split(":").map(Number);
   }
-  
-  // 5. LOCATION
-  if (eventLocationInput) {
-    eventLocationInput.value = event ? (event.location || "") : "";
+
+  if (!use24Hour) {
+    eventAMPMSelect.value = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
   }
-  
-  // 6. COLOR (Random pastel for new)
-  const defaultColor = event ? event.color : getRandomPastelColor();
-  eventColorPicker.value = defaultColor;
-  eventColorPreset.value = defaultColor;
-  
-  // 7. RECURRENCE
-  recurrenceCheckbox.checked = event ? !!event.recurrence : false;
+  eventHourInput.value = hour;
+  eventMinuteInput.value = String(minute).padStart(2, "0");
+
+  let endHour = hour + 1, endMinute = 0;
+  if (event && event.endTime) {
+    [endHour, endMinute] = event.endTime.split(":").map(Number);
+  }
+  if (!use24Hour) {
+    eventEndAMPMSelect.value = endHour >= 12 ? "PM" : "AM";
+    endHour = endHour % 12 || 12;
+  }
+  eventEndHourInput.value = endHour;
+  eventEndMinuteInput.value = String(endMinute).padStart(2, "0");
+
+  allDayCheckbox.checked = event?.isAllDay || false;
+  untilCheckbox.checked = !!event?.endTime;
+
+  eventTitleInput.value = event?.title || "";
+  eventDetailsInput.value = event?.details || "";
+  eventLocationInput.value = event?.location || "";
+  eventColorPicker.value = event?.color || getRandomPastelColor();
+  eventColorPreset.value = eventColorPicker.value;
+
+  recurrenceCheckbox.checked = !!event?.recurrence;
   recurrenceFrequency.value = event?.recurrence?.frequency || 'daily';
   recurrenceFrequency.disabled = !recurrenceCheckbox.checked;
   recurrenceContainer.classList.toggle("hidden", !recurrenceCheckbox.checked);
-  
+
+  const shareSelect = document.getElementById('shareWithFriends');
+  if (shareSelect && event?.shareWith) {
+    Array.from(shareSelect.options).forEach(opt => opt.selected = event.shareWith.includes(opt.value));
+  }
+
   updateTimeInputs();
-  updateValidationState(); // NEW: Validation
-  
+  updateValidationState();
+
   eventModal.classList.add("open");
   eventModal.setAttribute("aria-hidden", "false");
-
-  renderFriendsList();
-  
   const removeTrap = trapFocus(eventModal);
-  eventTitleInput.focus(); // Always focus title
-  
+  eventTitleInput.focus();
+
   eventModal.addEventListener('transitionend', function cleanup() {
     if (!eventModal.classList.contains('open')) {
       removeTrap();
@@ -1504,49 +1437,40 @@ untilCheckbox.onchange = updateTimeInputs;
 
 eventForm.onsubmit = async e => {
   e.preventDefault();
-  if (!currentUser) {
-    showErrorMessage("Please log in to save events");
-    return;
-  }
+  if (!currentUser) return showErrorMessage("Please log in");
+
   const title = eventTitleInput.value.trim();
-  if (!title) {
-    showErrorMessage("Title is required");
-    return;
-  }
   const date = eventDateInput.value;
-  if (!date) {
-    showErrorMessage("Date is required");
-    return;
-  }
-  let time = null;
-  let endTime = null;
-  if (!allDayCheckbox.checked) {
+  if (!title || !date) return showErrorMessage("Title and date required");
+
+  if (!selectedCalendarId) return showErrorMessage("Select a calendar");
+
+  let time = null, endTime = null;
+  const isAllDay = allDayCheckbox.checked;
+
+  if (!isAllDay) {
     let hour = parseInt(eventHourInput.value);
     const minute = parseInt(eventMinuteInput.value) || 0;
-    if (isNaN(hour) || isNaN(minute)) {
-      showErrorMessage("Valid time is required");
-      return;
-    }
+    if (isNaN(hour) || isNaN(minute)) return showErrorMessage("Invalid start time");
+
     if (!use24Hour) {
       if (eventAMPMSelect.value === "PM" && hour !== 12) hour += 12;
       if (eventAMPMSelect.value === "AM" && hour === 12) hour = 0;
     }
     time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+
     if (untilCheckbox.checked) {
       let endHour = parseInt(eventEndHourInput.value);
       const endMinute = parseInt(eventEndMinuteInput.value) || 0;
-      if (isNaN(endHour) || isNaN(endMinute)) {
-        showErrorMessage("Valid end time is required");
-        return;
-      }
+      if (isNaN(endHour) || isNaN(endMinute)) return showErrorMessage("Invalid end time");
+
       if (!use24Hour) {
         if (eventEndAMPMSelect.value === "PM" && endHour !== 12) endHour += 12;
         if (eventEndAMPMSelect.value === "AM" && endHour === 12) endHour = 0;
       }
       endTime = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
       if (getTimeInMinutes(time) >= getTimeInMinutes(endTime)) {
-        showErrorMessage("End time must be after start time");
-        return;
+        return showErrorMessage("End time must be after start time");
       }
     }
   }
@@ -1555,65 +1479,57 @@ eventForm.onsubmit = async e => {
     frequency: recurrenceFrequency.value
   } : undefined;
 
-  // === NEW: Get selected friends from the share select ===
   const shareWith = Array.from(document.getElementById('shareWithFriends')?.selectedOptions || [])
-                    .map(option => option.value);
+    .map(o => o.value);
 
   const eventData = {
+    calendarId: selectedCalendarId,
     title,
     date,
-    isAllDay: allDayCheckbox.checked,
-    time,
-    endTime,
-    details: eventDetailsInput.value,
+    isAllDay,
+    time: isAllDay ? null : time,
+    endTime: isAllDay ? null : endTime,
+    details: eventDetailsInput.value.trim(),
+    location: eventLocationInput.value.trim(),
     color: eventColorPicker.value,
-    recurrence,
-    location: eventLocationInput?.value || "",
-    shareWith  // ← This is the only new field
+    recurrence: recurrenceCheckbox.checked ? { frequency: recurrenceFrequency.value } : undefined,
+    shareWith
   };
   
   try {
-    let response;
+    const url = editingEvent ? `/api/events/${editingEvent.id}` : '/api/events';
+    const method = editingEvent ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwtToken}`
+      },
+      body: JSON.stringify(eventData)
+    });
+
+    if (res.status === 401) return handleUnauthorized();
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Save failed');
+    }
+
+    const saved = await res.json();
+    const normalized = { ...saved, id: saved._id, date: saved.date.split('T')[0] };
+
     if (editingEvent) {
-      response = await fetch(`/api/events/${editingEvent.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwtToken}`,
-        },
-        body: JSON.stringify(eventData),
-      });
+      const idx = events.findIndex(e => e.id === editingEvent.id);
+      if (idx !== -1) events[idx] = normalized;
     } else {
-      response = await fetch('/api/events', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwtToken}`,
-        },
-        body: JSON.stringify(eventData),
-      });
+      events.push(normalized);
     }
-    if (response.status === 401) {
-      handleUnauthorized();
-      return;
-    }
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to save event');
-    }
-    const savedEvent = await response.json();
-    if (editingEvent) {
-      const index = events.findIndex(e => e.id === editingEvent.id);
-      if (index !== -1) events[index] = { ...savedEvent, id: savedEvent._id, date: savedEvent.date.split('T')[0] };
-    } else {
-      events.push({ ...savedEvent, id: savedEvent._id, date: savedEvent.date.split('T')[0] });
-    }
+
     eventCache.clear();
     closeModal(eventModal);
     updateView();
-  } catch (e) {
-    console.error("Failed to save event:", e);
-    showErrorMessage(e.message || "Error saving event");
+  } catch (err) {
+    showErrorMessage(err.message || "Error saving event");
   }
 };
 
@@ -1814,6 +1730,49 @@ accountForm.onsubmit = async e => {
     showErrorMessage(e.message || "Error updating account", accountSettingsModal);
   }
 };
+
+async function loadCalendars() {
+  try {
+    const res = await fetch('/api/calendars', { headers: { Authorization: `Bearer ${jwtToken}` } });
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    allCalendars = data;
+    renderCalendarSelect();
+    if (allCalendars.owned.length) selectedCalendarId = allCalendars.owned[0]._id;
+  } catch (e) { console.error(e); }
+}
+function renderCalendarSelect() {
+  const sel = document.getElementById('calSelect');
+  sel.innerHTML = '';
+  allCalendars.owned.forEach(c => {
+    const opt = new Option(c.name, c._id, false, selectedCalendarId===c._id);
+    sel.add(opt);
+  });
+  allCalendars.shared.forEach(c => {
+    const opt = new Option(`${c.name} (shared)`, c._id, false, selectedCalendarId===c._id);
+    opt.disabled = true;               // cannot create events in shared-only calendars
+    sel.add(opt);
+  });
+  document.getElementById('calendarSelector').classList.toggle('hidden', !allCalendars.owned.length);
+}
+document.getElementById('calSelect')?.addEventListener('change', e=>{
+  selectedCalendarId = e.target.value;
+});
+
+document.getElementById('shareCalendarBtn')?.addEventListener('click', async () => {
+  const calId = selectedCalendarId;
+  const sel   = document.getElementById('shareWithFriends');
+  const users = Array.from(sel.selectedOptions).map(o=>o.value);
+  if (!users.length) return showErrorMessage('Select friends');
+  try {
+    await fetch(`/api/calendars/${calId}/share`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', Authorization:`Bearer ${jwtToken}` },
+      body: JSON.stringify({ userId: users[0], permission:'view' }) // you can loop for many
+    });
+    showErrorMessage('Calendar shared', eventModal);
+  } catch (e) { showErrorMessage('Share failed'); }
+});
 
 // Initialize
 loadSettings();
