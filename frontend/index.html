@@ -7,12 +7,18 @@
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
+  <!-- Loading Spinner -->
+  <div id="loadingSpinner" class="loading-spinner hidden">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
   <div class="app-layout">
     <!-- Sidebar / Mini Calendar -->
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <button id="settingsButton" aria-label="Settings">⚙</button>
-      </div>
       <div class="mini-calendar">
         <div class="calendar-header">
           <button id="prevMonth" aria-label="Previous Month">‹</button>
@@ -29,24 +35,13 @@
           <tbody id="calendarBody"></tbody>
         </table>
       </div>
-      <!-- Rank Bar Removed -->
-      <div id="settingsPanel" class="settings-panel hidden">
-        <h2>Settings</h2>
-        <button id="timeFormatToggle">Switch to 24-Hour</button>
-        <button id="darkModeToggle">Toggle Dark Mode</button>
-        <div class="color-picker-container">
-          <label for="buttonColorPicker">Button Color:</label>
-          <div class="color-picker-wrapper">
-            <input type="color" id="buttonColorPicker" value="#008000">
-            <select id="buttonColorPreset">
-              <option value="#008000">Green</option>
-              <option value="#2196f3">Blue</option>
-              <option value="#f44336">Red</option>
-              <option value="#9c27b0">Purple</option>
-              <option value="#ff9800">Orange</option>
-            </select>
-          </div>
+      <!-- Friends Panel -->
+      <div class="friends-sidebar">
+        <div class="friends-header">
+          <h3>Friends</h3>
+          <button id="manageFriendsSidebar" aria-label="Manage Friends">⋯</button>
         </div>
+        <div id="friendsListSidebar"></div>
       </div>
     </aside>
 
@@ -65,26 +60,27 @@
           <div class="action-buttons">
             <button id="createEventButton">Create Event</button>
             <button id="viewAllEventsButton" class="hidden">View All Events</button>
-          </div>
-          <div id="calendarSelector" class="hidden">
-            <label for="calSelect">Calendar:</label>
-            <select id="calSelect"></select>
+            <button id="manageCalendarsTopBtn" class="hidden">Manage Calendars</button>
           </div>
         </div>
         
         <div class="title-center">
-          <h1 class="logo">My Calendar</h1>
+          <button id="calendarTitleButton">
+            <span class="calendar-color-dot" style="background: #3788d8;"></span>
+            <span id="calendarTitleText">My Calendar</span>
+            <span style="font-size: 0.8em;">▼</span>
+          </button>
         </div>
         
-        <!-- UPDATED: PROFILE + AUTH BUTTONS -->
+        <!-- PROFILE + AUTH BUTTONS -->
         <div class="profile-auth-container">
-          <!-- PROFILE BUTTON (NEW) -->
+          <!-- PROFILE BUTTON -->
           <div id="profileContainer" class="profile-container hidden">
             <button id="profileButton" class="profile-btn" aria-label="Profile" tabindex="0">
               <img id="profileImage" class="profile-img hidden" alt="Profile photo" src="">
               <span id="profileInitials" class="profile-initials hidden"></span>
             </button>
-            <!-- PROFILE DROPDOWN MENU (NEW) -->
+            <!-- PROFILE DROPDOWN MENU -->
             <div id="profileMenu" class="profile-menu hidden">
               <div class="profile-menu-item">
                 <img id="menuProfileImage" class="menu-profile-img hidden" alt="Profile photo">
@@ -97,6 +93,26 @@
               <button id="profileSettingsBtn" class="profile-menu-btn">Profile Settings</button>
               <button id="accountSettingsBtn" class="profile-menu-btn">Account Settings</button>
               <button class="profile-menu-btn" id="manageFriendsBtn">Manage Friends</button>
+
+              <!-- SETTINGS SECTION (NEW) -->
+              <div class="settings-section">
+                <h3>Settings</h3>
+                <button id="timeFormatToggle" class="profile-menu-btn">Switch to 24-Hour</button>
+                <button id="darkModeToggle" class="profile-menu-btn">Toggle Dark Mode</button>
+                <div class="color-picker-container">
+                  <label for="buttonColorPicker">Button Color:</label>
+                  <div class="color-picker-wrapper">
+                    <input type="color" id="buttonColorPicker" value="#008000">
+                    <select id="buttonColorPreset">
+                      <option value="#008000">Green</option>
+                      <option value="#2196f3">Blue</option>
+                      <option value="#f44336">Red</option>
+                      <option value="#9c27b0">Purple</option>
+                      <option value="#ff9800">Orange</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
               <hr class="menu-divider">
               <button id="logOutButtonMenu" class="profile-menu-btn danger">Log Out</button>
             </div>
@@ -149,16 +165,17 @@
     </main>
   </div>
 
-  <!-- NEW: PROFILE SETTINGS MODAL -->
+  <!-- PROFILE SETTINGS MODAL -->
   <div id="profileSettingsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="profileTitle">
     <div class="modal-content">
-      <span class="close-btn" id="closeProfileSettings" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="profileTitle">Profile Settings</h2>
       <form id="profileForm">
         <div class="form-group">
           <label for="profileImageInput">Profile Photo</label>
-          <input type="file" id="profileImageInput" accept="image/*">
+          <input type="file" id="profileImageInput" accept="image/jpeg,image/png,image/gif,image/webp">
           <img id="currentProfileImage" class="preview-img hidden" alt="Current profile photo">
+          <small style="color:#666;font-size:12px;">Max 5MB. JPG, PNG, GIF, or WebP</small>
         </div>
         <div class="form-group">
           <label for="displayName">Display Name</label>
@@ -173,15 +190,15 @@
     </div>
   </div>
 
+  <!-- FRIENDS MODAL -->
   <div id="friendsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="friendsModalTitle">
     <div class="modal-content">
       <div class="modal-header">
         <h2 id="friendsModalTitle">Manage Friends</h2>
-        <button class="close-btn" aria-label="Close friends modal">X</button>
+        <button class="close-btn" aria-label="Close friends modal">×</button>
       </div>
 
       <div class="modal-body">
-
         <!-- Search -->
         <div class="form-group">
           <label for="friendSearch">Search users</label>
@@ -204,15 +221,99 @@
           <h3>Your Friends</h3>
           <div id="friendsListDiv"></div>
         </section>
-
       </div>
     </div>
   </div>
 
-  <!-- NEW: ACCOUNT SETTINGS MODAL -->
+  <!-- Friend Profile Modal -->
+  <div id="friendProfileModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="friendProfileTitle">
+    <div class="modal-content">
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2 id="friendProfileTitle"></h2>
+      <img id="friendProfileImage" class="preview-img hidden" alt="Friend profile photo">
+      <p><strong>Display Name:</strong> <span id="friendDisplayName"></span></p>
+      <p><strong>Bio:</strong> <span id="friendBio"></span></p>
+    </div>
+  </div>
+
+  <!-- Calendar Management Modal -->
+  <div id="calendarModal" class="modal" aria-hidden="true" role="dialog">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2 id="calendarModalTitle">Manage Calendars</h2>
+      
+      <div style="margin-bottom: 20px;">
+        <button id="createCalendarBtn" style="width: 100%;">+ Create New Calendar</button>
+      </div>
+
+      <div id="calendarsList"></div>
+    </div>
+  </div>
+
+  <!-- Create/Edit Calendar Modal -->
+  <div id="calendarFormModal" class="modal" aria-hidden="true" role="dialog">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2 id="calendarFormTitle">Create Calendar</h2>
+      
+      <form id="calendarForm">
+        <div class="form-group">
+          <label for="calendarName">Calendar Name</label>
+          <input type="text" id="calendarName" required placeholder="e.g., Work, Personal">
+        </div>
+        
+        <div class="form-group">
+          <label for="calendarColor">Color</label>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+            <button type="button" class="color-option" data-color="#3788d8" style="background: #3788d8;"></button>
+            <button type="button" class="color-option" data-color="#f44336" style="background: #f44336;"></button>
+            <button type="button" class="color-option" data-color="#4caf50" style="background: #4caf50;"></button>
+            <button type="button" class="color-option" data-color="#9c27b0" style="background: #9c27b0;"></button>
+            <button type="button" class="color-option" data-color="#ff9800" style="background: #ff9800;"></button>
+            <button type="button" class="color-option" data-color="#009688" style="background: #009688;"></button>
+            <button type="button" class="color-option" data-color="#e91e63" style="background: #e91e63;"></button>
+            <button type="button" class="color-option" data-color="#3f51b5" style="background: #3f51b5;"></button>
+          </div>
+          <input type="hidden" id="calendarColor" value="#3788d8">
+        </div>
+        
+        <div class="form-group">
+          <label for="calendarDescription">Description (Optional)</label>
+          <textarea id="calendarDescription" rows="2"></textarea>
+        </div>
+        
+        <button type="submit" class="submit-btn">Save Calendar</button>
+        <button type="button" id="deleteCalendarBtn" class="hidden" style="background: #f44336; margin-top: 10px;">Delete Calendar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Share Calendar Modal -->
+  <div id="shareCalendarModal" class="modal" aria-hidden="true" role="dialog">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2 id="shareCalendarTitle">Share Calendar</h2>
+      
+      <div class="form-group">
+        <label>Calendar: <strong id="sharingCalendarName"></strong></label>
+      </div>
+
+      <!-- Currently Shared With -->
+      <div class="share-section">
+        <h3>Currently Shared With</h3>
+        <div id="currentlySharedList" class="shared-users-list">
+          <p style="text-align:center;color:#666;padding:12px;">Not shared with anyone</p>
+        </div>
+      </div>
+
+      <button id="closeShareModal" style="width:100%;margin-top:16px;">Close</button>
+    </div>
+  </div>
+
+  <!-- ACCOUNT SETTINGS MODAL -->
   <div id="accountSettingsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="accountTitle">
     <div class="modal-content">
-      <span class="close-btn" id="closeAccountSettings" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="accountTitle">Account Settings</h2>
       <form id="accountForm">
         <div class="form-group">
@@ -235,7 +336,7 @@
   <!-- Login Modal -->
   <div id="loginModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="authTitle">
     <div class="modal-content login-box">
-      <span class="close-btn" id="closeLoginModal" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="authTitle">Log In</h2>
       <form id="authForm">
         <div id="authMessage"></div>
@@ -252,13 +353,94 @@
   </div>
 
   <!-- Create Event Modal -->
-  <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventTitle">
-  <div class="modal-content">
-    <span class="close-btn" id="closeEventModal" role="button" tabindex="0" aria-label="Close">&times;</span>
-      <h2>Create Event</h2>
+  <div id="eventModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="eventModalTitle">
+    <div class="modal-content">
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2 id="eventModalTitle">Create Event</h2>
       <form id="eventForm">
-        <label>Title: <input type="text" id="eventTitle" required></label>
-        <label>Date: <input type="date" id="eventDate" required></label>
+        <!-- Calendar Selection -->
+        <div class="form-group">
+          <label for="eventCalendarSelect">Calendar *</label>
+          <select id="eventCalendarSelect" required>
+            <option value="">Select a calendar</option>
+          </select>
+        </div>
+
+        <!-- Title -->
+        <div class="form-group">
+          <label for="eventTitle">Title *</label>
+          <input type="text" id="eventTitle" required maxlength="100" placeholder="Event name">
+          <small class="char-count"><span id="titleCharCount">0</span>/100</small>
+        </div>
+
+        <!-- Date -->
+        <div class="form-group">
+          <label for="eventDate">Date *</label>
+          <input type="date" id="eventDate" required>
+        </div>
+
+        <!-- All Day Checkbox -->
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="allDayCheckbox">
+            <span>All Day Event</span>
+          </label>
+        </div>
+
+        <!-- Time Inputs -->
+        <div id="timeInputs" class="time-inputs">
+          <div class="form-group">
+            <label>Start Time</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 60px;">
+              <span>:</span>
+              <input type="number" id="eventMinute" min="0" max="59" placeholder="MM" required style="width: 60px;">
+              <select id="eventAMPM" style="width:70px;">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Until Checkbox -->
+        <div id="untilContainer">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="untilCheckbox">
+            <span>Set End Time</span>
+          </label>
+        </div>
+
+        <!-- End Time Inputs -->
+        <div id="endTimeInputs" class="time-inputs hidden">
+          <div class="form-group">
+            <label>End Time</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 60px;" disabled>
+              <span>:</span>
+              <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 60px;" disabled>
+              <select id="eventEndAMPM" disabled style="width:70px;">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recurrence -->
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="recurrenceCheckbox">
+            <span>Repeat Event</span>
+          </label>
+          <select id="recurrenceFrequency" disabled style="margin-top:8px;">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+
+        <!-- Event Color -->
         <div class="color-picker-container">
           <label for="eventColorPicker">Event Color:</label>
           <div class="color-picker-wrapper">
@@ -272,67 +454,21 @@
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label for="shareWithFriends">Share With</label>
-          <select id="shareWithFriends" multiple aria-label="Select friends to share event with">
-            <!-- Populated dynamically -->
-          </select>
-        </div>
-        <label><input type="checkbox" id="allDayCheckbox"> All Day</label>
-        <div id="timeInputs" class="time-inputs">
-          <label>
-            Time:
-            <input type="number" id="eventHour" min="1" max="12" placeholder="HH" required style="width: 50px;">
-            :
-            <input type="number" id="eventMinute" min="0" max="59" placeholder="MM" required style="width: 50px;">
-            <select id="eventAMPM">
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </label>
-        </div>
-        <div id="untilContainer">
-          <label><input type="checkbox" id="untilCheckbox"> Until</label>
-        </div>
-        <div id="recurrenceContainer" class="hidden">
-          <label><input type="checkbox" id="recurrenceCheckbox"> Repeat</label>
-          <select id="recurrenceFrequency">
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-        </div>
-        <div id="endTimeInputs" class="time-inputs hidden">
-          <label>
-            End Time:
-            <input type="number" id="eventEndHour" min="1" max="12" placeholder="HH" style="width: 50px;" disabled>
-            :
-            <input type="number" id="eventEndMinute" min="0" max="59" placeholder="MM" style="width: 50px;" disabled>
-            <select id="eventEndAMPM" disabled>
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </label>
-        </div>
-        <label>Details: <textarea id="eventDetails"></textarea></label>
-        <div class="form-group">
-          <label for="shareWithFriends">Share With Friends (Optional)</label>
-          <select id="shareWithFriends" multiple class="color-picker-wrapper">
-            <!-- Dynamically populated with friends -->
-          </select>
-        </div>
+
         <!-- Location -->
         <div class="form-group">
           <label for="eventLocation">Location (Optional)</label>
-          <input type="text" id="eventLocation" name="location" placeholder="Office, Zoom, etc." maxlength="100">
+          <input type="text" id="eventLocation" placeholder="Office, Zoom, etc." maxlength="100">
         </div>
-        <div id="shareSection" class="hidden">
-          <label>Share with friends:</label>
-          <select id="shareWithFriends" multiple size="4"></select>
-          <button type="button" id="shareCalendarBtn" class="small-btn">Share Calendar</button>
+
+        <!-- Details -->
+        <div class="form-group">
+          <label for="eventDetails">Details (Optional)</label>
+          <textarea id="eventDetails" rows="3" maxlength="500" placeholder="Add description..."></textarea>
+          <small class="char-count"><span id="detailsCharCount">0</span>/500</small>
         </div>
-        <!-- SINGLE BUTTON (Dynamic: Create/Save) -->
-        <button type="submit" disabled class="submit-btn">Create Event</button>
+
+        <button type="submit" class="submit-btn" disabled>Create Event</button>
       </form>
     </div>
   </div>
@@ -340,16 +476,36 @@
   <!-- Event Details Modal -->
   <div id="detailsModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="detailsTitle">
     <div class="modal-content">
-      <span class="close-btn" id="closeDetailsModal" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
       <h2 id="detailsTitle">Event Details</h2>
       <div id="detailsContent"></div>
-      <button id="deleteEventButton">Delete Event</button>
-      <button id="editEventButton">Edit Event</button>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button id="editEventButton" style="flex:1;">Edit Event</button>
+        <button id="deleteEventButton" style="flex:1;background:#f44336;">Delete Event</button>
+      </div>
     </div>
   </div>
 
-  <!-- All Events Modal (DYNAMICALLY CREATED IN JS) -->
-  
+  <!-- All Events Modal -->
+  <div id="allEventsModal" class="modal" aria-hidden="true" role="dialog">
+    <div class="modal-content">
+      <span class="close-btn" role="button" tabindex="0" aria-label="Close">&times;</span>
+      <h2>All Events</h2>
+      <div id="allEventsList" class="all-events-list"></div>
+    </div>
+  </div>
+
+  <!-- Calendar Selector Modal -->
+  <div id="calendarSelectorModal" class="modal" aria-hidden="true" role="dialog">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2>Select Calendar</h2>
+      <div id="calendarSelectorGrid" class="calendar-selector-grid">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>

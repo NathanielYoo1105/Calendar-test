@@ -1,17 +1,11 @@
 {
   "name": "calendar-test",
   "version": "1.0.0",
-  "description": "Calendar app backend with MongoDB Atlas",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "build": "npm install",
     "dev": "nodemon server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": ["calendar", "backend", "mongodb", "express"],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -21,10 +15,10 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.6.2"
   },
-  "engines": {
-    "node": "20.x"
-  },
   "devDependencies": {
     "nodemon": "^3.1.7"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }

@@ -1,32 +1,26 @@
+// server.js
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-const dotenv = require('dotenv');
-const calendarRoutes = require('./routes/calendars');
-const friendRoutes   = require('./routes/friends');
-
-app.use('/api/calendars', calendarRoutes);
-app.use('/api/friends',   friendRoutes);
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Rate limiting for production security
+// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Too many requests from this IP, please try again later.',
 });
 app.use(limiter);
 
-// CORS configuration - dynamic for Render
+// CORS
 const allowedOrigins = [
   'http://localhost:5000',
-  'https://calendar-test.onrender.com', // Replace with your Render URL
+  'https://calendar-test.onrender.com'
 ];
 app.use(cors({
   origin: (origin, callback) => {
@@ -39,13 +33,15 @@ app.use(cors({
   credentials: true,
 }));
 
-// Middleware
+// Body parser
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'frontend'))); // Serve frontend folder
 
-// MongoDB connection
+// Serve frontend
+app.use(express.static(path.join(__dirname, 'frontend')));
+
+// MongoDB
 if (!process.env.MONGO_URI) {
-  console.error('MONGO_URI environment variable is required');
+  console.error('MONGO_URI is required');
   process.exit(1);
 }
 mongoose.connect(process.env.MONGO_URI)
@@ -56,24 +52,18 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 // Routes
-try {
-  const authRoutes = require('./routes/auth');
-  const eventRoutes = require('./routes/events');
-  const userRoutes = require('./routes/user');
-  app.use('/api/auth', authRoutes);
-  app.use('/api/events', eventRoutes);
-  app.use('/api/user', userRoutes);
-} catch (err) {
-  console.error('Error loading routes:', err);
-  process.exit(1);
-}
+app.use('/api/auth',      require('./routes/auth'));
+app.use('/api/calendars', require('./routes/calendars'));
+app.use('/api/events',    require('./routes/events'));
+app.use('/api/friends',   require('./routes/friends'));
+app.use('/api/user',      require('./routes/user'));
 
-// Health check endpoint
+// Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend API is running' });
 });
 
-// Serve frontend for all other routes (SPA fallback)
+// SPA fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
 });
@@ -86,5 +76,5 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
