@@ -35,13 +35,24 @@
           <tbody id="calendarBody"></tbody>
         </table>
       </div>
-      <!-- Friends Panel -->
       <div class="friends-sidebar">
         <div class="friends-header">
-          <h3>Friends</h3>
+          <div class="friends-tabs">
+            <button class="friends-tab active" data-tab="friends">Friends</button>
+            <button class="friends-tab" data-tab="leaderboard">Leaderboard</button>
+          </div>
           <button id="manageFriendsSidebar" aria-label="Manage Friends">⋯</button>
         </div>
-        <div id="friendsListSidebar"></div>
+        
+        <!-- Friends List Tab -->
+        <div id="friendsListTab" class="friends-tab-content active">
+          <div id="friendsListSidebar"></div>
+        </div>
+        
+        <!-- Leaderboard Tab -->
+        <div id="leaderboardTab" class="friends-tab-content hidden">
+          <div id="leaderboardList"></div>
+        </div>
       </div>
     </aside>
 
@@ -76,6 +87,29 @@
         <div class="profile-auth-container">
           <!-- PROFILE BUTTON -->
           <div id="profileContainer" class="profile-container hidden">
+              <div class="user-stats-display">
+                <div class="stat-item">
+                  <div class="stat-icon">🏆</div>
+                  <div class="stat-info">
+                    <div class="stat-value" id="weeklyPointsDisplay">0</div>
+                    <div class="stat-label">Weekly</div>
+                  </div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-icon">⭐</div>
+                  <div class="stat-info">
+                    <div class="stat-value" id="lifetimePointsDisplay">0</div>
+                    <div class="stat-label">Lifetime</div>
+                  </div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-icon">🔥</div>
+                  <div class="stat-info">
+                    <div class="stat-value" id="streakDisplay">0</div>
+                    <div class="stat-label">Streak</div>
+                  </div>
+                </div>
+              </div>
             <button id="profileButton" class="profile-btn" aria-label="Profile" tabindex="0">
               <img id="profileImage" class="profile-img hidden" alt="Profile photo" src="">
               <span id="profileInitials" class="profile-initials hidden"></span>

@@ -14,6 +14,13 @@ const eventCache = new Map();
 let allCalendars = { owned: [], shared: [] };
 let selectedCalendarId = null;
 
+let userStats = {
+  weeklyPoints: 0,
+  lifetimePoints: 0,
+  currentStreak: 0,
+  dailyTasksCompleted: 0
+};
+
 // Modal trap cleanup function
 let activeModalTrap = null;
 
@@ -141,7 +148,9 @@ async function fetchEvents() {
     events = events.map(e => ({
       ...e,
       id: e._id,
-      date: e.date.split('T')[0]
+      date: e.date.split('T')[0],
+      completed: e.completed || false,
+      pointsAwarded: e.pointsAwarded || 0
     }));
     
     eventCache.clear();
@@ -365,6 +374,8 @@ function getEventsForDate(targetDate) {
 
 // Update button color theme
 function updateButtonColor(color) {
+  if (!color) return;
+
   const root = document.documentElement;
   const isDarkMode = document.body.classList.contains("dark-mode");
   const hoverColor = adjustColorBrightness(color, isDarkMode ? 1.2 : 0.8);
@@ -470,6 +481,256 @@ function updateCharCount(inputId, countId, max) {
     } else {
       counter.style.color = '#666';
     }
+  });
+}
+
+// ===== Gamification Functions =====
+
+// Fetch user stats
+async function fetchUserStats() {
+  if (!currentUser || !jwtToken) return;
+  
+  try {
+    const res = await fetch('/api/gamification/stats', {
+      headers: { 'Authorization': `Bearer ${jwtToken}` }
+    });
+    
+    if (res.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    
+    if (!res.ok) throw new Error('Failed to fetch stats');
+    
+    userStats = await res.json();
+    updateStatsDisplay();
+  } catch (e) {
+    console.error('Failed to fetch stats:', e);
+  }
+}
+
+// Update stats display
+function updateStatsDisplay() {
+  const weeklyEl = document.getElementById('weeklyPointsDisplay');
+  const lifetimeEl = document.getElementById('lifetimePointsDisplay');
+  const streakEl = document.getElementById('streakDisplay');
+  
+  if (weeklyEl) weeklyEl.textContent = userStats.weeklyPoints || 0;
+  if (lifetimeEl) lifetimeEl.textContent = userStats.lifetimePoints || 0;
+  if (streakEl) streakEl.textContent = userStats.currentStreak || 0;
+}
+
+// Mark event as complete
+async function markEventComplete(eventId, checkboxEl) {
+  if (!currentUser || !jwtToken) return;
+  
+  try {
+    showLoading();
+    
+    const res = await fetch(`/api/gamification/complete/${eventId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${jwtToken}` }
+    });
+    
+    if (res.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Failed to complete event');
+    }
+    
+    const result = await res.json();
+    
+    // Update event in local array
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      event.completed = true;
+      event.pointsAwarded = result.pointsAwarded;
+    }
+    
+    // Update stats
+    userStats = result.userStats;
+    updateStatsDisplay();
+    
+    // Show success message
+    if (result.pointsAwarded > 0) {
+      showToast(`🎉 +${result.pointsAwarded} points! Keep it up!`, 'success');
+    } else if (!result.isEligible) {
+      showToast('Task completed (no points - check eligibility rules)', 'info');
+    } else {
+      showToast('Task completed!', 'success');
+    }
+    
+    // Refresh view and leaderboard
+    eventCache.clear();
+    updateView();
+    loadLeaderboard();
+  } catch (e) {
+    console.error('Complete event error:', e);
+    showToast(e.message || 'Failed to complete task', 'error');
+    if (checkboxEl) checkboxEl.checked = false;
+  } finally {
+    hideLoading();
+  }
+}
+
+// Uncomplete event
+async function markEventUncomplete(eventId, checkboxEl) {
+  if (!currentUser || !jwtToken) return;
+  
+  try {
+    showLoading();
+    
+    const res = await fetch(`/api/gamification/uncomplete/${eventId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${jwtToken}` }
+    });
+    
+    if (res.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Failed to uncomplete event');
+    }
+    
+    const result = await res.json();
+    
+    // Update event
+    const event = events.find(e => e.id === eventId);
+    if (event) {
+      event.completed = false;
+      event.pointsAwarded = 0;
+    }
+    
+    // Update stats
+    userStats = result.userStats;
+    updateStatsDisplay();
+    
+    showToast('Task uncompleted', 'info');
+    
+    // Refresh view and leaderboard
+    eventCache.clear();
+    updateView();
+    loadLeaderboard();
+  } catch (e) {
+    console.error('Uncomplete event error:', e);
+    showToast(e.message || 'Failed to uncomplete task', 'error');
+    if (checkboxEl) checkboxEl.checked = true;
+  } finally {
+    hideLoading();
+  }
+}
+
+// Load leaderboard
+async function loadLeaderboard() {
+  const leaderboardEl = document.getElementById('leaderboardList');
+  if (!leaderboardEl) return;
+  
+  if (!currentUser || !jwtToken) {
+    leaderboardEl.innerHTML = '<p class="no-friends" style="padding:20px;text-align:center;color:#666;">Log in to see leaderboard</p>';
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/gamification/leaderboard', {
+      headers: { 'Authorization': `Bearer ${jwtToken}` }
+    });
+    
+    if (res.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    
+    if (!res.ok) throw new Error('Failed to load leaderboard');
+    
+    const leaderboard = await res.json();
+    
+    if (leaderboard.length === 0) {
+      leaderboardEl.innerHTML = `
+        <div class="no-leaderboard">
+          <div class="no-leaderboard-icon">🏆</div>
+          <h4>No Friends Yet</h4>
+          <p>Add friends to compete on the leaderboard!</p>
+        </div>
+      `;
+      return;
+    }
+    
+    leaderboardEl.innerHTML = '';
+    
+    leaderboard.forEach(user => {
+      const div = document.createElement('div');
+      div.className = 'leaderboard-item' + (user.isCurrentUser ? ' current-user' : '');
+      
+      const rankClass = user.rank <= 3 ? ` rank-${user.rank}` : '';
+      const rankEmoji = user.rank === 1 ? '🥇' : user.rank === 2 ? '🥈' : user.rank === 3 ? '🥉' : '';
+      
+      const initials = (user.displayName || user.username)[0].toUpperCase();
+      const avatarContent = user.profileImage 
+        ? `<img src="${user.profileImage}" alt="">` 
+        : initials;
+      
+      div.innerHTML = `
+        <div class="leaderboard-rank${rankClass}">
+          ${rankEmoji || user.rank}
+        </div>
+        <div class="leaderboard-avatar">
+          ${avatarContent}
+        </div>
+        <div class="leaderboard-info">
+          <div class="leaderboard-name">
+            ${user.displayName || user.username}
+            ${user.isCurrentUser ? ' (You)' : ''}
+          </div>
+        </div>
+        <div class="leaderboard-points">
+          ${user.weeklyPoints} pts
+        </div>
+      `;
+      
+      leaderboardEl.appendChild(div);
+    });
+  } catch (e) {
+    console.error('Load leaderboard error:', e);
+    leaderboardEl.innerHTML = '<p style="text-align:center;color:#f44336;padding:20px;">Failed to load leaderboard</p>';
+  }
+}
+
+// Setup friends tabs
+function setupFriendsTabs() {
+  const tabs = document.querySelectorAll('.friends-tab');
+  const tabContents = document.querySelectorAll('.friends-tab-content');
+  
+  tabs.forEach(tab => {
+    tab.onclick = () => {
+      const targetTab = tab.dataset.tab;
+      
+      // Update active tab
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      
+      // Update visible content
+      tabContents.forEach(content => {
+        if (content.id === `${targetTab}${targetTab === 'friends' ? 'List' : ''}Tab`) {
+          content.classList.add('active');
+          content.classList.remove('hidden');
+        } else {
+          content.classList.remove('active');
+          content.classList.add('hidden');
+        }
+      });
+      
+      // Load leaderboard if that tab is clicked
+      if (targetTab === 'leaderboard') {
+        loadLeaderboard();
+      }
+    };
   });
 }
 
@@ -587,6 +848,7 @@ function updateAuthUI() {
     viewAllEventsBtn?.classList.remove("hidden");
     manageCalendarsTopBtn?.classList.remove('hidden');
     updateProfileUI();
+    fetchUserStats();
   } else {
     profileContainer?.classList.add("hidden");
     logInButton?.classList.remove("hidden");
@@ -1509,6 +1771,16 @@ function openDetailsModal(event) {
       return cal ? `<p><strong>Calendar:</strong> ${cal.name}</p>` : '';
     })();
     
+    // Build completion status (NEW)
+    const completionStatus = event.completed 
+      ? `<p><strong>Status:</strong> <span style="color: #4caf50;">✓ Completed</span></p>`
+      : `<p><strong>Status:</strong> <span style="color: #666;">Pending</span></p>`;
+    
+    // Show points info (NEW)
+    const pointsInfo = event.pointsAwarded > 0
+      ? `<p><strong>Points Earned:</strong> <span class="points-badge">+${event.pointsAwarded}</span></p>`
+      : '';
+    
     detailsContent.innerHTML = `
       <p><strong>Title:</strong> ${event.displayTitle || event.title}</p>
       <p><strong>Date:</strong> ${event.date}</p>
@@ -1518,6 +1790,8 @@ function openDetailsModal(event) {
       ${calendarInfo}
       ${event.recurrence ? `<p><strong>Recurrence:</strong> ${event.recurrence.frequency}</p>` : ''}
       ${event.isInstance ? '<p><em>(Recurring instance)</em></p>' : ''}
+      ${completionStatus}
+      ${pointsInfo}
     `;
   }
   
@@ -1548,23 +1822,59 @@ function openAllEventsModal() {
       sortedEvents.forEach(event => {
         const eventItem = document.createElement("div");
         eventItem.className = "all-event-item";
+        if (event.completed) eventItem.classList.add("event-completed");
         eventItem.tabIndex = 0;
-        
-        const title = document.createElement('strong');
-        title.textContent = event.title;
         
         const summary = document.createElement('div');
         summary.className = 'event-summary';
-        summary.appendChild(title);
+        summary.style.display = 'flex';
+        summary.style.alignItems = 'flex-start';
+        summary.style.gap = '10px';
         
-        const dateTime = document.createElement('span');
-        dateTime.textContent = ` - ${event.date} ${formatTimeForDisplay(event)}`;
-        summary.appendChild(dateTime);
+        // Add checkbox (NEW)
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "event-checkbox";
+        checkbox.checked = event.completed || false;
+        checkbox.onclick = (e) => {
+          e.stopPropagation();
+          if (checkbox.checked) {
+            markEventComplete(event.id, checkbox);
+          } else {
+            markEventUncomplete(event.id, checkbox);
+          }
+        };
+        summary.appendChild(checkbox);
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.style.flex = '1';
+        
+        const titleDiv = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = event.title;
+        titleDiv.appendChild(title);
+        
+        // Add points badge if awarded (NEW)
+        if (event.pointsAwarded > 0) {
+          const badge = document.createElement('span');
+          badge.className = 'points-badge';
+          badge.textContent = `+${event.pointsAwarded}`;
+          badge.style.marginLeft = '8px';
+          titleDiv.appendChild(badge);
+        }
+        
+        contentDiv.appendChild(titleDiv);
+        
+        const dateTime = document.createElement('p');
+        dateTime.textContent = `${event.date} ${formatTimeForDisplay(event)}`;
+        dateTime.style.margin = '4px 0';
+        contentDiv.appendChild(dateTime);
         
         if (event.details) {
           const details = document.createElement('p');
           details.textContent = event.details;
-          summary.appendChild(details);
+          details.style.margin = '4px 0';
+          contentDiv.appendChild(details);
         }
         
         if (event.location) {
@@ -1573,14 +1883,18 @@ function openAllEventsModal() {
           locLabel.textContent = 'Location: ';
           location.appendChild(locLabel);
           location.appendChild(document.createTextNode(event.location));
-          summary.appendChild(location);
+          location.style.margin = '4px 0';
+          contentDiv.appendChild(location);
         }
         
         if (event.recurrence) {
           const recur = document.createElement('p');
           recur.innerHTML = `<em>Repeats ${event.recurrence.frequency}</em>`;
-          summary.appendChild(recur);
+          recur.style.margin = '4px 0';
+          contentDiv.appendChild(recur);
         }
+        
+        summary.appendChild(contentDiv);
         
         const actions = document.createElement('div');
         actions.className = 'event-actions';
@@ -1619,6 +1933,9 @@ function openAllEventsModal() {
               showToast('Event deleted successfully', 'success');
               openAllEventsModal();
               updateView();
+              
+              // Reload leaderboard in case it affects rankings
+              loadLeaderboard();
             } catch (err) {
               console.error("Delete error:", err);
               showToast("Error deleting event", "error");
@@ -1635,7 +1952,7 @@ function openAllEventsModal() {
         eventItem.appendChild(actions);
         
         eventItem.onclick = (e) => {
-          if (e.target.tagName === 'BUTTON') return;
+          if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
           openDetailsModal(event);
         };
         
@@ -2138,6 +2455,11 @@ function renderMonthView() {
       const div = document.createElement("div");
       div.classList.add("month-event");
       
+      // Add completed class if event is completed (NEW)
+      if (event.completed) {
+        div.classList.add("event-completed");
+      }
+      
       const calendar = allCalendars.owned.find(c => c._id === (event.calendar?._id || event.calendar)) || 
                        allCalendars.shared.find(c => c._id === (event.calendar?._id || event.calendar));
       
@@ -2149,7 +2471,34 @@ function renderMonthView() {
       if (event.isAllDay) div.classList.add("all-day");
       if (event.isInstance) div.style.opacity = '0.7';
       
-      div.textContent = event.displayTitle || `${event.title} (${formatTimeForDisplay(event)})`;
+      // Add checkbox for task completion (NEW)
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "event-checkbox";
+      checkbox.checked = event.completed || false;
+      checkbox.onclick = (e) => {
+        e.stopPropagation();
+        if (checkbox.checked) {
+          markEventComplete(event.id, checkbox);
+        } else {
+          markEventUncomplete(event.id, checkbox);
+        }
+      };
+      
+      const eventText = document.createElement("span");
+      eventText.textContent = event.displayTitle || `${event.title} (${formatTimeForDisplay(event)})`;
+      
+      div.appendChild(checkbox);
+      div.appendChild(eventText);
+      
+      // Add points badge if awarded (NEW)
+      if (event.pointsAwarded > 0) {
+        const badge = document.createElement("span");
+        badge.className = "points-badge";
+        badge.textContent = `+${event.pointsAwarded}`;
+        div.appendChild(badge);
+      }
+      
       div.setAttribute("aria-label", `Event: ${event.title} on ${event.date} at ${formatTimeForDisplay(event)}`);
       
       const handleEventClick = e => {
@@ -2339,16 +2688,42 @@ function renderWeekView() {
     
     const dayEvents = getEventsForDate(dayDate);
     
-    // All-day events
+    // All-day events (WITH CHECKBOX - NEW)
     dayEvents.filter(e => e.isAllDay).forEach(event => {
       const evBox = document.createElement("div");
       evBox.classList.add("all-day-event");
       evBox.tabIndex = 0;
       
+      if (event.completed) evBox.classList.add("event-completed");
       if (event.isInstance) evBox.style.opacity = '0.7';
       if (event.color) evBox.style.backgroundColor = event.color;
       
-      evBox.textContent = event.displayTitle || event.title;
+      // Add checkbox (NEW)
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "event-checkbox";
+      checkbox.checked = event.completed || false;
+      checkbox.onclick = (e) => {
+        e.stopPropagation();
+        if (checkbox.checked) {
+          markEventComplete(event.id, checkbox);
+        } else {
+          markEventUncomplete(event.id, checkbox);
+        }
+      };
+      
+      evBox.appendChild(checkbox);
+      
+      const textSpan = document.createElement("span");
+      textSpan.textContent = event.displayTitle || event.title;
+      evBox.appendChild(textSpan);
+      
+      if (event.pointsAwarded > 0) {
+        const badge = document.createElement("span");
+        badge.className = "points-badge";
+        badge.textContent = `+${event.pointsAwarded}`;
+        evBox.appendChild(badge);
+      }
       
       const handleEventClick = e => {
         e.stopPropagation();
@@ -2397,6 +2772,7 @@ function renderWeekView() {
       evBox.classList.add("event-box");
       evBox.tabIndex = 0;
       
+      if (event.completed) evBox.classList.add("event-completed");
       if (event.isInstance) evBox.style.opacity = '0.7';
       if (event.color) {
         evBox.style.backgroundColor = event.color;
@@ -2406,7 +2782,32 @@ function renderWeekView() {
           : "var(--event-box-bg)";
       }
       
-      evBox.textContent = event.displayTitle || `${event.title} (${formatTimeForDisplay(event)})`;
+      // Add checkbox (NEW)
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "event-checkbox";
+      checkbox.checked = event.completed || false;
+      checkbox.onclick = (e) => {
+        e.stopPropagation();
+        if (checkbox.checked) {
+          markEventComplete(event.id, checkbox);
+        } else {
+          markEventUncomplete(event.id, checkbox);
+        }
+      };
+      
+      evBox.appendChild(checkbox);
+      
+      const textSpan = document.createElement("span");
+      textSpan.textContent = event.displayTitle || `${event.title} (${formatTimeForDisplay(event)})`;
+      evBox.appendChild(textSpan);
+      
+      if (event.pointsAwarded > 0) {
+        const badge = document.createElement("span");
+        badge.className = "points-badge";
+        badge.textContent = `+${event.pointsAwarded}`;
+        evBox.appendChild(badge);
+      }
       
       const startMin = getTimeInMinutes(event.time || "00:00");
       const endMin = getTimeInMinutes(event.endTime || (event.time ? `${parseInt(event.time.split(":")[0]) + 1}:00` : "01:00"));
@@ -3001,8 +3402,9 @@ if (darkModeToggle) {
       console.error("Failed to save dark mode setting:", e);
     }
     
-    if (buttonColorPicker) {
-      updateButtonColor(buttonColorPicker.value);
+    const currentColor = localStorage.getItem("buttonColor") || buttonColorPicker?.value || "#008000";
+    if (currentColor) {
+      updateButtonColor(currentColor);
     }
   };
 }
@@ -3540,5 +3942,7 @@ updateCharCount('eventDetails', 'detailsCount', 500);
 // Initialize app
 loadSettings();
 updateCalendarTitle();
+setupFriendsTabs();
 updateView();
 renderFriendsSidebar();
+loadLeaderboard();

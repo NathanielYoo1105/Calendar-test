@@ -57,6 +57,7 @@ app.use('/api/calendars', require('./routes/calendars'));
 app.use('/api/events',    require('./routes/events'));
 app.use('/api/friends',   require('./routes/friends'));
 app.use('/api/user',      require('./routes/user'));
+app.use('/api/gamification', require('./routes/gamification'));
 
 // Health check
 app.get('/health', (req, res) => {
